@@ -1,6 +1,9 @@
 import {z} from "zod";
 
 export const signupSchema = z.object({
+  fullName: z
+  .string()
+  .min(2, "Please provide a name"),
   email: z
     .string()
     .trim()
@@ -14,6 +17,7 @@ export const signupSchema = z.object({
     }, {
       message: "Password must include upper, lower, number, and special character"
     }),
+    
   confirmPassword: z
     .string()
 }).superRefine((data, ctx) => {

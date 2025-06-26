@@ -7,11 +7,17 @@ import { signupSchema } from '@/validation/signupSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { signupUser } from './actions'
+import { toast } from "sonner"
+import { useRouter } from 'next/navigation'
+
 
 export const RegisterForm = () => {
+  const router = useRouter();
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
+      fullName: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -19,7 +25,39 @@ export const RegisterForm = () => {
   });
 
   const handleSubmit = async (data: z.infer<typeof signupSchema>) => {
-    console.log("test")
+    const response = await signupUser(data);
+
+    if(!!response?.error){
+      toast("Error!", {
+        description: response?.message ?? "Error signing up user",
+        style: {
+          backgroundColor: "red",
+          color: "#fff",
+        },
+        action: {
+          label: "Ok",
+          onClick: () => toast.dismiss(),
+        }
+      });
+
+      return;
+    }
+
+    toast("Success!", {
+        description: "Signup successfully",
+        style: {
+          backgroundColor: "green",
+          color: "#fff",
+        },
+        action: {
+          label: "Done",
+          onClick: () => {
+            toast.dismiss()
+          },
+        }
+      });
+
+      router.push("/login");
   }
 
   return (
@@ -28,6 +66,26 @@ export const RegisterForm = () => {
         onSubmit={form.handleSubmit(handleSubmit)}
         className='flex flex-col gap-4'
         >
+        <div className="name-container">
+          <FormField
+            control={form.control}
+            name='fullName'
+            render={({field}) => (
+              <FormItem>
+                <FormLabel>Fullname</FormLabel>
+                <FormControl>
+                  <Input 
+                    type='text' 
+                    placeholder='Fullname' 
+                    {...field}
+                    className='w-xs'
+                    />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <div className="email-container">
           <FormField
             control={form.control}
@@ -57,7 +115,7 @@ export const RegisterForm = () => {
                 <FormLabel>Password</FormLabel>
                 <FormControl>
                   <Input 
-                    type='text' 
+                    type='password' 
                     placeholder='Password' 
                     {...field} 
                     className='w-xs'/>
@@ -76,7 +134,7 @@ export const RegisterForm = () => {
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
                   <Input 
-                    type='text' 
+                    type='password' 
                     placeholder='Confirm Password' 
                     {...field} 
                     className='w-xs'/>
