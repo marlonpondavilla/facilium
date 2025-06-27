@@ -9,12 +9,34 @@ export const signupUser = async (data: {
   password: string,
   confirmPassword: string
 }) => {
-  const validateData = signupSchema.safeParse(data);
+  const result = signupSchema.safeParse(data);
 
-  if(!validateData.success){
+  if(!result.success){
+    const errors = result.error.flatten();
+
     return{
       error: true,
-      message: validateData.error.issues[0]?.message ?? "Error in validation signup data",
+      fieldErrors: errors.fieldErrors,
+      message: "Error in validation signup data",
+    }
+  }
+
+  try {
+    await auth.getUserByEmail(data.email);
+    
+    return{
+      error: true,
+      fieldErrors: {
+        email: ["Email already in use"]
+      },
+      message: "Email already exists"
+    }
+  } catch (err: any) {
+    if(err.code !== "auth/user-not-found"){
+      return {
+        error: true,
+        message: "Server error in signing up user"
+      }
     }
   }
 

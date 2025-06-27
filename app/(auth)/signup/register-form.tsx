@@ -8,9 +8,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { signupUser } from './actions'
-import { toast } from "sonner"
+import { toast } from "react-hot-toast"
 import { useRouter } from 'next/navigation'
 
+type FieldName = keyof z.infer<typeof signupSchema>;
 
 export const RegisterForm = () => {
   const router = useRouter();
@@ -26,37 +27,22 @@ export const RegisterForm = () => {
 
   const handleSubmit = async (data: z.infer<typeof signupSchema>) => {
     const response = await signupUser(data);
+    const fieldKeys: FieldName[] = ["fullName", "email", "password", "confirmPassword"];
 
-    if(!!response?.error){
-      toast("Error!", {
-        description: response?.message ?? "Error signing up user",
-        style: {
-          backgroundColor: "red",
-          color: "#fff",
-        },
-        action: {
-          label: "Ok",
-          onClick: () => toast.dismiss(),
+    if (response.fieldErrors) {
+      for (const key of fieldKeys) {
+        const message = response.fieldErrors[key]?.[0];
+        if (message) {
+          form.setError(key, {
+            type: "server",
+            message,
+          });
+          toast.error(message);
         }
-      });
-
+      }
       return;
     }
-
-    toast("Success!", {
-        description: "Signup successfully",
-        style: {
-          backgroundColor: "green",
-          color: "#fff",
-        },
-        action: {
-          label: "Done",
-          onClick: () => {
-            toast.dismiss()
-          },
-        }
-      });
-
+      toast.success("Signup successful")
       router.push("/login");
   }
 
