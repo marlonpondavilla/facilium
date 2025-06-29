@@ -24,7 +24,26 @@ const LoginForm = () => {
   });
 
   const handleSubmit = async (data: z.infer<typeof loginSchema>) => {
-    await auth?.login(data.email, data.password);
+    try{
+      await auth?.login(data.email, data.password);
+    } catch(e: any){
+      if(e?.code === 'auth/invalid-credential'){
+        form.setError('root', {
+          type: "custom",
+          message: "Invalid email or password"
+        });
+
+        form.setError('email', {
+          type: 'custom',
+          message: ''
+        });
+
+        form.setError('password', {
+          type: 'custom',
+          message: ''
+        })
+      }
+    }
   }
 
   return (
@@ -33,6 +52,11 @@ const LoginForm = () => {
         onSubmit={form.handleSubmit(handleSubmit)}
         className='flex flex-col gap-4'
       >
+        {form.formState.errors.root && (
+          <div className="error-container text-center">
+            <p className='text-red-500'>{form.formState.errors.root?.message ?? "Invalid credentials"}</p>
+          </div>
+        )}
         <FormField 
           control={form.control}
           name='email'
@@ -66,7 +90,7 @@ const LoginForm = () => {
                 className='w-xs'
               />
               </FormControl>
-              <FormMessage />
+              <FormMessage className='w-xs' />
             </FormItem>
           )}
         />
