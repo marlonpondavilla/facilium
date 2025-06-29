@@ -10,6 +10,8 @@ import { z } from 'zod'
 import { signupUser } from './actions'
 import { toast } from "react-hot-toast"
 import { useRouter } from 'next/navigation'
+import { Separator } from '@/components/ui/separator'
+import Link from 'next/link'
 
 type FieldName = keyof z.infer<typeof signupSchema>;
 
@@ -130,7 +132,14 @@ export const RegisterForm = () => {
             )}
           /> 
         </div>
-        <Button type='submit'>Signup</Button>
+        <Button 
+          type='submit'
+          className='mt-2'
+        >
+          Signup
+        </Button>
+        <Separator />
+        <Link href={"/login"} className='text-center text-sm underline font-medium hover:text-gray-500'>Already have an account?</Link>
       </form>
 
     </Form>
