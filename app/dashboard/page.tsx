@@ -1,11 +1,8 @@
 import React from "react";
+import UserPage from "./user-page";
 
 const Dashboard = () => {
-	return (
-		<div>
-			<h1 className="text-center h-screen">Dashboard</h1>
-		</div>
-	);
+	return <UserPage />;
 };
 
 export default Dashboard;
