@@ -1,9 +1,20 @@
+"use client";
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div>
-      <h1>Lorem ipsum dolor sit amet consectetur adipisicing elit. Adipisci, necessitatibus.</h1>
-    </div>
-  );
+	const router = useRouter();
+	return (
+		<div className="flex flex-col justify-center items-center h-screen gap-4">
+			<h1 className="text-2xl text-white">Root</h1>
+			<Button
+				onClick={() => {
+					router.replace("/login");
+				}}
+			>
+				Login Page
+			</Button>
+		</div>
+	);
 }

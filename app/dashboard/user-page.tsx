@@ -18,9 +18,8 @@ const UserPage = () => {
 				<h1 className="text-3xl text-white">Hello User {auth?.user?.email}</h1>
 			)}
 			<Button
-				onClick={() => {
-					router.push("/login");
-					auth?.logout();
+				onClick={async() => {
+					await auth?.logout();
 				}}
 			>
 				Logout

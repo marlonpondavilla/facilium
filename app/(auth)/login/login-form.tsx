@@ -111,7 +111,7 @@ const LoginForm = () => {
 						)}
 					/>
 					<Button type="submit" className="mt-2">
-						Login
+						{form.formState.isSubmitting ? "Logging in" : "Login"}
 					</Button>
 					<div className="links flex flex-col justify-center items-center">
 						<Link
