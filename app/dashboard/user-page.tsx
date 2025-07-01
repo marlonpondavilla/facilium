@@ -2,16 +2,29 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth";
+import { useRouter } from "next/navigation";
 import React from "react";
 
 const UserPage = () => {
 	const auth = useAuth();
+	const router = useRouter();
+
 	return (
 		<div className="flex flex-col justify-center items-center gap-4">
-			<h1 className="text-center text-4xl mt-4 text-white">
-				Hello {auth?.user?.email ?? "no user data"}
-			</h1>
-			<Button onClick={() => auth?.logout()}>Logout</Button>
+			{!!auth?.customClaims?.admin && (
+				<h1 className="text-3xl text-white">Hello Admin {auth?.user?.email}</h1>
+			)}
+			{!auth?.customClaims?.admin && (
+				<h1 className="text-3xl text-white">Hello User {auth?.user?.email}</h1>
+			)}
+			<Button
+				onClick={() => {
+					router.push("/login");
+					auth?.logout();
+				}}
+			>
+				Logout
+			</Button>
 		</div>
 	);
 };
