@@ -123,7 +123,9 @@ const AdminForm = () => {
 											</FormItem>
 										)}
 									/>
-									<Button className="mt-2">Login</Button>
+									<Button type="submit" className="mt-2">
+										Login
+									</Button>
 								</fieldset>
 							</form>
 						</Form>
