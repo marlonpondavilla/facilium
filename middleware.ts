@@ -3,38 +3,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { decodeJwt } from "jose";
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+	const { pathname } = request.nextUrl;
+	const publicRoutes = ["/", "/login", "/signup", "/admin"];
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get("firebaseAuthToken")?.value;
+	const cookieStore = await cookies();
+	const token = cookieStore.get("firebaseAuthToken")?.value;
 
-  if (!token) {
-    if (pathname === "/login" || pathname === "/signup") {
-      return NextResponse.next();
-    }
+	if (!token) {
+		// routes that can be accessed if no auth user
+		if (publicRoutes.includes(pathname)) {
+			return NextResponse.next();
+		}
 
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
+		return NextResponse.redirect(new URL("/", request.url));
+	}
 
-  if (pathname === "/login" || pathname === "/signup" || pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+	const decodedToken = decodeJwt(token);
 
-  const decodedToken = decodeJwt(token);
+	// force auth user to redirect in their routes
+	if (publicRoutes.includes(pathname) && !decodedToken.admin) {
+		return NextResponse.redirect(new URL("/dashboard", request.url));
+	}
 
-  if(decodedToken.admin){
-    return NextResponse.redirect(new URL("/admin"))
-  }
+	// if (decodedToken.admin) {
+	// 	return NextResponse.redirect(new URL("/admin"));
+	// }
 
-  return NextResponse.next();
+	return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/dashboard/:path*",
-    "/login",
-    "/signup"
-  ],
+	matcher: ["/", "/dashboard/:path*", "/admin/:path*", "/login", "/signup"],
 };
-

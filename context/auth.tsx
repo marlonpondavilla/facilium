@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 		await new Promise<void>((resolve, reject) => {
 			const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-				if (firebaseUser) {
+				if (firebaseUser && !customClaims?.admin) {
 					const tokenResult = await firebaseUser.getIdTokenResult();
 					const token = tokenResult.token;
 					const refreshToken = firebaseUser.refreshToken;
