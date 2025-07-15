@@ -1,5 +1,5 @@
 import Admin from "./admin";
-import AdminPage from "./admin-page";
+import AdminPage from "./(dashboard)/admin-page";
 
 const AdminDashboard = () => {
 	return <Admin />;

@@ -8,14 +8,11 @@ const Admin = () => {
 	const auth = useAuth();
 
 	return (
-		<div>
+		<div className="mt-0">
 			{!!auth?.customClaims?.admin && (
 				<h1 className="text-center text-white text-3xl">Admin Page</h1>
 			)}
-			;
-			<div className="flex justify-center items-center h-screen w-full">
-				{!auth?.customClaims?.admin && <AdminForm />};
-			</div>
+			<div className="">{!auth?.customClaims?.admin && <AdminForm />}</div>
 		</div>
 	);
 };
