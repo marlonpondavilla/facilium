@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* ✅ CSS Reset */
 html,
 body {
 	margin: 0;
@@ -16,10 +15,8 @@ body {
 	box-sizing: inherit;
 }
 
-/* ✅ Optional dark variant customization */
 @custom-variant dark (&:is(.dark *));
 
-/* ✅ Your theme inline variables */
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -138,5 +135,18 @@ body {
 
 	body {
 		@apply bg-background text-foreground;
+	}
+}
+
+@layer utilities {
+	.facilium-bg-red {
+		background-color: #d90429;
+	}
+	.facilium-color-red {
+		color: #d90429;
+	}
+
+	.facilium-color-white {
+		color: #edf2f4;
 	}
 }
