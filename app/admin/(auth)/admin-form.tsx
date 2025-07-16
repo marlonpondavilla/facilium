@@ -23,9 +23,9 @@ const AdminForm = () => {
 	};
 
 	return (
-		<div className="flex h-screen facilium-bg-red facilium-color-white">
+		<div className="flex flex-col lg:flex-row h-screen facilium-bg-red facilium-color-white overflow-auto">
 			{/* Left Side */}
-			<div className="flex flex-col justify-center items-center flex-2 gap-8 px-12">
+			<div className="flex-col justify-center items-center gap-8 px-6 py-8 hidden flex-2 lg:flex">
 				<div className="flex items-center">
 					<Image
 						src="/facilium-logo.png"
@@ -33,10 +33,10 @@ const AdminForm = () => {
 						height={80}
 						alt="Facilium Logo"
 					/>
-					<h1 className="text-3xl font-bold">Facilium</h1>
+					<h1 className="text-3xl font-bold ml-4">Facilium</h1>
 				</div>
 
-				<h2 className="text-center text-xl max-w-lg leading-relaxed tracking-widest">
+				<h2 className="text-center text-lg sm:text-xl max-w-xl leading-relaxed tracking-widest">
 					Secure. Manage. Empower. Your access shapes the system.
 				</h2>
 
@@ -45,50 +45,55 @@ const AdminForm = () => {
 					width={800}
 					height={800}
 					alt="Admin Dashboard Illustration"
-					className="rounded-lg shadow-lg"
+					className="rounded-lg shadow-lg w-full max-w-3xl h-auto"
 				/>
 			</div>
 
 			{/* Right Side (Login Form) */}
-			<div className="flex flex-col flex-1 h-full">
-				<Card className="flex flex-col h-full w-full facilium-bg-white facilium-color-black shadow-xl p-8 rounded-none">
+			{/* force on larger screens (2xl) to be flex 1 bwisit gumana din*/}
+			<div className="w-full h-full flex-1/7 2xl:flex-1">
+				<Card className="flex flex-col h-full w-full facilium-bg-white facilium-color-black shadow-xl p-6 sm:p-8 rounded-none">
 					<CardHeader>
-						<div className="header-info flex justify-center gap-8 items-center">
-							<div className="logo-container flex items-center justify-center relative">
+						<div className="header-info flex flex-col sm:flex-row items-center sm:justify-center gap-4 text-center sm:text-left">
+							<div className="logo-container flex gap-2 items-center justify-center sm:justify-start">
 								<Image
 									src={"/bsu-main-logo.png"}
-									width={75}
-									height={100}
+									width={40}
+									height={40}
 									alt="bulsu main logo"
-									className=""
+									className="w-10 h-10 sm:w-12 sm:h-12"
 								/>
 								<Image
 									src={"/bsu-meneses-logo.png"}
 									width={40}
-									height={100}
+									height={40}
 									alt="bulsu meneses logo"
-									className="absolute left-[60px]"
+									className="w-10 h-10 sm:w-12 sm:h-12"
 								/>
 							</div>
-							<h1 className="font-bold leading-tight text-center sm:text-left text-base sm:text-lg">
-								Bulacan State University <br /> Meneses Campus
+							<h1 className="font-bold leading-tight text-sm sm:text-lg">
+								Bulacan State University <br className="hidden sm:block" />
+								Meneses Campus
 							</h1>
 						</div>
-						<CardTitle className="text-4xl my-8">Facilium</CardTitle>
+
+						<CardTitle className="text-3xl sm:text-4xl my-6 sm:my-8 text-center lg:text-left">
+							Facilium
+						</CardTitle>
 					</CardHeader>
 					<CardContent className="flex-grow">
 						<Form {...form}>
-							<div className="welcome-msg">
-								<h1 className="text-3xl">Welcome Back!</h1>
-								<h2 className="tracking-widest font-light mt-3">
+							<div className="welcome-msg text-center lg:text-left">
+								<h1 className="text-2xl sm:text-3xl">Welcome Back!</h1>
+								<h2 className="tracking-widest font-light mt-2 sm:mt-3 text-sm sm:text-base">
 									Log in to access your admin dashboard.
 								</h2>
 							</div>
 							<form
 								onSubmit={form.handleSubmit(handleSubmit)}
-								className="mt-16"
+								className="mt-12 sm:mt-16"
 							>
-								<fieldset className="flex flex-col gap-4">
+								<fieldset className="flex flex-col gap-4 lg:m-0 sm:mx-[12rem]">
 									<FormField
 										control={form.control}
 										name="email"
@@ -123,7 +128,7 @@ const AdminForm = () => {
 											</FormItem>
 										)}
 									/>
-									<Button type="submit" className="mt-2">
+									<Button type="submit" className="mt-2 w-full">
 										Login
 									</Button>
 								</fieldset>
