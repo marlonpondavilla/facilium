@@ -19,6 +19,7 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
+import { departments } from "@/data/department";
 
 type FieldName = keyof z.infer<typeof signupSchema>;
 
@@ -39,6 +40,7 @@ export const RegisterForm = () => {
 		const fieldKeys: FieldName[] = [
 			"fullName",
 			"email",
+			"department",
 			"password",
 			"confirmPassword",
 		];
@@ -101,6 +103,31 @@ export const RegisterForm = () => {
 											{...field}
 											className="w-xs"
 										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
+					<div className="department-container">
+						<FormField
+							control={form.control}
+							name="department"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Department</FormLabel>
+									<FormControl>
+										<select
+											{...field}
+											className="w-xs border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
+										>
+											<option value="">Select department</option>
+											{departments.map((department, key) => (
+												<option value={department} key={key}>
+													{department}
+												</option>
+											))}
+										</select>
 									</FormControl>
 									<FormMessage />
 								</FormItem>

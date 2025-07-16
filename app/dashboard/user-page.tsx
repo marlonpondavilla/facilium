@@ -7,7 +7,6 @@ import React from "react";
 
 const UserPage = () => {
 	const auth = useAuth();
-	const router = useRouter();
 
 	return (
 		<div className="flex flex-col justify-center items-center gap-4">
@@ -18,7 +17,7 @@ const UserPage = () => {
 				<h1 className="text-3xl text-white">Hello User {auth?.user?.email}</h1>
 			)}
 			<Button
-				onClick={async() => {
+				onClick={async () => {
 					await auth?.logout();
 				}}
 			>

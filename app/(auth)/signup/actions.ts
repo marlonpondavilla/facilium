@@ -6,6 +6,7 @@ import { signupSchema } from "@/validation/signupSchema";
 export const signupUser = async (data: {
 	fullName: string;
 	email: string;
+	department: string;
 	password: string;
 	confirmPassword: string;
 }) => {
