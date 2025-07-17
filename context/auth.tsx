@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 			setLoading(false);
 
 			if (firebaseUser) {
-				const tokenResult = await firebaseUser?.getIdTokenResult();
+				const tokenResult = await firebaseUser?.getIdTokenResult(true);
 				const token = tokenResult?.token;
 				const refreshToken = firebaseUser.refreshToken;
 				const claims = tokenResult.claims;
@@ -61,33 +61,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 		await signInWithEmailAndPassword(auth, email, password);
 
 		await new Promise<void>((resolve, reject) => {
-			const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-				if (firebaseUser && !customClaims?.admin) {
-					const tokenResult = await firebaseUser.getIdTokenResult();
-					const token = tokenResult.token;
-					const refreshToken = firebaseUser.refreshToken;
+			const unsubscribe = onAuthStateChanged(
+				auth,
+				async (firebaseUser) => {
+					if (firebaseUser) {
+						try {
+							const tokenResult = await firebaseUser.getIdTokenResult(true);
+							const token = tokenResult.token;
+							const refreshToken = firebaseUser.refreshToken;
+							const claims = tokenResult.claims;
 
-					if (token && refreshToken) {
-						await setToken({ token, refreshToken });
-						unsubscribe();
-						resolve();
+							if (token && refreshToken) {
+								await setToken({ token, refreshToken });
+								setCustomClaims(claims ?? null);
+							}
+
+							unsubscribe();
+							resolve();
+						} catch (error) {
+							reject(error);
+						}
 					}
-				}
-			}, reject);
+				},
+				reject
+			);
 		});
 	};
-
 
 	const signup = async (email: string, password: string) => {
 		await createUserWithEmailAndPassword(auth, email, password);
 	};
 
 	const logout = async () => {
-  await signOut(auth);
-  await removeToken();
-  router.push('/login');
-};
-
+		await signOut(auth);
+		await removeToken();
+		router.push("/login");
+	};
 
 	return (
 		<AuthContext.Provider
