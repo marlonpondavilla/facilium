@@ -1,8 +1,7 @@
-import Admin from "./admin";
-import AdminPage from "./(dashboard)/admin-page";
+import AdminForm from "./(auth)/admin-form";
 
 const AdminDashboard = () => {
-	return <Admin />;
+	return <AdminForm />;
 };
 
 export default AdminDashboard;

@@ -11,15 +11,52 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/auth";
+import { adminLoginSchema } from "@/validation/adminLoginSchema";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import React from "react";
 import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
+import { z } from "zod";
 
 const AdminForm = () => {
-	const form = useForm();
+	const auth = useAuth();
+	const router = useRouter();
 
-	const handleSubmit = () => {
-		return;
+	const form = useForm<z.infer<typeof adminLoginSchema>>({
+		resolver: zodResolver(adminLoginSchema),
+		defaultValues: {
+			email: "",
+			password: "",
+		},
+	});
+
+	const handleSubmit = async (data: z.infer<typeof adminLoginSchema>) => {
+		try {
+			await auth?.login(data.email, data.password);
+			router.push("/admin/dashboard");
+		} catch (e: any) {
+			if (e?.code === "auth/invalid-credential") {
+				form.setError("root", {
+					type: "custom",
+					message: "Invalid email or password",
+				});
+
+				form.setError("email", {
+					type: "custom",
+					message: "",
+				});
+
+				form.setError("password", {
+					type: "custom",
+					message: "",
+				});
+			} else {
+				toast.error("An error occured");
+			}
+		}
 	};
 
 	return (
@@ -93,7 +130,18 @@ const AdminForm = () => {
 								onSubmit={form.handleSubmit(handleSubmit)}
 								className="mt-12 sm:mt-16"
 							>
-								<fieldset className="flex flex-col gap-4 lg:m-0 sm:mx-[12rem]">
+								{form.formState.errors.root && (
+									<div className="error-container text-center">
+										<p className="text-red-500">
+											{form.formState.errors.root?.message ??
+												"Invalid credentials"}
+										</p>
+									</div>
+								)}
+								<fieldset
+									className="flex flex-col gap-4 lg:m-0 sm:mx-[12rem]"
+									disabled={form.formState.isSubmitting}
+								>
 									<FormField
 										control={form.control}
 										name="email"
@@ -129,7 +177,7 @@ const AdminForm = () => {
 										)}
 									/>
 									<Button type="submit" className="mt-2 w-full">
-										Login
+										{form.formState.isSubmitting ? "Logging in" : "Login"}
 									</Button>
 								</fieldset>
 							</form>
