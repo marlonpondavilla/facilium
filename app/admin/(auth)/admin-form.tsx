@@ -83,6 +83,7 @@ const AdminForm = () => {
 					height={800}
 					alt="Admin Dashboard Illustration"
 					className="rounded-lg shadow-lg w-full max-w-3xl h-auto"
+					priority
 				/>
 			</div>
 

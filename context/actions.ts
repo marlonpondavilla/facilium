@@ -32,6 +32,12 @@ export const setToken = async ({
 			});
 		}
 
+		if (!userRecord.customClaims?.admin) {
+			auth.setCustomUserClaims(verifiedToken.uid, {
+				faculty: true,
+			});
+		}
+
 		const cookieStore = await cookies();
 
 		cookieStore.set("firebaseAuthToken", token, {
