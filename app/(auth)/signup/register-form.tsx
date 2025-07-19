@@ -25,6 +25,7 @@ type FieldName = keyof z.infer<typeof signupSchema>;
 
 export const RegisterForm = () => {
 	const router = useRouter();
+
 	const form = useForm<z.infer<typeof signupSchema>>({
 		resolver: zodResolver(signupSchema),
 		defaultValues: {

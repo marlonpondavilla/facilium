@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/firebase/server";
+import { auth, firestore } from "@/firebase/server";
 import { signupSchema } from "@/validation/signupSchema";
 
 export const signupUser = async (data: {
@@ -11,6 +11,7 @@ export const signupUser = async (data: {
 	confirmPassword: string;
 }) => {
 	const result = signupSchema.safeParse(data);
+	const { password, confirmPassword, ...userData } = data;
 
 	if (!result.success) {
 		const errors = result.error.flatten();
@@ -22,7 +23,9 @@ export const signupUser = async (data: {
 		};
 	}
 
+	// check email existence
 	try {
+		// if this becomes true the return will fire, email is existing ongke
 		await auth.getUserByEmail(data.email);
 
 		return {
@@ -41,12 +44,19 @@ export const signupUser = async (data: {
 		}
 	}
 
+	// creating user object and saving to our db
 	try {
 		await auth.createUser({
 			displayName: data.fullName,
 			email: data.email,
 			password: data.password,
 		});
+
+		await firestore.collection("userData").add({
+			...userData,
+			created: new Date(),
+		});
+
 		return {
 			error: false,
 			message: "User created successfully",
