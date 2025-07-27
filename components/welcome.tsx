@@ -30,7 +30,7 @@ const Welcome = () => {
 				disabled={refreshing}
 				variant="secondary"
 			>
-				{refreshing ? "Refreshing..." : "Refresh Role"}
+				{refreshing ? "Continuing..." : "Continue"}
 			</Button>
 		</div>
 	);

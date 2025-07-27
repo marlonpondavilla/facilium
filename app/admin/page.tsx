@@ -1,7 +1,7 @@
 import AdminForm from "./(auth)/admin-form";
 
-const AdminDashboard = () => {
+const Page = () => {
 	return <AdminForm />;
 };
 
-export default AdminDashboard;
+export default Page;

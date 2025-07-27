@@ -1,7 +1,7 @@
 import AdminPageClient from "./admin-page-client";
 
-const AdminPage = () => {
+const Page = () => {
 	return <AdminPageClient />;
 };
 
-export default AdminPage;
+export default Page;

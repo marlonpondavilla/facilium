@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// if (decodedToken.admin) {
-	// 	return NextResponse.redirect(new URL("/admin"));
+	// 	return NextResponse.redirect(new URL("/admin/dashboard"));
 	// }
 
 	return NextResponse.next();

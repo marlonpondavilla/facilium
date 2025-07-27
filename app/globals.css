@@ -149,4 +149,8 @@ body {
 	.facilium-color-white {
 		color: #edf2f4;
 	}
+
+	.facilium-bg-indigo {
+		background-color: #2b2d42;
+	}
 }
