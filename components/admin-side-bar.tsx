@@ -6,42 +6,50 @@ import Image from "next/image";
 import {
 	Building,
 	ChevronFirst,
+	ChevronRight,
 	House,
 	Menu,
 	UserCog,
 	UsersRound,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Alegreya_SC } from "next/font/google";
+import Link from "next/link";
+
+const alegreyaSC = Alegreya_SC({
+	subsets: ["latin"],
+	weight: ["400", "700"],
+});
 
 const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 	const auth = useAuth();
-	const searchParams = useSearchParams();
-	const tab = searchParams.get("tab") || "dashboard";
+	const pathname = usePathname();
+
 	const [showSidebar, setShowSidebar] = useState(false);
 
 	const tabs = [
 		{
 			title: "Dashboard",
-			links: "?tab=dashboard",
+			links: "/admin/dashboard",
 			icon: <House size={20} />,
 			id: "dashboard",
 		},
 		{
 			title: "Roles",
-			links: "?tab=roles",
+			links: "/admin/roles",
 			icon: <UserCog size={20} />,
 			id: "roles",
 		},
 		{
 			title: "Building",
-			links: "?tab=building",
+			links: "/admin/building",
 			icon: <Building size={20} />,
 			id: "building",
 		},
 		{
 			title: "Users",
-			links: "?tab=users",
+			links: "/admin/users",
 			icon: <UsersRound size={20} />,
 			id: "users",
 		},
@@ -51,7 +59,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 		<div className="flex text-white min-h-screen">
 			{/* Menu */}
 			<Menu
-				className={`text-black md:hidden m-2 ${
+				className={`text-white md:hidden m-2 ${
 					showSidebar ? "hidden" : "block"
 				}`}
 				size={50}
@@ -83,19 +91,20 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 					</div>
 
 					<div className="tab-links mt-8">
-						<p className="text-xs text-start leading-relaxed tracking-wide">
+						<p className="text-xs text-center leading-relaxed tracking-widest">
 							Admin Main Menu
 						</p>
-						<ul className="mt-8 flex flex-col gap-6">
+						<hr />
+						<ul className="mt-8 flex flex-col justify-start gap-6">
 							{tabs.map((tabInfo, index) => (
 								<li
 									key={index}
-									className={`flex items-center gap-2 px-4 py-2 rounded ${
-										tab === tabInfo.id ? "bg-indigo-400" : "text-white"
+									className={`flex items-center gap-2 px-8 py-2 rounded ${
+										pathname === tabInfo.links ? "bg-indigo-400" : "text-white"
 									}`}
 								>
 									{tabInfo.icon}
-									<a href={tabInfo.links}>{tabInfo.title}</a>
+									<Link href={tabInfo.links}>{tabInfo.title}</Link>
 								</li>
 							))}
 						</ul>
@@ -103,7 +112,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 				</div>
 
 				{/*Logos and Logout */}
-				<div className="bottom-links flex flex-col items-center gap-4 mt-6">
+				<div className="bottom-links flex flex-col items-center gap-6 mt-6">
 					<div className="bsu-logo flex sm:flex-row items-center gap-2 text-center text-sm">
 						<Image
 							src="/bsu-main-logo.png"
@@ -119,25 +128,32 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 							alt="bulsu meneses logo"
 							className="w-8 h-8 object-contain"
 						/>
-						<p className="leading-snug text-xs">
+						<p className={`leading-snug text-xs ${alegreyaSC.className}`}>
 							Bulacan State University <br /> Meneses Campus
 						</p>
 					</div>
 
-					<Button
-						onClick={async () => {
-							await auth?.logout();
-						}}
-						className="bg-red-500 text-white px-4 py-2 text-xs rounded-full"
+					<Link
+						className={`admin-info flex justify-center items-center gap-2 transition hover:bg-[#8d99ae] hover:py-[5px] rounded ${
+							pathname === "/admin/admin-profile" ? "bg-[#8d99ae] py-[5px]" : ""
+						}`}
+						href="/admin/admin-profile"
 					>
-						Logout
-					</Button>
+						<h1 className="facilium-bg-profile py-[6px] px-[10px] rounded">
+							AU
+						</h1>
+						<div>
+							<h2 className="text-sm">Admin User</h2>
+							<h3 className="text-[10px]">{auth?.user?.email}</h3>
+						</div>
+						<ChevronRight size={30} />
+					</Link>
 				</div>
 			</div>
 
 			{/* Right Content Area */}
 			<div
-				className={`right-container flex-1 p-6 bg-white text-black ${
+				className={`right-container flex-1 p-6 facilium-bg-white text-black ${
 					showSidebar ? "hidden" : ""
 				}`}
 			>

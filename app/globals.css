@@ -142,6 +142,15 @@ body {
 	.facilium-bg-red {
 		background-color: #d90429;
 	}
+
+	.facilium-bg-white {
+		background-color: #e1e1e1;
+	}
+
+	.facilium-bg-whiter {
+		background-color: #f9f9f9;
+	}
+
 	.facilium-color-red {
 		color: #d90429;
 	}
@@ -152,5 +161,9 @@ body {
 
 	.facilium-bg-indigo {
 		background-color: #2b2d42;
+	}
+
+	.facilium-bg-profile {
+		background-color: #8d99ae;
 	}
 }

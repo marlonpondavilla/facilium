@@ -54,6 +54,8 @@ export const signupUser = async (data: {
 
 		await firestore.collection("userData").add({
 			...userData,
+			role: "Faculty",
+			status: "Enabled",
 			created: new Date(),
 		});
 
