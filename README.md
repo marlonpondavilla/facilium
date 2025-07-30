@@ -22,3 +22,5 @@ npm run ngrok
 Second add the .env.local variables, downloadable on discord server.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can also see the forwarded local server in the terminal after running npm run ngrok.
