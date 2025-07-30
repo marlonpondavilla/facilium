@@ -37,8 +37,9 @@ const AdminForm = () => {
 		try {
 			await auth?.login(data.email, data.password);
 			router.push("/admin/dashboard");
-		} catch (e: any) {
-			if (e?.code === "auth/invalid-credential") {
+		} catch (e: unknown) {
+			const error = e as { code?: string };
+			if (error?.code === "auth/invalid-credential") {
 				form.setError("root", {
 					type: "custom",
 					message: "Invalid email or password",

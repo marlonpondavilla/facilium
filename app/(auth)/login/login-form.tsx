@@ -37,22 +37,25 @@ const LoginForm = () => {
 		try {
 			await auth?.login(data.email, data.password);
 			router.push("/dashboard");
-		} catch (e: any) {
-			if (e?.code === "auth/invalid-credential") {
-				form.setError("root", {
-					type: "custom",
-					message: "Invalid email or password",
-				});
+		} catch (e: unknown) {
+			if (typeof e === "object" && e !== null && "code" in e) {
+				const error = e as { code?: string };
+				if (error.code === "auth/invalid-credential") {
+					form.setError("root", {
+						type: "custom",
+						message: "Invalid email or password",
+					});
 
-				form.setError("email", {
-					type: "custom",
-					message: "",
-				});
+					form.setError("email", {
+						type: "custom",
+						message: "",
+					});
 
-				form.setError("password", {
-					type: "custom",
-					message: "",
-				});
+					form.setError("password", {
+						type: "custom",
+						message: "",
+					});
+				}
 			} else {
 				toast.error("An error occured");
 			}

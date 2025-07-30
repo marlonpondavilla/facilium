@@ -1,27 +1,42 @@
 "use server";
 
-import { firestore } from "@/firebase/server";
+import { firestore, getTotalUserCount } from "@/firebase/server";
 import { User } from "@/types/userType";
 
 type GetUsersOptions = {
 	pagination?: {
 		pageSize?: number;
-		page?: number;
+		startAfterDocId?: string;
 	};
 };
 
 export const getUsers = async (options?: GetUsersOptions) => {
-	const page = options?.pagination?.page || 1;
 	const pageSize = options?.pagination?.pageSize || 10;
+	const startAfterDocId = options?.pagination?.startAfterDocId;
 
 	const usersQuery = firestore
 		.collection("userData")
 		.orderBy("created", "desc");
 
-	const propertiesSnapshot = await usersQuery
-		.limit(pageSize)
-		.offset((page - 1) * pageSize)
-		.get();
+	//
+	const { totalUsers, totalPages } = await getTotalUserCount(
+		usersQuery,
+		pageSize
+	);
+
+	let query = usersQuery.limit(pageSize);
+
+	if (startAfterDocId) {
+		const startAfterDocSnapshot = await firestore
+			.collection("userData")
+			.doc(startAfterDocId)
+			.get();
+		if (startAfterDocSnapshot.exists) {
+			query = query.startAfter(startAfterDocSnapshot);
+		}
+	}
+
+	const propertiesSnapshot = await query.get();
 
 	const properties = propertiesSnapshot.docs.map(
 		(doc) =>
@@ -31,5 +46,24 @@ export const getUsers = async (options?: GetUsersOptions) => {
 			} as User)
 	);
 
-	return { data: properties };
+	// Last visible doc for next cursor
+	const lastVisibleDoc =
+		propertiesSnapshot.docs[propertiesSnapshot.docs.length - 1];
+
+	return {
+		data: properties,
+		totalUsers,
+		totalPages,
+		nextCursor: lastVisibleDoc ? lastVisibleDoc.id : null,
+	};
+};
+
+export const setUserStatus = async (
+	userId: string,
+	newStatus: string
+): Promise<void> => {
+	const docSnapshot = await firestore
+		.collection("userData")
+		.doc(userId)
+		.update({ status: newStatus });
 };

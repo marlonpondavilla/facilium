@@ -13,8 +13,9 @@ const Welcome = () => {
 			try {
 				await auth.user.getIdToken(true);
 				window.location.reload();
-			} catch (e: any) {
-				console.log(e.message);
+			} catch (e: unknown) {
+				const error = e as { message?: string };
+				console.error(error.message);
 			} finally {
 				setRefreshing(false);
 			}

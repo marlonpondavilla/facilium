@@ -4,16 +4,22 @@ import { currentDate } from "@/lib/date";
 import { CalendarFold, Search } from "lucide-react";
 import Image from "next/image";
 
-const UsersComponent = ({ children }: { children: React.ReactNode }) => {
+type UsersComponentProps = {
+	userCount: number;
+	children: React.ReactNode;
+};
+
+const UsersComponent = ({ userCount, children }: UsersComponentProps) => {
 	return (
 		<div className="flex flex-col gap-8">
 			<div className="header-container flex justify-between items-center">
 				<div className="flex items-center gap-2">
 					<Image
 						src={"/icons/window-icon.png"}
-						height={25}
-						width={25}
+						height={50}
+						width={50}
 						alt="window icon"
+						className="w-auto h-auto"
 					/>
 					<h1 className="text-2xl font-semibold">Users</h1>
 				</div>
@@ -26,7 +32,7 @@ const UsersComponent = ({ children }: { children: React.ReactNode }) => {
 
 			<div className="search-wrapper">
 				<div className="facilium-bg-whiter tracking-wide p-8 flex justify-between">
-					<h2 className="text-2xl">Manage Users</h2>
+					<h2 className="text-2xl">Total Users: {userCount}</h2>
 					<div className="relative text-base">
 						<input
 							type="text"

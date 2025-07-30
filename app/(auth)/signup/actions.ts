@@ -11,7 +11,7 @@ export const signupUser = async (data: {
 	confirmPassword: string;
 }) => {
 	const result = signupSchema.safeParse(data);
-	const { password, confirmPassword, ...userData } = data;
+	const { ...userData } = data;
 
 	if (!result.success) {
 		const errors = result.error.flatten();
@@ -35,8 +35,9 @@ export const signupUser = async (data: {
 			},
 			message: "Email already exists",
 		};
-	} catch (err: any) {
-		if (err.code !== "auth/user-not-found") {
+	} catch (e: unknown) {
+		const error = e as { code?: string };
+		if (error.code !== "auth/user-not-found") {
 			return {
 				error: true,
 				message: "Server error in signing up user",
@@ -63,10 +64,11 @@ export const signupUser = async (data: {
 			error: false,
 			message: "User created successfully",
 		};
-	} catch (e: any) {
+	} catch (e: unknown) {
+		const error = e as { message?: string };
 		return {
 			error: true,
-			message: e.message ?? "Could not signup user",
+			message: error.message ?? "Could not signup user",
 		};
 	}
 };

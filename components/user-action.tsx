@@ -1,30 +1,52 @@
 "use client";
+
+import { Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
+import { setUserStatus } from "@/data/users";
 
-const UserActionButton = ({ data }: { data: string }) => {
-	const handleEnable = () => {
-		alertTrue();
+type UserAction = {
+	data: {
+		id: string;
+		status: string;
+	};
+};
+
+const UserActionButton = ({ data }: UserAction) => {
+	const handleDelete = () => {
+		alert(`${data.id} is deleting`);
 	};
 
-	const alertTrue = () => {
-		// we can manipulate this since each row meron nang spec id
-		alert(data);
+	// we can manipulate this since each row meron nang spec id
+	const handleStatusUpdate = async () => {
+		const newStatus = data.status === "Enabled" ? "Disabled" : "Enabled";
+
+		try {
+			await setUserStatus(data.id, newStatus);
+			alert(`${data.id} is ${newStatus}!`);
+			window.location.reload();
+		} catch (e: unknown) {
+			const error = e as { message?: string };
+			console.error(error);
+		}
 	};
+
 	return (
 		<div className="flex gap-2">
 			<Button
 				size={"sm"}
-				onClick={handleEnable}
-				className="cursor-pointer bg-green-500 hover:bg-green-400"
+				variant={"outline"}
+				onClick={handleStatusUpdate}
+				className="cursor-pointer"
 			>
-				Enable
+				{data.status === "Enabled" ? "Disable" : "Enable"}
 			</Button>
 			<Button
 				size={"sm"}
-				onClick={handleEnable}
-				className="cursor-pointer bg-red-500 hover:bg-red-400"
+				variant={"destructive"}
+				onClick={handleDelete}
+				className="cursor-pointer"
 			>
-				Disable
+				<Trash2 />
 			</Button>
 		</div>
 	);
