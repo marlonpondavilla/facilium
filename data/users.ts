@@ -17,6 +17,7 @@ export const getUsers = async (options?: GetUsersOptions) => {
 	const usersQuery = firestore
 		.collection("userData")
 		.orderBy("created", "desc");
+
 	const propertiesSnapshot = await usersQuery
 		.limit(pageSize)
 		.offset((page - 1) * pageSize)
