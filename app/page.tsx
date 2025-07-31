@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 export default function Home() {
 	const router = useRouter();
 	return (
-		<div className="flex flex-col justify-center items-center h-screen gap-4">
+		<div className="flex flex-col justify-center items-center h-screen gap-4 facilium-bg-indigo">
 			<h1 className="text-2xl text-white">Root</h1>
 			<Button
 				onClick={() => {
@@ -13,6 +13,20 @@ export default function Home() {
 				}}
 			>
 				Login Page
+			</Button>
+			<Button
+				onClick={() => {
+					router.replace("/admin");
+				}}
+			>
+				Admin Login
+			</Button>
+			<Button
+				onClick={() => {
+					router.replace("/admin/users");
+				}}
+			>
+				Admin Page
 			</Button>
 		</div>
 	);

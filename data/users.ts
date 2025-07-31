@@ -62,8 +62,12 @@ export const setUserStatus = async (
 	userId: string,
 	newStatus: string
 ): Promise<void> => {
-	const docSnapshot = await firestore
+	await firestore
 		.collection("userData")
 		.doc(userId)
 		.update({ status: newStatus });
+};
+
+export const deleteUserById = async (userId: string): Promise<void> => {
+	await firestore.collection("userData").doc(userId).delete();
 };

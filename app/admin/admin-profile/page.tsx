@@ -1,10 +1,13 @@
 import AdminSideBar from "@/components/admin-side-bar";
-import React from "react";
+import LogoutAuthButton from "@/components/logout";
 
 const page = () => {
 	return (
 		<AdminSideBar>
-			<h1>Admin Profile</h1>
+			<div className="admin-profile-container flex justify-center flex-col items-center h-screen gap-4">
+				<h1 className="text-2xl">Admin Profile</h1>
+				<LogoutAuthButton />
+			</div>
 		</AdminSideBar>
 	);
 };

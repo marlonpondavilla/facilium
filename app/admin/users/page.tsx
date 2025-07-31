@@ -1,5 +1,4 @@
 import AdminSideBar from "@/components/admin-side-bar";
-import React from "react";
 import UsersComponent from "../dashboard/(admin-components)/users-component";
 import {
 	Table,
