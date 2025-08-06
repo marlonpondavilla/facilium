@@ -2,8 +2,14 @@ import { z } from "zod";
 
 export const signupSchema = z
 	.object({
-		fullName: z.string().min(2, "Please provide a name"),
-		email: z.string().trim().email("Invalid email address"),
+		firstName: z.string().min(2, "Please provide a First Name"),
+		middleName: z
+			.string()
+			.min(2, "Please provide a Middle Name")
+			.or(z.literal("")),
+		lastName: z.string().min(2, "Please provide a Last Name"),
+		degreeEarned: z.string().min(2, "Please provide a Last Name"),
+		email: z.string(),
 		department: z.string(),
 		password: z.string().refine(
 			(value) => {

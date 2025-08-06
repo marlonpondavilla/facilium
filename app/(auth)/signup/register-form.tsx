@@ -29,7 +29,10 @@ export const RegisterForm = () => {
 	const form = useForm<z.infer<typeof signupSchema>>({
 		resolver: zodResolver(signupSchema),
 		defaultValues: {
-			fullName: "",
+			firstName: "",
+			middleName: "",
+			lastName: "",
+			degreeEarned: "",
 			email: "",
 			password: "",
 			confirmPassword: "",
@@ -39,7 +42,9 @@ export const RegisterForm = () => {
 	const handleSubmit = async (data: z.infer<typeof signupSchema>) => {
 		const response = await signupUser(data);
 		const fieldKeys: FieldName[] = [
-			"fullName",
+			"firstName",
+			"middleName",
+			"degreeEarned",
 			"email",
 			"department",
 			"password",
@@ -70,17 +75,77 @@ export const RegisterForm = () => {
 					disabled={form.formState.isSubmitting}
 					className="flex flex-col gap-4"
 				>
-					<div className="name-container">
+					<div className="first-name-container">
 						<FormField
 							control={form.control}
-							name="fullName"
+							name="firstName"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Fullname</FormLabel>
+									<FormLabel>First Name</FormLabel>
 									<FormControl>
 										<Input
 											type="text"
-											placeholder="Fullname"
+											placeholder="First Name"
+											{...field}
+											className="w-xs"
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
+					<div className="middle-name-container">
+						<FormField
+							control={form.control}
+							name="middleName"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Middle Name</FormLabel>
+									<FormControl>
+										<Input
+											type="text"
+											placeholder="(Optional)"
+											{...field}
+											className="w-xs"
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
+					<div className="last-name-container">
+						<FormField
+							control={form.control}
+							name="lastName"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Middle Name</FormLabel>
+									<FormControl>
+										<Input
+											type="text"
+											placeholder="Last Name"
+											{...field}
+											className="w-xs"
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
+					<div className="degree-earned-container">
+						<FormField
+							control={form.control}
+							name="degreeEarned"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Degree Earned</FormLabel>
+									<FormControl>
+										<Input
+											type="text"
+											placeholder="Degree Earned (e.g MSIT, MSCpE, or PhD)"
 											{...field}
 											className="w-xs"
 										/>

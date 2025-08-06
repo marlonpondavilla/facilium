@@ -1,8 +1,7 @@
 "use client";
 
-import { currentDate } from "@/lib/date";
-import { CalendarFold, Search } from "lucide-react";
-import Image from "next/image";
+import AdminHeaderTitle from "@/components/admin-header-title";
+import { Search } from "lucide-react";
 
 type UsersComponentProps = {
 	userCount: number;
@@ -12,23 +11,7 @@ type UsersComponentProps = {
 const UsersComponent = ({ userCount, children }: UsersComponentProps) => {
 	return (
 		<div className="flex flex-col gap-8">
-			<div className="header-container flex justify-between items-center">
-				<div className="flex items-center gap-2">
-					<Image
-						src={"/icons/window-icon.png"}
-						height={50}
-						width={50}
-						alt="window icon"
-						className="w-auto h-auto"
-					/>
-					<h1 className="text-2xl font-semibold">Users</h1>
-				</div>
-
-				<div className="date flex gap-2 items-center">
-					<CalendarFold />
-					<p>{currentDate}</p>
-				</div>
-			</div>
+			<AdminHeaderTitle title="Users" />
 
 			<div className="search-wrapper">
 				<div className="facilium-bg-whiter tracking-wide p-8 flex justify-between">

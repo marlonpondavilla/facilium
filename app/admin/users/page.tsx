@@ -9,7 +9,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { getUsers } from "@/data/users";
+import { getUsersWithPage } from "@/data/users";
 import UserActionButton from "@/components/user-action";
 import NextButton from "@/components/next-button";
 
@@ -28,7 +28,7 @@ const Page = async ({ searchParams }: PageProps) => {
 		? JSON.parse(params.previousCursors)
 		: [];
 
-	const { data, totalUsers, totalPages, nextCursor } = await getUsers({
+	const { data, totalUsers, totalPages, nextCursor } = await getUsersWithPage({
 		pagination: {
 			pageSize: 10,
 			startAfterDocId: cursor,
@@ -54,8 +54,12 @@ const Page = async ({ searchParams }: PageProps) => {
 						{data.map((user) => (
 							<TableRow key={user.id} className="facilium-bg-whiter">
 								<TableCell>{user.email ?? null}</TableCell>
-								<TableCell>{user.fullName}</TableCell>
-								<TableCell>{user.role ?? null}</TableCell>
+								<TableCell>
+									{user.firstName && user.lastName
+										? `${user.firstName} ${user.lastName}`
+										: null}
+								</TableCell>
+								<TableCell>{user.designation ?? null}</TableCell>
 								<TableCell
 									className={`${
 										user.status === "Enabled"
@@ -73,19 +77,30 @@ const Page = async ({ searchParams }: PageProps) => {
 							</TableRow>
 						))}
 					</TableBody>
-					<TableFooter>
-						<TableRow>
-							<TableCell colSpan={5} className="text-center">
-								<NextButton
-									currentPage={currentPage}
-									totalPages={totalPages}
-									nextCursor={nextCursor}
-									previousCursors={previousCursors}
-								/>
-							</TableCell>
-						</TableRow>
-					</TableFooter>
+
+					{data.length > 0 && (
+						<TableFooter>
+							<TableRow>
+								<TableCell colSpan={5} className="text-center">
+									<NextButton
+										currentPage={currentPage}
+										totalPages={totalPages}
+										nextCursor={nextCursor}
+										previousCursors={previousCursors}
+									/>
+								</TableCell>
+							</TableRow>
+						</TableFooter>
+					)}
 				</Table>
+				{data.length === 0 && (
+					<>
+						<h1 className="text-center my-4 text-base text-gray-500">
+							No data to show
+						</h1>
+						<hr className="border-gray-500" />
+					</>
+				)}
 			</UsersComponent>
 		</AdminSideBar>
 	);

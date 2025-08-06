@@ -10,7 +10,21 @@ type GetUsersOptions = {
 	};
 };
 
-export const getUsers = async (options?: GetUsersOptions) => {
+export const getUserData = async () => {
+	const snapshot = await firestore.collection("userData").get();
+
+	const users = snapshot.docs.map((doc) => {
+		const { created, ...data } = doc.data();
+		return {
+			id: doc.id,
+			...data,
+		} as User;
+	});
+
+	return users;
+};
+
+export const getUsersWithPage = async (options?: GetUsersOptions) => {
 	const pageSize = options?.pagination?.pageSize || 10;
 	const startAfterDocId = options?.pagination?.startAfterDocId;
 

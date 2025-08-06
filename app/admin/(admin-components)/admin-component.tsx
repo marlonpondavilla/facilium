@@ -1,9 +1,10 @@
+import AdminHeaderTitle from "@/components/admin-header-title";
 import React from "react";
 
 const AdminComponent = () => {
 	return (
 		<div>
-			<h1>Admin Page</h1>
+			<AdminHeaderTitle title="Dashboard" />
 		</div>
 	);
 };

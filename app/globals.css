@@ -151,12 +151,20 @@ body {
 		background-color: #f9f9f9;
 	}
 
+	.facilium-bg-profile {
+		background-color: #8d99ae;
+	}
+
 	.facilium-color-red {
 		color: #d90429;
 	}
 
 	.facilium-color-white {
 		color: #edf2f4;
+	}
+
+	.facilium-color-indigo {
+		color: #2b2d42;
 	}
 
 	.facilium-bg-indigo {

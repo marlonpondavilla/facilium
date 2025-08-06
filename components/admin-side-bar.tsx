@@ -35,10 +35,10 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 			id: "dashboard",
 		},
 		{
-			title: "Roles",
-			links: "/admin/roles",
+			title: "Designation",
+			links: "/admin/designation",
 			icon: <UserCog size={20} />,
-			id: "roles",
+			id: "designation",
 		},
 		{
 			title: "Building",
@@ -111,7 +111,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 				</div>
 
 				{/*Logos and Logout */}
-				<div className="bottom-links flex flex-col items-center gap-6 mt-6">
+				<div className="bottom-links flex flex-col items-center gap-6">
 					<div className="bsu-logo flex sm:flex-row items-center gap-2 text-center text-sm">
 						<Image
 							src="/bsu-main-logo.png"
@@ -152,7 +152,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 
 			{/* Right Content Area */}
 			<div
-				className={`right-container flex-1 p-6 facilium-bg-white text-black ${
+				className={`right-container flex-1 p-6 facilium-bg-white text-black min-h-screen ${
 					showSidebar ? "hidden" : ""
 				}`}
 			>

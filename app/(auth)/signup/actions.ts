@@ -4,14 +4,17 @@ import { auth, firestore } from "@/firebase/server";
 import { signupSchema } from "@/validation/signupSchema";
 
 export const signupUser = async (data: {
-	fullName: string;
+	firstName: string;
+	middleName: string;
+	lastName: string;
+	degreeEarned: string;
 	email: string;
 	department: string;
 	password: string;
 	confirmPassword: string;
 }) => {
 	const result = signupSchema.safeParse(data);
-	const { ...userData } = data;
+	const { password, confirmPassword, ...userData } = data;
 
 	if (!result.success) {
 		const errors = result.error.flatten();
@@ -48,15 +51,16 @@ export const signupUser = async (data: {
 	// creating user object and saving to our db
 	try {
 		await auth.createUser({
-			displayName: data.fullName,
+			displayName: data.firstName + data.lastName,
 			email: data.email,
 			password: data.password,
 		});
 
 		await firestore.collection("userData").add({
 			...userData,
-			role: "Faculty",
+			designation: "Faculty",
 			status: "Enabled",
+			degreeEarned: data.degreeEarned,
 			created: new Date(),
 		});
 
