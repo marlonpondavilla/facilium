@@ -72,14 +72,16 @@ export const getUsersWithPage = async (options?: GetUsersOptions) => {
 	};
 };
 
-export const setUserStatus = async (
+export const updateUserField = async (
 	userId: string,
-	newStatus: string
+	newStatus: string,
+	collectionName: string,
+	fieldName: string
 ): Promise<void> => {
 	await firestore
-		.collection("userData")
+		.collection(collectionName)
 		.doc(userId)
-		.update({ status: newStatus });
+		.update({ [fieldName]: newStatus });
 };
 
 export const deleteUserById = async (userId: string): Promise<void> => {

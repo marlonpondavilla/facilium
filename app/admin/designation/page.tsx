@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Building2, Mail, SquarePen } from "lucide-react";
 import DesignationComponent from "../(admin-components)/designation-component";
+import UserClaimModal from "@/components/user-claim-modal";
 
 const page = async () => {
 	// try to get getUserWithPage to have pagination
@@ -41,10 +42,17 @@ const page = async () => {
 									<CardDescription>
 										<p>{user.degreeEarned}</p>
 										<div className="flex items-center gap-2">
-											{user.designation}
-											<SquarePen
-												size={20}
-												className="cursor-pointer facilium-color-indigo"
+											<p
+												className={`${
+													user.designation === "Faculty"
+														? "bg-green-400"
+														: "bg-blue-400"
+												} text-black py-[2px] px-[8px] rounded-2xl text-xs mt-1`}
+											>
+												{user.designation}
+											</p>
+											<UserClaimModal
+												data={{ id: user.id, designation: user.designation }}
 											/>
 										</div>
 									</CardDescription>

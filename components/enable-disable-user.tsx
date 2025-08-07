@@ -1,6 +1,6 @@
 "use client";
 
-import { setUserStatus } from "@/data/users";
+import { updateUserField } from "@/data/users";
 import { Button } from "./ui/button";
 import { UserActionProps } from "@/types/userActionType";
 import {
@@ -22,7 +22,7 @@ const EnableDisableUser = ({ data }: UserActionProps) => {
 		const newStatus = data.status === "Enabled" ? "Disabled" : "Enabled";
 
 		try {
-			await setUserStatus(data.id, newStatus);
+			await updateUserField(data.id, newStatus, "userData", "status");
 			toast.success("Updated successfully!");
 			setTimeout(() => {
 				window.location.reload();

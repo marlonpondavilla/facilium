@@ -121,7 +121,7 @@ export const RegisterForm = () => {
 							name="lastName"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Middle Name</FormLabel>
+									<FormLabel>Last Name</FormLabel>
 									<FormControl>
 										<Input
 											type="text"
