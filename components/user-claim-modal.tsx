@@ -20,6 +20,7 @@ type UserClaimProps = {
 	data: {
 		id: string;
 		designation: string;
+		status: string;
 	};
 };
 
@@ -46,7 +47,7 @@ const UserClaimModal = ({ data }: UserClaimProps) => {
 
 	return (
 		<Dialog>
-			<DialogTrigger>
+			<DialogTrigger disabled={data.status === "Disabled"}>
 				<SquarePen
 					size={20}
 					className="cursor-pointer facilium-color-indigo hover:text-indigo-500 text-center"

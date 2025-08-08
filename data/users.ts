@@ -1,38 +1,32 @@
 "use server";
 
 import { firestore, getTotalUserCount } from "@/firebase/server";
-import { User } from "@/types/userType";
+import { User } from "@/types/userInterface";
 
 type GetUsersOptions = {
 	pagination?: {
 		pageSize?: number;
 		startAfterDocId?: string;
+		search?: string;
 	};
-};
-
-export const getUserData = async () => {
-	const snapshot = await firestore.collection("userData").get();
-
-	const users = snapshot.docs.map((doc) => {
-		const { created, ...data } = doc.data();
-		return {
-			id: doc.id,
-			...data,
-		} as User;
-	});
-
-	return users;
 };
 
 export const getUsersWithPage = async (options?: GetUsersOptions) => {
 	const pageSize = options?.pagination?.pageSize || 10;
 	const startAfterDocId = options?.pagination?.startAfterDocId;
+	const search = options?.pagination?.search?.trim() || "";
 
-	const usersQuery = firestore
-		.collection("userData")
-		.orderBy("created", "desc");
+	let usersQuery = firestore.collection("userData").orderBy("created", "desc");
 
-	//
+	// if search exists it runs (emailk only bro)
+	if (search) {
+		usersQuery = firestore
+			.collection("userData")
+			.orderBy("email")
+			.startAt(search)
+			.endAt(search + "\uf8ff");
+	}
+
 	const { totalUsers, totalPages } = await getTotalUserCount(
 		usersQuery,
 		pageSize

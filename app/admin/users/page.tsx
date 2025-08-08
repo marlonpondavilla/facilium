@@ -12,17 +12,14 @@ import {
 import { getUsersWithPage } from "@/data/users";
 import UserActionButton from "@/components/user-action";
 import NextButton from "@/components/next-button";
+import { PageInterface } from "@/types/pageInterface";
 
-type PageProps = {
-	// the fcking line of code that breaks my builddddd!
-	searchParams: Promise<Record<string, string | undefined>>;
-};
-
-const Page = async ({ searchParams }: PageProps) => {
+const Page = async ({ searchParams }: PageInterface) => {
 	const params = await searchParams;
 
 	const currentPage = parseInt(params.page || "1", 10);
 	const cursor = params.cursor;
+	const search = params.search?.trim() || "";
 
 	const previousCursors = params.previousCursors
 		? JSON.parse(params.previousCursors)
@@ -32,12 +29,13 @@ const Page = async ({ searchParams }: PageProps) => {
 		pagination: {
 			pageSize: 10,
 			startAfterDocId: cursor,
+			search,
 		},
 	});
 
 	return (
 		<AdminSideBar>
-			<UsersComponent userCount={totalUsers}>
+			<UsersComponent userCount={totalUsers} search={search}>
 				<Table className="mt-4">
 					<TableHeader className="facilium-bg-indigo">
 						<TableRow>

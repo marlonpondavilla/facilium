@@ -29,7 +29,7 @@ const EnableDisableUser = ({ data }: UserActionProps) => {
 			}, 2000);
 		} catch (e: unknown) {
 			const error = e as { message?: string };
-			console.error(error.message);
+			toast.error(error.message ?? "error in updating user");
 		}
 	};
 
@@ -68,9 +68,9 @@ const EnableDisableUser = ({ data }: UserActionProps) => {
 								onClick={handleStatusUpdate}
 								size={"sm"}
 								variant={"default"}
-								className="cursor-pointer"
+								className="cursor-pointer facilium-bg-indigo"
 							>
-								Yes
+								{`Yes, ${statusLabel}`}
 							</Button>
 						</DialogClose>
 					</DialogFooter>

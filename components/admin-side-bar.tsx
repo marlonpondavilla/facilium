@@ -152,7 +152,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 
 			{/* Right Content Area */}
 			<div
-				className={`right-container flex-1 p-6 facilium-bg-white text-black min-h-screen ${
+				className={`right-container flex-1 p-6 facilium-bg-white text-black overflow-y-auto max-h-screen ${
 					showSidebar ? "hidden" : ""
 				}`}
 			>

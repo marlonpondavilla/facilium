@@ -1,28 +1,54 @@
 import AdminSideBar from "@/components/admin-side-bar";
 import React from "react";
-import { getUserData } from "@/data/users";
+import { getUsersWithPage } from "@/data/users";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	Card,
 	CardContent,
 	CardDescription,
+	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
 import { Building2, Mail, SquarePen } from "lucide-react";
 import DesignationComponent from "../(admin-components)/designation-component";
 import UserClaimModal from "@/components/user-claim-modal";
+import { PageInterface } from "@/types/pageInterface";
+import NextButton from "@/components/next-button";
+import { Badge } from "@/components/ui/badge";
 
-const page = async () => {
-	// try to get getUserWithPage to have pagination
-	const data = await getUserData();
+const page = async ({ searchParams }: PageInterface) => {
+	const params = await searchParams;
+
+	const currentPage = parseInt(params.page || "1", 10);
+	const cursor = params.cursor;
+	const search = params.search?.trim() || "";
+
+	const previousCursors = params.previousCursors
+		? JSON.parse(params.previousCursors)
+		: [];
+
+	const { data, totalPages, nextCursor } = await getUsersWithPage({
+		pagination: {
+			pageSize: 9,
+			startAfterDocId: cursor,
+			search,
+		},
+	});
 
 	return (
 		<AdminSideBar>
-			<DesignationComponent>
+			<DesignationComponent search={search}>
 				<div className="card-component grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 					{data.map((user) => (
-						<Card className="w-full h-full" key={user.id}>
+						<Card
+							className={`w-full h-full relative ${
+								user.status === "Disabled"
+									? "opacity-50 border border-red-500"
+									: ""
+							}`}
+							key={user.id}
+						>
 							<CardHeader className="flex justify-start items-center gap-4">
 								<div>
 									<Avatar className="h-16 w-16">
@@ -42,17 +68,26 @@ const page = async () => {
 									<CardDescription>
 										<p>{user.degreeEarned}</p>
 										<div className="flex items-center gap-2">
-											<p
-												className={`${
-													user.designation === "Faculty"
-														? "bg-green-400"
-														: "bg-blue-400"
-												} text-black py-[2px] px-[8px] rounded-2xl text-xs mt-1`}
-											>
-												{user.designation}
-											</p>
+											{user.status === "Disabled" ? (
+												<Badge variant={"destructive"}>Disabled</Badge>
+											) : (
+												<Badge
+													className={`${
+														user.designation === "Faculty"
+															? "bg-green-400"
+															: "bg-blue-400"
+													} text-black py-[2px] px-[8px] rounded-2xl text-xs mt-1`}
+												>
+													{user.designation}
+												</Badge>
+											)}
+
 											<UserClaimModal
-												data={{ id: user.id, designation: user.designation }}
+												data={{
+													id: user.id,
+													designation: user.designation,
+													status: user.status,
+												}}
 											/>
 										</div>
 									</CardDescription>
@@ -71,6 +106,24 @@ const page = async () => {
 						</Card>
 					))}
 				</div>
+				{data.length > 0 && (
+					<div>
+						<NextButton
+							currentPage={currentPage}
+							totalPages={totalPages}
+							nextCursor={nextCursor}
+							previousCursors={previousCursors}
+						/>
+					</div>
+				)}
+				{data.length === 0 && (
+					<>
+						<h1 className="text-center my-4 text-base text-gray-500">
+							No data to show
+						</h1>
+						<hr className="border-gray-500" />
+					</>
+				)}
 			</DesignationComponent>
 		</AdminSideBar>
 	);
