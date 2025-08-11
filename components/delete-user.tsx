@@ -10,8 +10,8 @@ import {
 	DialogFooter,
 	DialogClose,
 } from "./ui/dialog";
-import { deleteUserById } from "@/data/users";
 import toast from "react-hot-toast";
+import { deleteDocumentById } from "@/data/actions";
 
 type DeleteUserWithConfirmationProps = {
 	id: string;
@@ -22,7 +22,7 @@ const DeleteUserWithConfirmation = ({
 }: DeleteUserWithConfirmationProps) => {
 	const handleDelete = async () => {
 		try {
-			await deleteUserById(id);
+			await deleteDocumentById(id, "userData");
 			toast.success("Deleted successfully!");
 			setTimeout(() => {
 				window.location.reload();

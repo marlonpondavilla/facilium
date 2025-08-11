@@ -9,11 +9,25 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Notebook } from "lucide-react";
+import { EllipsisVertical, Notebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBuilding } from "./actions";
 import { Building } from "@/types/buildingType";
-import Image from "next/image";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuPortal,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { BuildingActionsDropdown } from "./building-actions-dropdown";
 
 const page = async () => {
 	const buildings: Building[] = await getBuilding();
@@ -25,7 +39,10 @@ const page = async () => {
 					{buildings.map((building) => (
 						<Card key={building.id}>
 							<CardHeader>
-								<CardTitle>{building.buildingName}</CardTitle>
+								<CardTitle className="flex items-center justify-between">
+									<p>{building.buildingName}</p>
+									<BuildingActionsDropdown building={building} />
+								</CardTitle>
 								<CardDescription>
 									<div className="flex items-center gap-1 mt-1">
 										<Notebook width={15} height={15} />

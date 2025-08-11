@@ -111,29 +111,26 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 				</div>
 
 				{/*Logos and Logout */}
-				<div className="bottom-links flex flex-col items-center gap-6">
-					<div className="bsu-logo flex sm:flex-row items-center gap-2 text-center text-sm">
-						<Image
-							src="/bsu-main-logo.png"
-							width={25}
-							height={25}
-							alt="bulsu main logo"
-							className="w-8 h-8 object-contain"
-						/>
-						<Image
-							src="/bsu-meneses-logo.png"
-							width={25}
-							height={25}
-							alt="bulsu meneses logo"
-							className="w-8 h-8 object-contain"
-						/>
-						<p className={`leading-snug text-xs ${alegreyaSC.className}`}>
-							Bulacan State University <br /> Meneses Campus
-						</p>
+				<div className="bottom-links flex flex-col items-center gap-4">
+					<div className="bsu-logo flex flex-col items-center gap-2 text-center text-sm w-full p-4">
+						<div>
+							<Image
+								src="/bsu-meneses-logo.png"
+								width={50}
+								height={50}
+								alt="bulsu meneses logo"
+								className="w-16 h-16 object-contain"
+							/>
+						</div>
+						<div>
+							<p className={`leading-snug text-sm ${alegreyaSC.className}`}>
+								Bulacan State University <br /> Meneses Campus
+							</p>
+						</div>
 					</div>
 
 					<Link
-						className={`admin-info flex justify-center items-center gap-2 transition hover:bg-[#8d99ae] hover:py-[5px] rounded ${
+						className={`admin-info flex justify-center items-center gap-2 transition border hover:bg-[#8d99ae] p-2 rounded ${
 							pathname === "/admin/admin-profile" ? "bg-[#8d99ae] py-[5px]" : ""
 						}`}
 						href="/admin/admin-profile"

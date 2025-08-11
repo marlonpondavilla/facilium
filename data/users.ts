@@ -77,7 +77,3 @@ export const updateUserField = async (
 		.doc(userId)
 		.update({ [fieldName]: newStatus });
 };
-
-export const deleteUserById = async (userId: string): Promise<void> => {
-	await firestore.collection("userData").doc(userId).delete();
-};
