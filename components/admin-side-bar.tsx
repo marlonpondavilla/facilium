@@ -99,7 +99,9 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 								<li
 									key={index}
 									className={`flex items-center gap-2 px-8 py-2 rounded ${
-										pathname === tabInfo.links ? "bg-indigo-400" : "text-white"
+										pathname.includes(tabInfo.links)
+											? "bg-indigo-400"
+											: "text-white"
 									}`}
 								>
 									{tabInfo.icon}

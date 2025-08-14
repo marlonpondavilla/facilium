@@ -2,9 +2,6 @@
 
 import AdminHeaderTitle from "@/components/admin-header-title";
 import SearchHeader from "@/components/search-header";
-import { Search } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 
 type UsersComponentProps = {
 	userCount: number;
