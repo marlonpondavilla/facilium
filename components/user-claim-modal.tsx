@@ -13,8 +13,8 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { SquarePen } from "lucide-react";
-import { updateUserField } from "@/data/users";
 import toast from "react-hot-toast";
+import { updateDocumentById } from "@/data/actions";
 
 type UserClaimProps = {
 	data: {
@@ -29,11 +29,11 @@ const UserClaimModal = ({ data }: UserClaimProps) => {
 		try {
 			const reversedDesignation =
 				data.designation === "Faculty" ? "Program Head" : "Faculty";
-			await updateUserField(
+			await updateDocumentById(
 				data.id,
-				reversedDesignation,
 				"userData",
-				"designation"
+				"designation",
+				reversedDesignation
 			);
 			toast.success("Updated successfully!");
 			setTimeout(() => {

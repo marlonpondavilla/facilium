@@ -5,7 +5,7 @@ import { Building, BuildingCreate } from "@/types/buildingType";
 
 export const setBuilding = async (data: BuildingCreate) => {
 	try {
-		await firestore.collection("building").add({
+		await firestore.collection("buildings").add({
 			...data,
 			created: new Date(),
 		});
@@ -18,7 +18,7 @@ export const setBuilding = async (data: BuildingCreate) => {
 };
 
 export const getBuilding = async (): Promise<Building[]> => {
-	const snapshot = await firestore.collection("building").get();
+	const snapshot = await firestore.collection("buildings").get();
 
 	const buildings: Building[] = snapshot.docs.map((doc) => {
 		const data = doc.data();

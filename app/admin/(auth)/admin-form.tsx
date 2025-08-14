@@ -61,9 +61,9 @@ const AdminForm = () => {
 	};
 
 	return (
-		<div className="flex flex-col lg:flex-row h-screen facilium-bg-red facilium-color-white overflow-auto">
+		<div className="flex flex-col lg:flex-row h-screen facilium-bg-pink facilium-color-white overflow-auto">
 			{/* Left Side */}
-			<div className="flex-col justify-center items-center gap-8 px-6 py-8 hidden flex-2 lg:flex">
+			<div className="flex-col justify-center items-center gap-8 px-6 py-8 hidden flex-2 lg:flex relative">
 				<div className="flex items-center">
 					<Image
 						src="/facilium-logo.png"
@@ -79,11 +79,11 @@ const AdminForm = () => {
 				</h2>
 
 				<Image
-					src="/admin-login-Illustration.png"
+					src="/bsu-meneses-bg-logo.png"
 					width={800}
 					height={800}
-					alt="Admin Dashboard Illustration"
-					className="rounded-lg shadow-lg w-full max-w-3xl h-auto"
+					alt="Bulsu Meneses Logo"
+					className="rounded-lg shadow-lg w-full max-w-3xl h-auto absolute opacity-20"
 					priority
 				/>
 			</div>
@@ -95,13 +95,6 @@ const AdminForm = () => {
 					<CardHeader>
 						<div className="header-info flex flex-col sm:flex-row items-center sm:justify-center gap-4 text-center sm:text-left">
 							<div className="logo-container flex gap-2 items-center justify-center sm:justify-start">
-								<Image
-									src={"/bsu-main-logo.png"}
-									width={40}
-									height={40}
-									alt="bulsu main logo"
-									className="w-10 h-10 sm:w-12 sm:h-12"
-								/>
 								<Image
 									src={"/bsu-meneses-logo.png"}
 									width={40}
@@ -178,7 +171,10 @@ const AdminForm = () => {
 											</FormItem>
 										)}
 									/>
-									<Button type="submit" className="mt-2 w-full">
+									<Button
+										type="submit"
+										className="mt-2 w-full facilium-bg-indigo"
+									>
 										{form.formState.isSubmitting ? "Logging in" : "Login"}
 									</Button>
 								</fieldset>

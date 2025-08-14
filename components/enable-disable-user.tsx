@@ -1,8 +1,6 @@
 "use client";
 
-import { updateUserField } from "@/data/users";
 import { Button } from "./ui/button";
-import { UserActionProps } from "@/types/userActionType";
 import {
 	Dialog,
 	DialogClose,
@@ -14,15 +12,17 @@ import {
 	DialogTrigger,
 } from "./ui/dialog";
 import toast from "react-hot-toast";
+import { updateDocumentById } from "@/data/actions";
+import { EnableDisableActionProps } from "@/types/userActionType";
 
-const EnableDisableUser = ({ data }: UserActionProps) => {
+const EnableDisableUser = ({ data }: EnableDisableActionProps) => {
 	const statusLabel = data.status !== "Enabled" ? "Enable" : "Disable";
 
 	const handleStatusUpdate = async () => {
 		const newStatus = data.status === "Enabled" ? "Disabled" : "Enabled";
 
 		try {
-			await updateUserField(data.id, newStatus, "userData", "status");
+			await updateDocumentById(data.id, "userData", "status", newStatus);
 			toast.success("Updated successfully!");
 			setTimeout(() => {
 				window.location.reload();

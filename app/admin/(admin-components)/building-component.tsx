@@ -5,7 +5,15 @@ import { Building, NotebookPen } from "lucide-react";
 import React from "react";
 import NewBuildingModal from "../building/new-building-modal";
 
-const BuildingComponent = ({ children }: { children: React.ReactNode }) => {
+type BuildingComponentProps = {
+	data: {
+		buildings: number;
+		classrooms: number;
+	};
+	children: React.ReactNode;
+};
+
+const BuildingComponent = ({ data, children }: BuildingComponentProps) => {
 	return (
 		<div className="flex flex-col gap-10">
 			<AdminHeaderTitle title="Building" />
@@ -24,7 +32,7 @@ const BuildingComponent = ({ children }: { children: React.ReactNode }) => {
 						<div className="text-sm uppercase tracking-wide">
 							Total Buildings
 						</div>
-						<div className="text-3xl font-bold mt-1">12</div>
+						<div className="text-3xl font-bold mt-1">{data.buildings}</div>
 					</div>
 				</div>
 
@@ -37,7 +45,7 @@ const BuildingComponent = ({ children }: { children: React.ReactNode }) => {
 						<div className="text-sm uppercase tracking-wide">
 							Total Classrooms
 						</div>
-						<div className="text-3xl font-bold mt-1">48</div>
+						<div className="text-3xl font-bold mt-1">{data.classrooms}</div>
 					</div>
 				</div>
 			</div>
