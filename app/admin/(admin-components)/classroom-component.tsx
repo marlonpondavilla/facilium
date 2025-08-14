@@ -23,7 +23,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { addDocumentToFirestore } from "@/data/actions";
+import {
+	addDocumentToFirestore,
+	incrementDocumentCountById,
+} from "@/data/actions";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -56,6 +59,14 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 			});
 
 			if (result.success) {
+				if (id) {
+					await incrementDocumentCountById(
+						id?.toString(),
+						"buildings",
+						"classroom",
+						1
+					);
+				}
 				toast.success("New classroom has been added!");
 				setTimeout(() => {
 					window.location.reload();
@@ -68,6 +79,7 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 			toast.error(
 				error.message ?? "There is an error when submitting the form"
 			);
+			console.error(error);
 		} finally {
 			setSubmitting(false);
 		}

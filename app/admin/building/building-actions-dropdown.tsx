@@ -43,11 +43,17 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 
 	const handleDelete = async () => {
 		try {
-			await deleteDocumentById(building.id, "building");
+			await deleteDocumentById({
+				id: building.id,
+				collectionName: "buildings",
+				relatedFields: [
+					{ collectionName: "classrooms", fieldName: "buildingId" },
+				],
+			});
 			toast.success("Deleted successfully");
 			setTimeout(() => {
 				window.location.reload();
-			}, 2000);
+			}, 1000);
 		} catch (e: unknown) {
 			const error = e as { message?: string };
 			toast.error(error.message ?? "error deleting a building");

@@ -3,6 +3,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { ClassroomType } from "@/types/classroomType";
 import { useParams } from "next/navigation";
 import React from "react";
+import EnableDisableClassroom from "./enable-disable-classroom";
 
 type ClassroomTableProps = {
 	classrooms: ClassroomType[];
@@ -27,7 +28,11 @@ const ClassroomTable = ({ classrooms }: ClassroomTableProps) => {
 						>
 							{classroom.status}
 						</TableCell>
-						<TableCell>{classroom.id}</TableCell>
+						<TableCell>
+							<EnableDisableClassroom
+								data={{ id: classroom.id, status: classroom.status }}
+							/>
+						</TableCell>
 					</TableRow>
 				))}
 

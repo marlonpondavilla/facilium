@@ -1,13 +1,37 @@
 "use server";
 
 import { firestore } from "@/firebase/server";
-import { ClassroomType } from "@/types/classroomType";
+import { FieldValue } from "firebase-admin/firestore";
 
-export const deleteDocumentById = async (
-	id: string,
-	collectionName: string
-): Promise<void> => {
+type DeleteDocumentOptions = {
+	id: string;
+	collectionName: string;
+	relatedFields?: {
+		collectionName: string;
+		fieldName: string;
+	}[];
+};
+
+export const deleteDocumentById = async ({
+	id,
+	collectionName,
+	relatedFields,
+}: DeleteDocumentOptions): Promise<void> => {
 	await firestore.collection(collectionName).doc(id).delete();
+
+	// delete related documents if passed
+	if (relatedFields && relatedFields.length > 0) {
+		for (const { collectionName: relCollection, fieldName } of relatedFields) {
+			const snapshot = await firestore
+				.collection(relCollection)
+				.where(fieldName, "==", id)
+				.get();
+
+			const batch = firestore.batch();
+			snapshot.forEach((doc) => batch.delete(doc.ref));
+			await batch.commit();
+		}
+	}
 };
 
 export const updateDocumentById = async (
@@ -51,4 +75,31 @@ export const getDocumentsFromFirestore = async <T>(
 		console.error("error fetching documents", e);
 		return [];
 	}
+};
+
+export const getCollectionSize = async (
+	collectionName: string
+): Promise<number> => {
+	try {
+		const collectionRef = firestore.collection(collectionName);
+		const snapshot = await collectionRef.count().get();
+		return snapshot.data().count ?? 0;
+	} catch (e) {
+		console.error("error fetching collection size", e);
+		throw e;
+	}
+};
+
+export const incrementDocumentCountById = async (
+	id: string,
+	collectionName: string,
+	fieldName: string,
+	amount: number
+): Promise<void> => {
+	await firestore
+		.collection(collectionName)
+		.doc(id)
+		.update({
+			[fieldName]: FieldValue.increment(amount),
+		});
 };

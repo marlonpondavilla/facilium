@@ -65,15 +65,3 @@ export const getUsersWithPage = async (options?: GetUsersOptions) => {
 		nextCursor: lastVisibleDoc ? lastVisibleDoc.id : null,
 	};
 };
-
-export const updateUserField = async (
-	userId: string,
-	newStatus: string,
-	collectionName: string,
-	fieldName: string
-): Promise<void> => {
-	await firestore
-		.collection(collectionName)
-		.doc(userId)
-		.update({ [fieldName]: newStatus });
-};

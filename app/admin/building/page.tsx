@@ -13,12 +13,20 @@ import { getBuilding } from "./actions";
 import { Building } from "@/types/buildingType";
 import { BuildingActionsDropdown } from "./building-actions-dropdown";
 import ViewClassroomButton from "./view-classroom-btn";
+import { getCollectionSize } from "@/data/actions";
 
 const page = async () => {
 	const buildings: Building[] = await getBuilding();
+	const buildingsCount = await getCollectionSize("buildings");
+	const classroomsCount = await getCollectionSize("classrooms");
+
+	const data = {
+		buildings: buildingsCount,
+		classrooms: classroomsCount,
+	};
 
 	return (
-		<BuildingComponent>
+		<BuildingComponent data={data}>
 			<div className="card-component grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				{buildings.map((building) => (
 					<Card key={building.id}>

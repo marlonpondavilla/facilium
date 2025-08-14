@@ -6,11 +6,10 @@ import {
 	Card,
 	CardContent,
 	CardDescription,
-	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Building2, Mail, SquarePen } from "lucide-react";
+import { Building2, Mail } from "lucide-react";
 import DesignationComponent from "../(admin-components)/designation-component";
 import UserClaimModal from "@/components/user-claim-modal";
 import { PageInterface } from "@/types/pageInterface";
