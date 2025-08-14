@@ -70,7 +70,7 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 				toast.success("New classroom has been added!");
 				setTimeout(() => {
 					window.location.reload();
-				}, 1000);
+				}, 2000);
 			} else {
 				toast.error("Error on adding a classroom");
 			}

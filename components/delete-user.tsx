@@ -22,7 +22,7 @@ const DeleteUserWithConfirmation = ({
 }: DeleteUserWithConfirmationProps) => {
 	const handleDelete = async () => {
 		try {
-			await deleteDocumentById(id, "userData");
+			await deleteDocumentById({ id: id, collectionName: "userData" });
 			toast.success("Deleted successfully!");
 			setTimeout(() => {
 				window.location.reload();

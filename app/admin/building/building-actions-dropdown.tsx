@@ -53,7 +53,7 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 			toast.success("Deleted successfully");
 			setTimeout(() => {
 				window.location.reload();
-			}, 1000);
+			}, 2000);
 		} catch (e: unknown) {
 			const error = e as { message?: string };
 			toast.error(error.message ?? "error deleting a building");
