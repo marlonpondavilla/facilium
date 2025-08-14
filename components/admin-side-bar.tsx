@@ -66,7 +66,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 			/>
 			{/* Left Sidebar */}
 			<div
-				className={`left-container facilium-bg-indigo md:flex flex-col justify-between items-center p-6 h-screen ${
+				className={`left-container facilium-bg-indigo md:flex flex-col justify-between items-center p-4 min-h-screen ${
 					showSidebar ? "flex" : "hidden"
 				}`}
 			>
@@ -121,11 +121,11 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 								width={50}
 								height={50}
 								alt="bulsu meneses logo"
-								className="w-16 h-16 object-contain"
+								className="w-12 h-12 object-contain"
 							/>
 						</div>
 						<div>
-							<p className={`leading-snug text-sm ${alegreyaSC.className}`}>
+							<p className={`leading-snug text-xs ${alegreyaSC.className}`}>
 								Bulacan State University <br /> Meneses Campus
 							</p>
 						</div>
