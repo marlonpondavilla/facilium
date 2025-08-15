@@ -155,7 +155,7 @@ export default function Home() {
 			{/* 3rd layer with main features */}
 			<div className="bg-[url('/landing-bg-line.png')] bg-cover bg-center facilium-bg-landing-pink flex flex-col justify-center items-center pt-[100px]">
 				<h4
-					className={`${dmSans.className} text-4xl font-semibold tracking-widest mb-8`}
+					className={`${dmSans.className} text-4xl font-semibold tracking-widest mb-8 facilium-color-indigo`}
 				>
 					Vision & Mission
 				</h4>
@@ -188,7 +188,7 @@ export default function Home() {
 				{/* carousel and features */}
 				<div className="mt-[100px] flex flex-col justify-center items-center gap-6 mb-10">
 					<h5
-						className={`${dmSans.className} text-4xl md:text-6xl font-bold text-center`}
+						className={`${dmSans.className} text-4xl md:text-6xl font-bold text-center facilium-color-indigo`}
 					>
 						Discover Facilium
 					</h5>
