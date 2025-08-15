@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -82,9 +83,11 @@ const NewBuildingModal = () => {
 					)}
 				</DialogHeader>
 				<DialogFooter>
-					<Button variant={"destructive"} onClick={handleAddBuilding}>
-						Add New
-					</Button>
+					<DialogClose asChild>
+						<Button variant={"destructive"} onClick={handleAddBuilding}>
+							Add New
+						</Button>
+					</DialogClose>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

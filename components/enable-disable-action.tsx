@@ -15,14 +15,20 @@ import toast from "react-hot-toast";
 import { updateDocumentById } from "@/data/actions";
 import { EnableDisableActionProps } from "@/types/userActionType";
 
-const EnableDisableUser = ({ data }: EnableDisableActionProps) => {
+const EnableDisableAction = ({ data }: EnableDisableActionProps) => {
 	const statusLabel = data.status !== "Enabled" ? "Enable" : "Disable";
 
 	const handleStatusUpdate = async () => {
 		const newStatus = data.status === "Enabled" ? "Disabled" : "Enabled";
 
 		try {
-			await updateDocumentById(data.id, "userData", "status", newStatus);
+			// dynamically update all the status fields based on collection name passed
+			await updateDocumentById(
+				data.id,
+				data.collectionName,
+				"status",
+				newStatus
+			);
 			toast.success("Updated successfully!");
 			setTimeout(() => {
 				window.location.reload();
@@ -51,10 +57,12 @@ const EnableDisableUser = ({ data }: EnableDisableActionProps) => {
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>
-							Are you sure you want to {statusLabel.toLowerCase()} this user?
+							Are you sure you want to {statusLabel.toLowerCase()} this{" "}
+							{data.label.toLowerCase()}?
 						</DialogTitle>
 						<DialogDescription>
-							This will allow or restrict user based on their status
+							This will allow or restrict {data.label.toLowerCase()} based on
+							their status
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -80,4 +88,4 @@ const EnableDisableUser = ({ data }: EnableDisableActionProps) => {
 	);
 };
 
-export default EnableDisableUser;
+export default EnableDisableAction;

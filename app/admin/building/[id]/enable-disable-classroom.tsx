@@ -25,7 +25,7 @@ const EnableDisableClassroom = ({ data }: EnableDisableActionProps) => {
 			toast.success("Updated successfully!");
 			setTimeout(() => {
 				window.location.reload();
-			}, 1000);
+			}, 2000);
 		} catch (e: unknown) {
 			const error = e as { message?: string };
 			toast.error(error.message ?? "error in updating user");

@@ -17,9 +17,7 @@ import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
-	SelectGroup,
 	SelectItem,
-	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
@@ -60,6 +58,7 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 
 			if (result.success) {
 				if (id) {
+					// add 1 to the building's classroom based on the route (id params)
 					await incrementDocumentCountById(
 						id?.toString(),
 						"buildings",
@@ -133,14 +132,16 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 							</div>
 
 							<DialogFooter>
-								<Button
-									type="submit"
-									variant={"destructive"}
-									className="flex w-full"
-									disabled={submitting}
-								>
-									Add Now
-								</Button>
+								<DialogClose asChild>
+									<Button
+										type="submit"
+										variant={"destructive"}
+										className="flex w-full"
+										disabled={submitting}
+									>
+										Add Now
+									</Button>
+								</DialogClose>
 							</DialogFooter>
 						</form>
 					</DialogContent>

@@ -1,9 +1,12 @@
 "use client";
+
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ClassroomType } from "@/types/classroomType";
 import { useParams } from "next/navigation";
 import React from "react";
 import EnableDisableClassroom from "./enable-disable-classroom";
+import DeleteDocumentWithConfirmation from "@/components/delete-document";
+import EnableDisableAction from "@/components/enable-disable-action";
 
 type ClassroomTableProps = {
 	classrooms: ClassroomType[];
@@ -28,9 +31,29 @@ const ClassroomTable = ({ classrooms }: ClassroomTableProps) => {
 						>
 							{classroom.status}
 						</TableCell>
-						<TableCell>
-							<EnableDisableClassroom
-								data={{ id: classroom.id, status: classroom.status }}
+						<TableCell className="flex gap-2 items-center">
+							{/* disable the classroom */}
+							<EnableDisableAction
+								data={{
+									id: classroom.id,
+									status: classroom.status,
+									collectionName: "classrooms",
+									label: "classroom",
+								}}
+							/>
+							{/* the relatedfields will subtract 1 to the field (classroom) in building with the id inn the useParams */}
+							<DeleteDocumentWithConfirmation
+								data={{
+									id: classroom.id,
+									collectionName: "classrooms",
+									label: "classroom",
+									relatedFields: {
+										id: String(id),
+										collectionName: "buildings",
+										fieldName: "classroom",
+										amount: -1,
+									},
+								}}
 							/>
 						</TableCell>
 					</TableRow>

@@ -11,18 +11,38 @@ import {
 	DialogClose,
 } from "./ui/dialog";
 import toast from "react-hot-toast";
-import { deleteDocumentById } from "@/data/actions";
+import { deleteDocumentById, incrementDocumentCountById } from "@/data/actions";
 
-type DeleteUserWithConfirmationProps = {
-	id: string;
+type DeleteDocumentWithConfirmationProps = {
+	data: {
+		id: string;
+		collectionName: string;
+		label: string;
+		relatedFields?: {
+			id: string;
+			collectionName: string;
+			fieldName: string;
+			amount: number;
+		};
+	};
 };
 
-const DeleteUserWithConfirmation = ({
-	id,
-}: DeleteUserWithConfirmationProps) => {
+const DeleteDocumentWithConfirmation = ({
+	data: { id, collectionName, label, relatedFields },
+}: DeleteDocumentWithConfirmationProps) => {
 	const handleDelete = async () => {
 		try {
-			await deleteDocumentById({ id: id, collectionName: "userData" });
+			// if decrement is true subtract 1 to the field
+			if (relatedFields) {
+				await incrementDocumentCountById(
+					relatedFields.id,
+					relatedFields.collectionName,
+					relatedFields.fieldName,
+					relatedFields.amount
+				);
+			}
+			// dynamically delete document based on id
+			await deleteDocumentById({ id: id, collectionName: collectionName });
 			toast.success("Deleted successfully!");
 			setTimeout(() => {
 				window.location.reload();
@@ -45,7 +65,7 @@ const DeleteUserWithConfirmation = ({
 					<DialogTitle>
 						<div className="flex items-center gap-2">
 							<TriangleAlert className="text-red-500" />
-							You are deleting a user
+							You are deleting a {label.toLowerCase()}
 						</div>
 					</DialogTitle>
 					<DialogDescription>This action cannot be undone.</DialogDescription>
@@ -69,4 +89,4 @@ const DeleteUserWithConfirmation = ({
 	);
 };
 
-export default DeleteUserWithConfirmation;
+export default DeleteDocumentWithConfirmation;

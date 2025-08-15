@@ -21,10 +21,11 @@ const Page = async ({ searchParams }: PageInterface) => {
 	const cursor = params.cursor;
 	const search = params.search?.trim() || "";
 
+	// will grab the data in URL params for cursors
 	const previousCursors = params.previousCursors
 		? JSON.parse(params.previousCursors)
 		: [];
-
+	// pagintion data
 	const { data, totalUsers, totalPages, nextCursor } = await getUsersWithPage({
 		pagination: {
 			pageSize: 10,
@@ -69,7 +70,12 @@ const Page = async ({ searchParams }: PageInterface) => {
 								</TableCell>
 								<TableCell>
 									<UserActionButton
-										data={{ id: user.id, status: user.status }}
+										data={{
+											id: user.id,
+											status: user.status,
+											collectionName: "userData",
+											label: "user",
+										}}
 									/>
 								</TableCell>
 							</TableRow>

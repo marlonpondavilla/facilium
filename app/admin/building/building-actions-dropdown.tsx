@@ -39,6 +39,7 @@ type BuildingProps = {
 
 export function BuildingActionsDropdown({ building }: BuildingProps) {
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const [dropDownOpen, setDropDownOpen] = useState(false);
 	const [newBuildingName, setNewBuildingName] = useState("");
 
 	const handleDelete = async () => {
@@ -64,7 +65,7 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 		try {
 			await updateDocumentById(
 				building.id,
-				"building",
+				"buildings",
 				"buildingName",
 				newBuildingName
 			);
@@ -80,7 +81,7 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 
 	return (
 		<>
-			<DropdownMenu>
+			<DropdownMenu open={dropDownOpen} onOpenChange={setDropDownOpen}>
 				<DropdownMenuTrigger asChild>
 					<button>
 						<EllipsisVertical className="w-5 h-5" />
@@ -107,7 +108,10 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 										/>
 										<Button
 											variant="destructive"
-											onClick={handleUpdate}
+											onClick={() => {
+												// update the building name and then closes the menu
+												handleUpdate(), setDropDownOpen(false);
+											}}
 											className="w-full h-8"
 										>
 											Update
