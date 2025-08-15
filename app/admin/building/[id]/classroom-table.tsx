@@ -4,7 +4,6 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { ClassroomType } from "@/types/classroomType";
 import { useParams } from "next/navigation";
 import React from "react";
-import EnableDisableClassroom from "./enable-disable-classroom";
 import DeleteDocumentWithConfirmation from "@/components/delete-document";
 import EnableDisableAction from "@/components/enable-disable-action";
 
