@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/auth";
 import Image from "next/image";
 import {
+	BookOpenText,
 	Building,
 	ChevronFirst,
 	ChevronRight,
@@ -44,6 +45,12 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 			title: "Building",
 			links: "/admin/building",
 			icon: <Building size={20} />,
+			id: "building",
+		},
+		{
+			title: "Courses",
+			links: "/admin/courses",
+			icon: <BookOpenText size={20} />,
 			id: "building",
 		},
 		{
