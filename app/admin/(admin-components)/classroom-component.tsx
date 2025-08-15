@@ -45,7 +45,7 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 
 		try {
 			if (classroomName === "") {
-				toast.error("field is empty");
+				toast.error("Field cannot be empty");
 				return;
 			}
 

@@ -63,6 +63,10 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 
 	const handleUpdate = async () => {
 		try {
+			if (newBuildingName === "") {
+				toast.error("Field cannot be empty");
+				return;
+			}
 			await updateDocumentById(
 				building.id,
 				"buildings",
@@ -100,7 +104,7 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 							<DropdownMenuSubTrigger>Update</DropdownMenuSubTrigger>
 							<DropdownMenuPortal>
 								<DropdownMenuSubContent>
-									<div className="space-y-2">
+									<div className="space-y-2 p-4">
 										<Input
 											placeholder="New building name"
 											name={building.id}
