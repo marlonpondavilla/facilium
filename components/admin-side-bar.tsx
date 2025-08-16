@@ -48,8 +48,8 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 			id: "building",
 		},
 		{
-			title: "Courses",
-			links: "/admin/courses",
+			title: "Programs",
+			links: "/admin/programs",
 			icon: <BookOpenText size={20} />,
 			id: "building",
 		},

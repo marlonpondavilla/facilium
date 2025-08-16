@@ -21,6 +21,7 @@ import { BuildingCreate } from "@/types/buildingType";
 const NewBuildingModal = () => {
 	const [error, setError] = useState(false);
 	const [open, setOpen] = useState(false);
+	const [submitting, setSubmitting] = useState(false);
 
 	const [buildingData, setBuildingData] = useState<BuildingCreate>({
 		buildingName: "",
@@ -30,13 +31,19 @@ const NewBuildingModal = () => {
 	const handleAddBuilding = async () => {
 		if (!buildingData.buildingName.trim()) {
 			setError(true);
+			setOpen(true);
 			return;
 		}
+
+		setSubmitting(true);
 
 		try {
 			const result = await setBuilding(buildingData);
 			if (result?.success) {
 				toast.success("New Building added");
+				setError(false);
+				setSubmitting(false);
+				setOpen(false);
 				setTimeout(() => {
 					window.location.reload();
 				}, 2000);
@@ -48,7 +55,18 @@ const NewBuildingModal = () => {
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<Dialog
+			open={open}
+			onOpenChange={(isOpen) => {
+				setOpen(isOpen);
+				if (!isOpen) {
+					setBuildingData({
+						buildingName: "",
+						classroom: 0,
+					});
+				}
+			}}
+		>
 			<DialogTrigger asChild>
 				<Button
 					variant="link"
@@ -83,11 +101,14 @@ const NewBuildingModal = () => {
 					)}
 				</DialogHeader>
 				<DialogFooter>
-					<DialogClose asChild>
-						<Button variant={"destructive"} onClick={handleAddBuilding}>
-							Add New
-						</Button>
-					</DialogClose>
+					<Button
+						variant={"destructive"}
+						onClick={handleAddBuilding}
+						disabled={submitting}
+						className="flex w-full mt-2"
+					>
+						Add New
+					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
