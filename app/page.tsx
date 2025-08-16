@@ -12,6 +12,7 @@ import { Alegreya_SC, DM_Sans } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const alegreyaSC = Alegreya_SC({
 	subsets: ["latin"],
@@ -35,6 +36,20 @@ const discoverFaciliumContent = [
 
 export default function Home() {
 	const router = useRouter();
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.altKey && event.key.toLowerCase() === "b") {
+				event.preventDefault();
+				router.push("/admin");
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [router]);
 
 	return (
 		<>
