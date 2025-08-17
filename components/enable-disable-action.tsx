@@ -14,12 +14,14 @@ import {
 import toast from "react-hot-toast";
 import { updateDocumentById } from "@/data/actions";
 import { EnableDisableActionProps } from "@/types/userActionType";
+import { useRouter } from "next/navigation";
 
 const EnableDisableAction = ({ data }: EnableDisableActionProps) => {
 	const statusLabel = data.status !== "Enabled" ? "Enable" : "Disable";
 
 	const handleStatusUpdate = async () => {
 		const newStatus = data.status === "Enabled" ? "Disabled" : "Enabled";
+		const router = useRouter();
 
 		try {
 			// dynamically update all the status fields based on collection name passed
@@ -30,9 +32,7 @@ const EnableDisableAction = ({ data }: EnableDisableActionProps) => {
 				newStatus
 			);
 			toast.success("Updated successfully!");
-			setTimeout(() => {
-				window.location.reload();
-			}, 2000);
+			router.refresh();
 		} catch (e: unknown) {
 			const error = e as { message?: string };
 			toast.error(error.message ?? "error in updating user");

@@ -17,8 +17,10 @@ import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { BuildingCreate } from "@/types/buildingType";
 import { addDocumentToFirestore } from "@/data/actions";
+import { useRouter } from "next/navigation";
 
 const NewBuildingModal = () => {
+	const router = useRouter();
 	const [error, setError] = useState(false);
 	const [open, setOpen] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
@@ -47,9 +49,7 @@ const NewBuildingModal = () => {
 				setError(false);
 				setSubmitting(false);
 				setOpen(false);
-				setTimeout(() => {
-					window.location.reload();
-				}, 2000);
+				router.refresh();
 			}
 		} catch (e: unknown) {
 			const error = e as { message?: string };

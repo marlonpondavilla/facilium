@@ -25,7 +25,7 @@ import {
 	addDocumentToFirestore,
 	incrementDocumentCountById,
 } from "@/data/actions";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -34,6 +34,7 @@ type ClassroomComponentProps = {
 };
 
 const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
+	const router = useRouter();
 	const [classroomName, setClassroomName] = useState("");
 	const [status, setStatus] = useState("Enabled");
 	const [submitting, setSubmitting] = useState(false);
@@ -67,9 +68,7 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 					);
 				}
 				toast.success("New classroom has been added!");
-				setTimeout(() => {
-					window.location.reload();
-				}, 2000);
+				router.refresh();
 			} else {
 				toast.error("Error on adding a classroom");
 			}

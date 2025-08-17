@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addDocumentToFirestore } from "@/data/actions";
 import { PlusIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -23,6 +24,7 @@ type ProgramDataProps = {
 };
 
 const AddProgramModal = () => {
+	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [error, setError] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
@@ -51,9 +53,7 @@ const AddProgramModal = () => {
 				setSubmitting(false);
 				setError(false);
 				setOpen(false);
-				setTimeout(() => {
-					window.location.reload();
-				}, 2000);
+				router.refresh();
 			}
 		} catch (e) {
 			console.error(e);

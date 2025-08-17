@@ -15,6 +15,7 @@ import { Button } from "./ui/button";
 import { SquarePen } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateDocumentById } from "@/data/actions";
+import { useRouter } from "next/navigation";
 
 type UserClaimProps = {
 	data: {
@@ -25,6 +26,7 @@ type UserClaimProps = {
 };
 
 const UserClaimModal = ({ data }: UserClaimProps) => {
+	const router = useRouter();
 	const handleCustomClaimChange = async () => {
 		try {
 			const reversedDesignation =
@@ -36,9 +38,7 @@ const UserClaimModal = ({ data }: UserClaimProps) => {
 				reversedDesignation
 			);
 			toast.success("Updated successfully!");
-			setTimeout(() => {
-				window.location.reload();
-			}, 2000);
+			router.refresh();
 		} catch (e: unknown) {
 			const error = e as { message?: string };
 			toast.error(`Failed to update: ${error.message}`);

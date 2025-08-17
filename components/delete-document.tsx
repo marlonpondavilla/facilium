@@ -1,3 +1,5 @@
+"use client";
+
 import { Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -12,6 +14,7 @@ import {
 } from "./ui/dialog";
 import toast from "react-hot-toast";
 import { deleteDocumentById, incrementDocumentCountById } from "@/data/actions";
+import { useRouter } from "next/navigation";
 
 type DeleteDocumentWithConfirmationProps = {
 	data: {
@@ -30,6 +33,8 @@ type DeleteDocumentWithConfirmationProps = {
 const DeleteDocumentWithConfirmation = ({
 	data: { id, collectionName, label, relatedFields },
 }: DeleteDocumentWithConfirmationProps) => {
+	const router = useRouter();
+
 	const handleDelete = async () => {
 		try {
 			// if decrement is true subtract 1 to the field
@@ -44,9 +49,7 @@ const DeleteDocumentWithConfirmation = ({
 			// dynamically delete document based on id
 			await deleteDocumentById({ id: id, collectionName: collectionName });
 			toast.success("Deleted successfully!");
-			setTimeout(() => {
-				window.location.reload();
-			}, 2000);
+			router.refresh();
 		} catch (e: unknown) {
 			const error = e as { message?: string };
 			console.error(error.message);

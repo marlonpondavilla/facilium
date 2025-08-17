@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getDocumentsFromFirestore } from "@/data/actions";
+import CardActionsDropdown from "@/components/card-actions-dropdown";
+import ProgramActionsDropdown from "./program-actions-dropdown";
 
 type Program = {
 	id: string;
@@ -29,7 +31,7 @@ const Page = async () => {
 						<Card key={program.id}>
 							<CardHeader>
 								<CardTitle className="text-center text-2xl tracking-wide">
-									{program.programCode}
+									{program.programCode.toUpperCase()}
 								</CardTitle>
 								<CardDescription className="text-center tracking-wide">
 									{program.programName}
@@ -40,6 +42,7 @@ const Page = async () => {
 									<Button variant={"outline"} className="flex w-full">
 										View Program
 									</Button>
+									<ProgramActionsDropdown program={program} />
 								</CardFooter>
 							</CardContent>
 						</Card>
