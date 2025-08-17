@@ -18,10 +18,10 @@ import { useRouter } from "next/navigation";
 
 const EnableDisableAction = ({ data }: EnableDisableActionProps) => {
 	const statusLabel = data.status !== "Enabled" ? "Enable" : "Disable";
+	const router = useRouter();
 
 	const handleStatusUpdate = async () => {
 		const newStatus = data.status === "Enabled" ? "Disabled" : "Enabled";
-		const router = useRouter();
 
 		try {
 			// dynamically update all the status fields based on collection name passed

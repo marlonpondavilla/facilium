@@ -103,3 +103,22 @@ export const incrementDocumentCountById = async (
 			[fieldName]: FieldValue.increment(amount),
 		});
 };
+
+export const checkIfDocumentExists = async (
+	collectionName: string,
+	normalizedFieldValueName: string,
+	value: string
+): Promise<boolean> => {
+	try {
+		const snapshot = await firestore
+			.collection(collectionName)
+			.where(normalizedFieldValueName, "==", value)
+			.limit(1)
+			.get();
+
+		return !snapshot.empty;
+	} catch (e) {
+		console.error("Error checkig documet exist", e);
+		return false;
+	}
+};

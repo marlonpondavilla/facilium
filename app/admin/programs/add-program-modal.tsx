@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { addDocumentToFirestore } from "@/data/actions";
+import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
 import { PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
@@ -27,6 +27,7 @@ const AddProgramModal = () => {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [error, setError] = useState(false);
+	const [existError, setExistError] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [programData, setProgramData] = useState<ProgramDataProps>({
 		programCode: "",
@@ -42,6 +43,19 @@ const AddProgramModal = () => {
 			}
 
 			setSubmitting(true);
+
+			const isProgramCodeExist = await checkIfDocumentExists(
+				"programs",
+				"programCode",
+				programData.programCode
+			);
+
+			if (isProgramCodeExist) {
+				setExistError(true);
+				setSubmitting(false);
+				setOpen(true);
+				return;
+			}
 
 			const result = await addDocumentToFirestore("programs", {
 				...programData,
@@ -90,6 +104,11 @@ const AddProgramModal = () => {
 						All fields are required.
 					</p>
 				)}
+				{existError && (
+					<p className="text-center text-sm text-red-500 tracking-wide">
+						{programData.programCode} already exists
+					</p>
+				)}
 				<Label htmlFor="program-code">Program Code</Label>
 				<Input
 					type="text"
@@ -101,6 +120,7 @@ const AddProgramModal = () => {
 							programCode: e.target.value,
 						}));
 						setError(false);
+						setExistError(false);
 					}}
 					className={`${error ? "border border-red-500" : ""}`}
 				/>
@@ -116,6 +136,7 @@ const AddProgramModal = () => {
 							programName: e.target.value,
 						}));
 						setError(false);
+						setExistError(false);
 					}}
 					className={`${error ? "border border-red-500" : ""}`}
 				/>

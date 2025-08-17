@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -16,12 +15,13 @@ import { HousePlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { BuildingCreate } from "@/types/buildingType";
-import { addDocumentToFirestore } from "@/data/actions";
+import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
 import { useRouter } from "next/navigation";
 
 const NewBuildingModal = () => {
 	const router = useRouter();
 	const [error, setError] = useState(false);
+	const [existError, setExistError] = useState(false);
 	const [open, setOpen] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 
@@ -40,10 +40,23 @@ const NewBuildingModal = () => {
 		setSubmitting(true);
 
 		try {
+			const isBuildingExist = await checkIfDocumentExists(
+				"buildings",
+				"buildingName",
+				buildingData.buildingName
+			);
+
+			if (isBuildingExist) {
+				setExistError(true);
+				setOpen(true);
+				return;
+			}
+
 			const result = await addDocumentToFirestore("buildings", {
 				...buildingData,
 				created: new Date().toISOString(),
 			});
+
 			if (result?.success) {
 				toast.success("New Building added");
 				setError(false);
@@ -94,12 +107,19 @@ const NewBuildingModal = () => {
 								buildingName: e.target.value,
 							});
 							setError(false);
+							setExistError(false);
+							setSubmitting(false);
 						}}
 						className={`${error ? "border border-red-500" : ""} mt-2`}
 					/>
 					{error && (
-						<p className={`${error ? "text-red-500 text-sm" : ""}`}>
+						<p className="text-red-500 text-sm">
 							please provide a Building Name
+						</p>
+					)}
+					{existError && (
+						<p className="text-red-500 text-sm">
+							Building Name {buildingData.buildingName} already exists.
 						</p>
 					)}
 				</DialogHeader>
