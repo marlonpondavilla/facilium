@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -65,6 +64,7 @@ const AddProgramModal = () => {
 		<Dialog
 			open={open}
 			onOpenChange={(isOpen) => {
+				// remove previous states when the dialog closes
 				setOpen(isOpen);
 				if (!isOpen) {
 					setProgramData({

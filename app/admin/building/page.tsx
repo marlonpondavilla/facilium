@@ -9,14 +9,13 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Notebook } from "lucide-react";
-import { getBuilding } from "./actions";
 import { Building } from "@/types/buildingType";
 import { BuildingActionsDropdown } from "./building-actions-dropdown";
 import ViewClassroomButton from "./view-classroom-btn";
-import { getCollectionSize } from "@/data/actions";
+import { getCollectionSize, getDocumentsFromFirestore } from "@/data/actions";
 
 const page = async () => {
-	const buildings: Building[] = await getBuilding();
+	const buildings: Building[] = await getDocumentsFromFirestore("buildings");
 	const buildingsCount = await getCollectionSize("buildings");
 	const classroomsCount = await getCollectionSize("classrooms");
 

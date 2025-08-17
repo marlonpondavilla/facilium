@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button";
 import { HousePlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
-import { setBuilding } from "./actions";
 import { BuildingCreate } from "@/types/buildingType";
+import { addDocumentToFirestore } from "@/data/actions";
 
 const NewBuildingModal = () => {
 	const [error, setError] = useState(false);
@@ -38,7 +38,10 @@ const NewBuildingModal = () => {
 		setSubmitting(true);
 
 		try {
-			const result = await setBuilding(buildingData);
+			const result = await addDocumentToFirestore("buildings", {
+				...buildingData,
+				created: new Date().toISOString(),
+			});
 			if (result?.success) {
 				toast.success("New Building added");
 				setError(false);
