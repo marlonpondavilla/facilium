@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import React from "react";
 
-interface ViewClassroomButtonProps {
-	id: string;
-}
-
-const ViewClassroomButton = ({ id }: ViewClassroomButtonProps) => {
+const ViewClassroomButton = ({ id }: ViewIdButton) => {
 	const router = useRouter();
 
 	const handleViewClassroomClick = async () => {

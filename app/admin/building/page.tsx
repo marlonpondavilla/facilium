@@ -15,7 +15,10 @@ import ViewClassroomButton from "./view-classroom-btn";
 import { getCollectionSize, getDocumentsFromFirestore } from "@/data/actions";
 
 const page = async () => {
-	const buildings: Building[] = await getDocumentsFromFirestore("buildings");
+	const buildings: Building[] = await getDocumentsFromFirestore(
+		"buildings",
+		true
+	);
 	const buildingsCount = await getCollectionSize("buildings");
 	const classroomsCount = await getCollectionSize("classrooms");
 

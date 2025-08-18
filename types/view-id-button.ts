@@ -1,0 +1,3 @@
+interface ViewIdButton {
+	id: string;
+}

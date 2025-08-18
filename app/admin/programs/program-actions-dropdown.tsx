@@ -27,7 +27,13 @@ const ProgramActionsDropdown = ({ program }: ProgramProps) => {
 	};
 
 	const handleDelete = async () => {
-		await deleteDocumentById({ id: program.id, collectionName: "programs" });
+		await deleteDocumentById({
+			id: program.id,
+			collectionName: "programs",
+			relatedFields: [
+				{ collectionName: "year-levels", fieldName: "programId" },
+			],
+		});
 	};
 
 	return (
