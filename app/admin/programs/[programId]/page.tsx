@@ -5,8 +5,8 @@ import {
 	getDocumentsFromFirestore,
 	getSingleDocumentFromFirestore,
 } from "@/data/actions";
-import { Button } from "@/components/ui/button";
 import DeleteYearLevel from "./delete-year-level";
+import ActionButtons from "./actions-btn";
 
 type PageProps = {
 	params: {
@@ -76,16 +76,8 @@ const Page = async ({ params }: PageProps) => {
 									<DeleteYearLevel id={yearLevel.id} />
 								</div>
 
-								<div className="actions flex gap-2">
-									<Button
-										variant={"outline"}
-										className="rounded-full cursor-pointer hover:bg-indigo-500 hover:text-white transition-all facilium-color-indigo border-indigo-500"
-									>
-										Add Section
-									</Button>
-									<Button className="facilium-bg-indigo cursor-pointer rounded-2xl">
-										Add Courses
-									</Button>
+								<div className="actions">
+									<ActionButtons sectionId={yearLevel.id} />
 								</div>
 							</div>
 						);

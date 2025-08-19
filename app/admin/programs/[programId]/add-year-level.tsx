@@ -93,7 +93,7 @@ const AddYearLevel = ({ id }: { id: string }) => {
 				setOpen(isOpen);
 				if (!isOpen) {
 					setYearLevelData({
-						programId: "",
+						programId: id,
 						yearLevel: "",
 					});
 				}
