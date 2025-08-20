@@ -29,6 +29,7 @@ import toast from "react-hot-toast";
 
 type AddSectionButtonProps = {
 	yearLevelId: string;
+	programId: string;
 	sectionName: string;
 };
 
@@ -41,6 +42,7 @@ const AddSectionButton = ({ id }: { id: string }) => {
 	const [yearLevel, setYearLevel] = useState("");
 	const [sectionData, setSectionData] = useState<AddSectionButtonProps>({
 		yearLevelId: id,
+		programId: "",
 		sectionName: "",
 	});
 	const router = useRouter();
@@ -92,6 +94,7 @@ const AddSectionButton = ({ id }: { id: string }) => {
 		if (suffix && sectionPrefix) {
 			setSectionData((prev) => ({
 				...prev,
+				programId: String(programId),
 				sectionName: `${sectionPrefix}${suffix}`,
 			}));
 		}

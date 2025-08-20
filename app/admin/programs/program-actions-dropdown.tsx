@@ -32,6 +32,7 @@ const ProgramActionsDropdown = ({ program }: ProgramProps) => {
 			collectionName: "programs",
 			relatedFields: [
 				{ collectionName: "year-levels", fieldName: "programId" },
+				{ collectionName: "sections", fieldName: "programId" },
 			],
 		});
 	};
