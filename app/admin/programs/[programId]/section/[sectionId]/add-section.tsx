@@ -100,6 +100,7 @@ const AddSectionButton = ({ id }: { id: string }) => {
 		}
 	}, [suffix, sectionPrefix]);
 
+	// creates letters from A-Z
 	const alphabet = Array.from({ length: 26 }, (_, i) =>
 		String.fromCharCode(65 + i)
 	);
