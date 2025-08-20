@@ -77,7 +77,7 @@ const Page = async ({ params }: PageProps) => {
 								</div>
 
 								<div className="actions">
-									<ActionButtons sectionId={yearLevel.id} />
+									<ActionButtons yearLevelId={yearLevel.id} />
 								</div>
 							</div>
 						);

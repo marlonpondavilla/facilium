@@ -4,12 +4,16 @@ import { Button } from "@/components/ui/button";
 import { useParams, useRouter } from "next/navigation";
 import React from "react";
 
-const ActionButtons = ({ sectionId }: { sectionId: string }) => {
+const ActionButtons = ({ yearLevelId }: { yearLevelId: string }) => {
 	const router = useRouter();
 	const { programId } = useParams();
 
 	const handleAddSection = () => {
-		router.push(`/admin/programs/${programId}/section/${sectionId}`);
+		router.push(`/admin/programs/${programId}/section/${yearLevelId}`);
+	};
+
+	const handleAddCourses = () => {
+		router.push(`/admin/programs/${programId}/courses/${yearLevelId}`);
 	};
 
 	return (
@@ -21,7 +25,10 @@ const ActionButtons = ({ sectionId }: { sectionId: string }) => {
 			>
 				Add Section
 			</Button>
-			<Button className="facilium-bg-indigo cursor-pointer rounded-2xl">
+			<Button
+				className="facilium-bg-indigo cursor-pointer rounded-2xl"
+				onClick={handleAddCourses}
+			>
 				Add Courses
 			</Button>
 		</div>

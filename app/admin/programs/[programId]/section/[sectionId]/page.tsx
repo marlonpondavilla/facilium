@@ -5,7 +5,6 @@ import {
 } from "@/data/actions";
 import React from "react";
 import AddSectionButton from "./add-section";
-import { Button } from "@/components/ui/button";
 import DeleteSectionButton from "./delete-section";
 
 type PageProps = {
