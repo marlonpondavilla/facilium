@@ -133,7 +133,7 @@ const AddCoursesButton = ({ id }: { id: string }) => {
 					className={`${inputError ? " border border-red-500" : ""}`}
 				/>
 
-				<Label htmlFor="subject-tiitle">Subject Title</Label>
+				<Label htmlFor="subject-title">Subject Title</Label>
 				<Input
 					placeholder="(e.g.., Introduction to Computing)"
 					id="subject-title"

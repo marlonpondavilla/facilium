@@ -2,8 +2,16 @@ import AdminHeaderTitle from "@/components/admin-header-title";
 import { GraduationCap, LayoutTemplate, PlusIcon } from "lucide-react";
 import React from "react";
 import AddProgramModal from "../programs/add-program-modal";
+import { getCollectionSize } from "@/data/actions";
 
-const ProgramsComponent = ({ children }: { children: React.ReactNode }) => {
+const ProgramsComponent = async ({
+	children,
+}: {
+	children: React.ReactNode;
+}) => {
+	const totalCourses = await getCollectionSize("courses");
+	const totalSections = await getCollectionSize("sections");
+
 	return (
 		<div className="flex flex-col gap-8">
 			<AdminHeaderTitle title="Programs" />
@@ -22,7 +30,7 @@ const ProgramsComponent = ({ children }: { children: React.ReactNode }) => {
 						<div className="text-sm uppercase tracking-wide">
 							Total Sections
 						</div>
-						<div className="text-3xl font-bold mt-1">test</div>
+						<div className="text-3xl font-bold mt-1">{totalSections}</div>
 					</div>
 				</div>
 
@@ -33,7 +41,9 @@ const ProgramsComponent = ({ children }: { children: React.ReactNode }) => {
 
 					<div className="flex flex-col items-start justify-center">
 						<div className="text-sm uppercase tracking-wide">Total Courses</div>
-						<div className="text-3xl font-bold mt-1">test</div>
+						<div className="text-3xl font-bold mt-1">
+							{totalCourses ?? "--"}
+						</div>
 					</div>
 				</div>
 			</div>

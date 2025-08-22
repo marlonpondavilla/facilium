@@ -1,6 +1,4 @@
-import AdminSideBar from "@/components/admin-side-bar";
 import React from "react";
-import CoursesComponent from "../(admin-components)/programs-component";
 import {
 	Card,
 	CardContent,
@@ -12,6 +10,7 @@ import {
 import { getDocumentsFromFirestore } from "@/data/actions";
 import ProgramActionsDropdown from "./program-actions-dropdown";
 import ViewProgramButton from "./view-program-btn";
+import ProgramsComponent from "../(admin-components)/programs-component";
 
 type Program = {
 	id: string;
@@ -23,7 +22,7 @@ const Page = async () => {
 	const programs: Program[] = await getDocumentsFromFirestore("programs", true);
 
 	return (
-		<CoursesComponent>
+		<ProgramsComponent>
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
 				{programs.map((program) => (
 					<Card key={program.id}>
@@ -44,7 +43,7 @@ const Page = async () => {
 					</Card>
 				))}
 			</div>
-		</CoursesComponent>
+		</ProgramsComponent>
 	);
 };
 
