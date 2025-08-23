@@ -36,7 +36,7 @@ const AdminForm = () => {
 	const handleSubmit = async (data: z.infer<typeof adminLoginSchema>) => {
 		try {
 			await auth?.login(data.email, data.password);
-			router.push("/admin/dashboard");
+			router.push("/admin-validation");
 		} catch (e: unknown) {
 			const error = e as { code?: string };
 			if (error?.code === "auth/invalid-credential") {

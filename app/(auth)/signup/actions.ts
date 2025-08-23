@@ -50,14 +50,16 @@ export const signupUser = async (data: {
 
 	// creating user object and saving to our db
 	try {
-		await auth.createUser({
-			displayName: data.firstName + data.lastName,
+		const userRecord = await auth.createUser({
+			displayName: `${data.firstName} ${data.lastName}`,
 			email: data.email,
 			password: data.password,
 		});
 
 		await firestore.collection("userData").add({
 			...userData,
+			uid: userRecord.uid,
+			fullName: `${data.firstName} ${data.middleName} ${data.lastName}`,
 			designation: "Faculty",
 			status: "Enabled",
 			degreeEarned: data.degreeEarned,

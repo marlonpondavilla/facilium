@@ -36,18 +36,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 			setLoading(false);
 
 			if (firebaseUser) {
-				const tokenResult = await firebaseUser?.getIdTokenResult(true);
-				const token = tokenResult?.token;
+				const tokenResult = await firebaseUser.getIdTokenResult(true);
+				const token = tokenResult.token;
 				const refreshToken = firebaseUser.refreshToken;
-				const claims = tokenResult.claims;
-
-				setCustomClaims(claims ?? null);
 
 				if (token && refreshToken) {
-					setToken({
-						token,
-						refreshToken,
-					});
+					// Set token on the server
+					await setToken({ token, refreshToken });
+
+					//Re-fetch updated token with new custom claims
+					const refreshedTokenResult = await firebaseUser.getIdTokenResult(
+						true
+					);
+					setCustomClaims(refreshedTokenResult.claims ?? null);
 				}
 			} else {
 				await removeToken();
@@ -69,11 +70,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 							const tokenResult = await firebaseUser.getIdTokenResult(true);
 							const token = tokenResult.token;
 							const refreshToken = firebaseUser.refreshToken;
-							const claims = tokenResult.claims;
 
 							if (token && refreshToken) {
 								await setToken({ token, refreshToken });
-								setCustomClaims(claims ?? null);
+
+								//Re-fetch updated token with new claims
+								const refreshedTokenResult =
+									await firebaseUser.getIdTokenResult(true);
+								setCustomClaims(refreshedTokenResult.claims ?? null);
 							}
 
 							unsubscribe();

@@ -3,40 +3,54 @@ import { decodeJwt } from "jose";
 
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
+
+	// Public accessible routes
 	const publicRoutes = ["/", "/login", "/signup", "/admin"];
 
+	// Get token from cookie
 	const token = request.cookies.get("firebaseAuthToken")?.value;
 
+	// No token, allow access to public routes only
 	if (!token) {
-		// Allow unauthenticated access to public routes
 		if (publicRoutes.includes(pathname)) {
 			return NextResponse.next();
 		}
-		// Redirect unauthenticated users to home/login
 		return NextResponse.redirect(new URL("/", request.url));
 	}
 
-	const decodedToken = decodeJwt(token);
+	// decode token
+	let role: string | undefined;
+	try {
+		const decodedToken = decodeJwt(token);
+		role = decodedToken?.role as string | undefined;
+	} catch (err) {
+		console.error("Invalid token:", err);
+		return NextResponse.redirect(new URL("/", request.url));
+	}
 
-	// Restrict admin dashboard access to admins only
-	if (pathname.startsWith("/admin/dashboard") && !decodedToken.admin) {
+	const isAdmin = role === "admin";
+
+	// Block non-admins from accessing /admin/dashboard
+	if (pathname.startsWith("/admin/dashboard") && !isAdmin) {
 		return NextResponse.redirect(new URL("/dashboard", request.url));
 	}
 
-	// Prevent admin from accessing user dashboard
-	if (pathname.startsWith("/dashboard") && decodedToken.admin) {
+	// Block admins from accessing regular dashboard
+	if (pathname.startsWith("/dashboard") && isAdmin) {
 		return NextResponse.redirect(new URL("/admin/dashboard", request.url));
 	}
 
-	// Redirect logged-in users away from public pages
+	// Prevent authenticated users from accessing public routes
 	if (publicRoutes.includes(pathname)) {
-		if (decodedToken.admin && pathname !== "/admin/dashboard") {
+		if (isAdmin && pathname !== "/admin/dashboard") {
 			return NextResponse.redirect(new URL("/admin/dashboard", request.url));
-		} else if (!decodedToken.admin && pathname !== "/dashboard") {
+		}
+		if (!isAdmin && pathname !== "/dashboard") {
 			return NextResponse.redirect(new URL("/dashboard", request.url));
 		}
 	}
 
+	// All checks passed
 	return NextResponse.next();
 }
 

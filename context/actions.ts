@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/firebase/server";
+import { auth, firestore } from "@/firebase/server";
 import { cookies } from "next/headers";
 
 export const removeToken = async () => {
@@ -18,26 +18,39 @@ export const setToken = async ({
 }) => {
 	try {
 		const verifiedToken = await auth.verifyIdToken(token);
-		if (!verifiedToken) {
-			return;
-		}
+		if (!verifiedToken) return;
 
 		const userRecord = await auth.getUser(verifiedToken.uid);
-		if (
-			process.env.ADMIN_EMAIL === userRecord.email &&
-			!userRecord.customClaims?.admin
-		) {
-			auth.setCustomUserClaims(verifiedToken.uid, {
-				admin: true,
-			});
+		const email = userRecord.email;
+		const currentClaims = userRecord.customClaims || {};
+
+		let role = "faculty";
+
+		//Check for admin by env email
+		if (email === process.env.ADMIN_EMAIL) {
+			role = "admin";
+		} else {
+			// Try fetching designation from Firestore
+			const userDoc = await firestore
+				.collection("userData")
+				.where("email", "==", email)
+				.limit(1)
+				.get();
+
+			const userData = userDoc.docs[0]?.data();
+			const designationRaw = userData?.designation;
+
+			if (designationRaw) {
+				role = designationRaw.trim().toLowerCase().replace(/\s+/g, "-");
+			}
 		}
 
-		if (!userRecord.customClaims?.admin) {
-			auth.setCustomUserClaims(verifiedToken.uid, {
-				faculty: true,
-			});
+		//Set the custom claim if different from existing
+		if (currentClaims.role !== role) {
+			await auth.setCustomUserClaims(verifiedToken.uid, { role });
 		}
 
+		//Set cookies
 		const cookieStore = await cookies();
 
 		cookieStore.set("firebaseAuthToken", token, {
@@ -50,6 +63,6 @@ export const setToken = async ({
 			secure: process.env.NODE_ENV === "production",
 		});
 	} catch (e) {
-		console.log(e);
+		console.error("Error in setToken:", e);
 	}
 };

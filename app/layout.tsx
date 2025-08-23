@@ -25,7 +25,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en">
-			<body className={`${poppins.className} antialiased bg-muted`}>
+			<body className={`${poppins.className} antialiased facilium-bg-white`}>
 				<AuthProvider>
 					{children}
 					<Toaster />

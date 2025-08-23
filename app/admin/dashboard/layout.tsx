@@ -1,7 +1,9 @@
+import AdminSideBar from "@/components/admin-side-bar";
+
 export default function AdminDashboardLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	return <div>{children}</div>;
+	return <AdminSideBar>{children}</AdminSideBar>;
 }

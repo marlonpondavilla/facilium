@@ -1,7 +1,7 @@
-import AdminPageClient from "./admin-page-client";
+import AdminComponent from "../(admin-components)/admin-component";
 
 const Page = () => {
-	return <AdminPageClient />;
+	return <AdminComponent />;
 };
 
 export default Page;
