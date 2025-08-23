@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth";
 import toast from "react-hot-toast";
+import { assignDeanByUid } from "@/data/actions";
 
 const DashboardRedirectPage = () => {
 	const router = useRouter();
@@ -11,32 +12,47 @@ const DashboardRedirectPage = () => {
 
 	const loading = auth?.loading ?? true;
 	const customClaims = auth?.customClaims ?? null;
+	const user = auth?.user;
 
 	useEffect(() => {
-		if (!loading && customClaims?.role) {
-			if (customClaims.role === "") {
-				router.push("/faculty");
-				return;
-			} else if (customClaims.role === "program-head") {
-				router.push("/program-head");
-				console.log(customClaims.role);
-				return;
-			} else if (customClaims.role === "faculty") {
-				router.push("/faculty");
-				console.log(customClaims.role);
-				return;
-			} else if (customClaims.role === "dean") {
-				router.push("/dean");
-				console.log(customClaims.role);
-				return;
-			} else if (customClaims.role === "admin") {
-				toast.error("Admins cannot access user page.");
-				auth?.logout();
-			} else {
-				router.refresh();
+		const handleRedirectAndAssign = async () => {
+			if (!loading && customClaims?.role) {
+				const role = customClaims.role;
+
+				if (role === "") {
+					router.push("/faculty");
+					return;
+				} else if (role === "program-head") {
+					router.push("/program-head");
+					return;
+				} else if (role === "faculty") {
+					router.push("/faculty");
+					return;
+				} else if (role === "dean") {
+					if (user?.uid) {
+						try {
+							// forcing to assign dean designation even change in firebase
+							await assignDeanByUid({ uid: user.uid });
+						} catch (error) {
+							console.error("Failed to assign dean designation:", error);
+							toast.error("Failed to sync designation. Please try again.");
+						}
+					}
+					router.push("/dean");
+					console.log(role);
+					return;
+				} else if (role === "admin") {
+					toast.error("Admins cannot access user page.");
+					auth?.logout();
+					return;
+				} else {
+					router.refresh();
+				}
 			}
-		}
-	}, [loading, customClaims, router]);
+		};
+
+		handleRedirectAndAssign();
+	}, [loading, customClaims, router, user, auth]);
 
 	if (loading || !customClaims) {
 		return <p>Redirecting...</p>;

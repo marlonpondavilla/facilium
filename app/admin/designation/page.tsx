@@ -74,6 +74,8 @@ const page = async ({ searchParams }: PageInterface) => {
 													className={`${
 														user.designation === "Faculty"
 															? "bg-green-400"
+															: user.designation === "Dean"
+															? "bg-pink-400"
 															: "bg-blue-400"
 													} text-black py-[2px] px-[8px] rounded-2xl text-xs mt-1`}
 												>

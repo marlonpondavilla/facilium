@@ -17,6 +17,11 @@ type DeleteDocumentOptions = {
 	}[];
 };
 
+type AssignDeanByUidOptions = {
+	uid: string;
+	collectionName?: string;
+};
+
 export const deleteDocumentById = async ({
 	id,
 	collectionName,
@@ -37,6 +42,26 @@ export const deleteDocumentById = async ({
 			await batch.commit();
 		}
 	}
+};
+
+export const assignDeanByUid = async ({
+	uid,
+	collectionName = "userData",
+}: AssignDeanByUidOptions): Promise<void> => {
+	if (!uid) throw new Error("UID is required");
+
+	const snapshot = await firestore
+		.collection(collectionName)
+		.where("uid", "==", uid)
+		.limit(1)
+		.get();
+
+	if (snapshot.empty) {
+		throw new Error(`User document with uid "${uid}" not found`);
+	}
+
+	const userDoc = snapshot.docs[0];
+	await userDoc.ref.update({ designation: "Dean" });
 };
 
 export const updateDocumentById = async (
