@@ -38,14 +38,46 @@ const LoginForm = () => {
 			await auth?.login(data.email, data.password);
 			router.push("/dashboard");
 		} catch (e: unknown) {
-			if (typeof e === "object" && e !== null && "code" in e) {
-				const error = e as { code?: string };
+			if (typeof e === "object" && e !== null) {
+				const error = e as { code?: string; message?: string };
+
 				if (error.code === "auth/invalid-credential") {
 					form.setError("root", {
 						type: "custom",
 						message: "Invalid email or password",
 					});
+					form.setError("email", {
+						type: "custom",
+						message: "",
+					});
 
+					form.setError("password", {
+						type: "custom",
+						message: "",
+					});
+					await auth?.logout();
+				} else if (
+					error.message === "Please verify your email before logging in."
+				) {
+					form.setError("root", {
+						type: "custom",
+						message: "Please verify your email before logging in.",
+					});
+					form.setError("email", {
+						type: "custom",
+						message: "",
+					});
+
+					form.setError("password", {
+						type: "custom",
+						message: "",
+					});
+					await auth?.logout();
+				} else {
+					form.setError("root", {
+						type: "custom",
+						message: error.message ?? "An error occurred",
+					});
 					form.setError("email", {
 						type: "custom",
 						message: "",
@@ -57,7 +89,10 @@ const LoginForm = () => {
 					});
 				}
 			} else {
-				toast.error("An error occured");
+				form.setError("root", {
+					type: "custom",
+					message: "An error occurred",
+				});
 			}
 		}
 	};

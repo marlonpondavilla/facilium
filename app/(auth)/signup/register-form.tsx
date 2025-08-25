@@ -20,11 +20,11 @@ import { useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { departments } from "@/data/department";
-
-type FieldName = keyof z.infer<typeof signupSchema>;
+import { useAuth } from "@/context/auth";
 
 export const RegisterForm = () => {
 	const router = useRouter();
+	const auth = useAuth();
 
 	const form = useForm<z.infer<typeof signupSchema>>({
 		resolver: zodResolver(signupSchema),
@@ -40,32 +40,36 @@ export const RegisterForm = () => {
 	});
 
 	const handleSubmit = async (data: z.infer<typeof signupSchema>) => {
-		const response = await signupUser(data);
-		const fieldKeys: FieldName[] = [
-			"firstName",
-			"middleName",
-			"degreeEarned",
-			"email",
-			"department",
-			"password",
-			"confirmPassword",
-		];
+		try {
+			await auth?.signup(data);
 
-		if (response.fieldErrors) {
-			for (const key of fieldKeys) {
-				const message = response.fieldErrors[key]?.[0];
-				if (message) {
-					form.setError(key, {
-						type: "server",
-						message,
-					});
-					toast.error(message);
-				}
+			// If signup succeeds, show success or redirect as needed
+			toast.success(
+				"Signup successful! Please check your email to verify your account."
+			);
+			router.push("/verify-email");
+		} catch (error: any) {
+			// Firebase errors usually have a code like 'auth/email-already-in-use'
+			const errorCode = error.code || "";
+			const errorMessage = error.message || "Signup failed";
+
+			// Map Firebase errors to form fields:
+			if (errorCode === "auth/email-already-in-use") {
+				form.setError("email", {
+					type: "server",
+					message: "Email is already in use.",
+				});
+				toast.error("Email is already in use.");
+			} else if (errorCode === "auth/weak-password") {
+				form.setError("password", {
+					type: "server",
+					message: "Password is too weak.",
+				});
+				toast.error("Password is too weak.");
+			} else {
+				toast.error(errorMessage);
 			}
-			return;
 		}
-		toast.success("Signup successful");
-		router.push("/login");
 	};
 
 	return (

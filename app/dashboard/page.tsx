@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth";
 import toast from "react-hot-toast";
-import { assignDeanByUid } from "@/data/actions";
+import { assignDesignationByUid } from "@/data/actions";
 
 const DashboardRedirectPage = () => {
 	const router = useRouter();
@@ -32,14 +32,13 @@ const DashboardRedirectPage = () => {
 					if (user?.uid) {
 						try {
 							// forcing to assign dean designation even change in firebase
-							await assignDeanByUid({ uid: user.uid });
+							await assignDesignationByUid({ uid: user.uid, role: "Dean" });
 						} catch (error) {
 							console.error("Failed to assign dean designation:", error);
 							toast.error("Failed to sync designation. Please try again.");
 						}
 					}
 					router.push("/dean");
-					console.log(role);
 					return;
 				} else if (role === "admin") {
 					toast.error("Admins cannot access user page.");
