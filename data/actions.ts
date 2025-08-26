@@ -117,6 +117,34 @@ export const getDocumentsFromFirestore = async <T>(
 	}
 };
 
+export const getDocumentsByFieldIds = async <T>(
+	collectionName: string,
+	fieldName: string,
+	searchId: string
+): Promise<T[]> => {
+	try {
+		let collectionRef: CollectionReference<DocumentData> =
+			firestore.collection(collectionName);
+		const queryRef: Query<DocumentData> = collectionRef.where(
+			fieldName,
+			"==",
+			searchId
+		);
+
+		const snapshot = await queryRef.get();
+
+		const documents: T[] = snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...doc.data(),
+		})) as T[];
+
+		return documents;
+	} catch (error) {
+		console.error("Error on fetching documents field by id", error);
+		return [];
+	}
+};
+
 export const getSingleDocumentFromFirestore = async (
 	id: string,
 	collectionName: string,

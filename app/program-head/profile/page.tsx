@@ -4,11 +4,9 @@ import React from "react";
 
 const Page = () => {
 	return (
-		<div>
-			<FacultyHeader>
-				<LogoutAuthButton />
-			</FacultyHeader>
-		</div>
+		<FacultyHeader>
+			<LogoutAuthButton />
+		</FacultyHeader>
 	);
 };
 

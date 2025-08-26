@@ -24,9 +24,10 @@ export const setToken = async ({
 		const email = userRecord.email;
 		const currentClaims = userRecord.customClaims || {};
 
+		// deafault role for every user
 		let role = "faculty";
 
-		//Check for admin by env email
+		//Check for role by env email, and assign respective designation
 		if (email === process.env.ADMIN_EMAIL) {
 			role = "admin";
 		} else if (email === "ayanokoujisan26@gmail.com") {

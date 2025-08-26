@@ -14,7 +14,7 @@ import { BuildingActionsDropdown } from "./building-actions-dropdown";
 import ViewClassroomButton from "./view-classroom-btn";
 import { getCollectionSize, getDocumentsFromFirestore } from "@/data/actions";
 
-const page = async () => {
+const Page = async () => {
 	const buildings: Building[] = await getDocumentsFromFirestore(
 		"buildings",
 		true
@@ -61,4 +61,4 @@ const page = async () => {
 	);
 };
 
-export default page;
+export default Page;

@@ -16,7 +16,7 @@ import { PageInterface } from "@/types/pageInterface";
 import NextButton from "@/components/next-button";
 import { Badge } from "@/components/ui/badge";
 
-const page = async ({ searchParams }: PageInterface) => {
+const Page = async ({ searchParams }: PageInterface) => {
 	const params = await searchParams;
 
 	const currentPage = parseInt(params.page || "1", 10);
@@ -130,4 +130,4 @@ const page = async ({ searchParams }: PageInterface) => {
 	);
 };
 
-export default page;
+export default Page;

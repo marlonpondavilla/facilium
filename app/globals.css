@@ -186,6 +186,25 @@ body {
 	.facilium-bg-profile {
 		background-color: #8d99ae;
 	}
+	/* buildings custom colors */
+	.facilium-bg-teal {
+		background-color: #02394a;
+	}
+	.facilium-bg-hot-pink {
+		background-color: #ff1b8d;
+	}
+	.facilium-bg-royal-blue {
+		background-color: #043565;
+	}
+	.facilium-bg-cornflower {
+		background-color: #043565;
+	}
+	.facilium-bg-bubblegum {
+		background-color: #f26df9;
+	}
+	.facilium-bg-fuscia {
+		background-color: #eb4b98;
+	}
 }
 
 /* From Uiverse.io by Nawsome */
