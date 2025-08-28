@@ -26,12 +26,14 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 	};
 
 	const handleProfileClick = () => {
-		if (pathname === "/faculty") {
+		if (pathname.startsWith("/faculty")) {
 			router.push("/faculty/profile");
-		} else if (pathname === "/program-head") {
+		} else if (pathname.startsWith("/program-head")) {
 			router.push("/program-head/profile");
-		} else {
+		} else if (pathname.startsWith("/dean")) {
 			router.push("/dean/profile");
+		} else {
+			router.push("/error-page");
 		}
 	};
 

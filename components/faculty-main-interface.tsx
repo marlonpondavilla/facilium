@@ -34,9 +34,9 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 
 	return (
 		<div className="border flex flex-col justify-center gap-4 w-5xl">
-			<div className="relative border w-full h-[200px] bg-[url('/faculty-main-interface-img.png')] bg-cover bg-center rounded-2xl overflow-hidden">
+			<div className="relative border w-full h-[200px] bg-[url('/bsu-meneses-logo.png')] bg-cover bg-center rounded-2xl overflow-hidden">
 				{/* Dark pink gradient from bottom to top */}
-				<div className="absolute inset-0 bg-gradient-to-t from-pink-800/80 via-pink-800/70 to-pink-600/70 z-10" />
+				<div className="absolute inset-0 bg-gradient-to-t from-pink-800/80 via-pink-800/60 to-pink-600/70 z-10" />
 
 				{/* Content */}
 				<div className="relative z-20 flex justify-center items-center h-full">
@@ -54,7 +54,7 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 			</div>
 
 			<div className="buildings-control facilium-bg-whiter flex flex-col gap-4 p-4 rounded-2xl">
-				<div className="flex justify-between">
+				<div className="flex justify-between items-center border-b border-gray-300 pb-4">
 					<div className="buildings-control-title flex items-center gap-2">
 						<Building />
 						<h1 className="font-semibold tracking-wide">

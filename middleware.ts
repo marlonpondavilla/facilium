@@ -29,6 +29,24 @@ export async function middleware(request: NextRequest) {
 	}
 
 	const isAdmin = role === "admin";
+	const isProgramHead = role === "program-head";
+	const isFaculty = role === "faculty";
+	const isDean = role === "dean";
+
+	// block faculty from accessing protected routes
+	if (pathname.startsWith("/program-head") && !isProgramHead) {
+		return NextResponse.redirect(new URL("/dashboard", request.url));
+	}
+
+	// block program-head from accessing protected routes
+	if (pathname.startsWith("/faculty") && !isFaculty) {
+		return NextResponse.redirect(new URL("/dashboard", request.url));
+	}
+
+	// block dean from accessing protected routes
+	if (pathname.startsWith("/dean") && !isDean) {
+		return NextResponse.redirect(new URL("/dashboard", request.url));
+	}
 
 	// Block non-admins from accessing /admin/dashboard
 	if (pathname.startsWith("/admin/dashboard") && !isAdmin) {
