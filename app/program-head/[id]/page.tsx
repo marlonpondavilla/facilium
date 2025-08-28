@@ -23,6 +23,31 @@ type Programs = {
 	programCode: string;
 };
 
+type YearLevels = {
+	id: string;
+	programId: string;
+	yearLevel: string;
+};
+
+type Sections = {
+	id: string;
+	yearLevelId: string;
+	sectionName: string;
+};
+
+type Courses = {
+	id: string;
+	yearLevelId: string;
+	courseCode: string;
+};
+
+type Professors = {
+	id: string;
+	designation: string;
+	firstName: string;
+	lastName: string;
+};
+
 const Page = async ({ params }: PageProps) => {
 	const { id } = await Promise.resolve(params);
 
@@ -38,18 +63,36 @@ const Page = async ({ params }: PageProps) => {
 		id
 	);
 
-	// const yearLevels = await getDocumentsFromFirestore("year-levels", true);
 	const programs: Programs[] = await getDocumentsFromFirestore(
 		"programs",
 		true
 	);
 
+	const yearLevels: YearLevels[] = await getDocumentsFromFirestore(
+		"year-levels",
+		true
+	);
+
+	const sections: Sections[] = await getDocumentsFromFirestore(
+		"sections",
+		true
+	);
+
+	const courses: Courses[] = await getDocumentsFromFirestore("courses", true);
+
+	// note: hindi naka sort by created field, just add the second argument(boolean) if needed.
+	const professors: Professors[] = await getDocumentsFromFirestore("userData");
+
 	return (
 		<FacultyHeader>
 			<FacultyScheduleInterface
-				programs={programs}
 				buildingName={buildingName}
 				data={classrooms}
+				programs={programs}
+				yearLevels={yearLevels}
+				sections={sections}
+				courses={courses}
+				professors={professors}
 			/>
 		</FacultyHeader>
 	);

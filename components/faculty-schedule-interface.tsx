@@ -12,7 +12,7 @@ import {
 	SelectValue,
 } from "./ui/select";
 import { Button } from "./ui/button";
-import { useForm } from "react-hook-form";
+import { FieldPath, FieldPathValue, useForm } from "react-hook-form";
 import { z } from "zod";
 import { scheduleSchema } from "@/validation/scheduleSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,21 +36,47 @@ type FacultyScheduleInterfaceProps = {
 		id: string;
 		programCode: string;
 	}[];
+	yearLevels: {
+		id: string;
+		programId: string;
+		yearLevel: string;
+	}[];
+	sections: {
+		id: string;
+		yearLevelId: string;
+		sectionName: string;
+	}[];
+	courses: {
+		id: string;
+		yearLevelId: string;
+		courseCode: string;
+	}[];
+	professors: {
+		id: string;
+		designation: string;
+		firstName: string;
+		lastName: string;
+	}[];
 };
 
-type ScheduleProps = {
-	program: string;
-};
+type ScheduleFormValues = z.infer<typeof scheduleSchema>;
 
 const FacultyScheduleInterface = ({
 	buildingName,
 	data,
 	programs,
+	yearLevels,
+	sections,
+	courses,
+	professors,
 }: FacultyScheduleInterfaceProps) => {
 	const pathname = usePathname();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const classroomId = searchParams.get("classroomId");
+	const programId = searchParams.get("programId");
+	const yearLevelId = searchParams.get("yearLevelId");
+	const sectionId = searchParams.get("sectionId");
 
 	const form = useForm<z.infer<typeof scheduleSchema>>({
 		resolver: zodResolver(scheduleSchema),
@@ -63,30 +89,50 @@ const FacultyScheduleInterface = ({
 		},
 	});
 
+	const updateQueryParamAndForm = <T extends FieldPath<ScheduleFormValues>>(
+		key: string,
+		value: FieldPathValue<ScheduleFormValues, T>
+	) => {
+		const params = new URLSearchParams(window.location.search);
+		params.set(key, String(value));
+		router.push(`${pathname}?${params.toString()}`, { scroll: false });
+	};
+
 	// form watchers
-	const program = form.watch("program");
-	const yearLevel = form.watch("yearLevel");
-	const section = form.watch("section");
-	const courseCode = form.watch("courseCode");
-	const professor = form.watch("professor");
+	const programWatcher = form.watch("program");
+	const yearLevelWatcher = form.watch("yearLevel");
+	const sectionWatcher = form.watch("section");
+	const courseCodeWatcher = form.watch("courseCode");
+	const professorWatcher = form.watch("professor");
+
+	// designation allowed as professor in (professor select)
+	const designationAllowed = ["Faculty", "Program Head", "Dean"];
 
 	const handleClassroomClick = (id: string) => {
 		const params = new URLSearchParams({
 			classroomId: id,
 		});
 		router.push(`${pathname}?${params.toString()}`);
+		form.reset();
 	};
 
 	const handleScheduleSubmit = async (
 		values: z.infer<typeof scheduleSchema>
 	) => {
+		// send to db
+		const scheduleData = {
+			...values,
+			classroomId: classroomId,
+		};
 		await new Promise((resolve) => {
 			form.reset();
 			setTimeout(resolve, 1000);
 		});
 
-		console.log("Form values:", values);
+		console.table(scheduleData);
 		toast.success("Schedule submitted!");
+
+		router.push(pathname);
 	};
 
 	return (
@@ -167,7 +213,23 @@ const FacultyScheduleInterface = ({
 												<div className="flex items-center gap-4">
 													<FormLabel>Program</FormLabel>
 													<Select
-														onValueChange={field.onChange}
+														onValueChange={(value) => {
+															// match the selected program
+															const selectedProgram = programs.find(
+																(p) => p.programCode === value
+															);
+															// exit early if nothing found
+															if (!selectedProgram) {
+																return;
+															}
+
+															updateQueryParamAndForm(
+																"programId",
+																selectedProgram.id
+															);
+
+															form.setValue("program", value);
+														}}
 														{...field}
 														defaultValue={field.value}
 														disabled={!classroomId}
@@ -206,28 +268,51 @@ const FacultyScheduleInterface = ({
 												<div className="flex items-center gap-4">
 													<FormLabel>Year Level</FormLabel>
 													<Select
-														onValueChange={field.onChange}
+														onValueChange={(value) => {
+															// reflects select item change
+															const selectedYear = yearLevels.find(
+																(y) => y.id === value
+															);
+
+															if (!selectedYear) {
+																return;
+															}
+
+															updateQueryParamAndForm(
+																"yearLevelId",
+																selectedYear.id
+															);
+
+															form.setValue("yearLevel", value);
+														}}
 														defaultValue={field.value}
 														{...field}
-														disabled={!program}
+														disabled={!(programWatcher && programId)}
 													>
 														<FormControl>
 															<SelectTrigger>
 																<SelectValue placeholder="Select Year Level" />
 															</SelectTrigger>
 														</FormControl>
-														<SelectContent>
-															<SelectGroup>
-																{programs.map((program) => (
-																	<SelectItem
-																		key={program.id}
-																		value={program.programCode}
-																	>
-																		{program.programCode}
-																	</SelectItem>
-																))}
-															</SelectGroup>
-														</SelectContent>
+														{programId ? (
+															<SelectContent>
+																<SelectGroup>
+																	{yearLevels
+																		.filter(
+																			(yearLevel) =>
+																				yearLevel.programId === programId
+																		)
+																		.map((yearLevel) => (
+																			<SelectItem
+																				key={yearLevel.id}
+																				value={yearLevel.id}
+																			>
+																				{yearLevel.yearLevel}
+																			</SelectItem>
+																		))}
+																</SelectGroup>
+															</SelectContent>
+														) : null}
 													</Select>
 												</div>
 												<FormMessage className="text-xs" />
@@ -245,10 +330,25 @@ const FacultyScheduleInterface = ({
 												<div className="flex items-center gap-4">
 													<FormLabel>Section</FormLabel>
 													<Select
-														onValueChange={field.onChange}
+														onValueChange={(value) => {
+															const selectedSection = sections.find(
+																(s) => s.sectionName === value
+															);
+
+															if (!selectedSection) {
+																return;
+															}
+
+															updateQueryParamAndForm(
+																"sectionId",
+																selectedSection.id
+															);
+
+															form.setValue("section", value);
+														}}
 														defaultValue={field.value}
 														{...field}
-														disabled={!yearLevel}
+														disabled={!(yearLevelId && yearLevelWatcher)}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -257,14 +357,19 @@ const FacultyScheduleInterface = ({
 														</FormControl>
 														<SelectContent>
 															<SelectGroup>
-																{programs.map((program) => (
-																	<SelectItem
-																		key={program.id}
-																		value={program.programCode}
-																	>
-																		{program.programCode}
-																	</SelectItem>
-																))}
+																{sections
+																	.filter(
+																		(section) =>
+																			section.yearLevelId === yearLevelId
+																	)
+																	.map((section) => (
+																		<SelectItem
+																			key={section.id}
+																			value={section.sectionName}
+																		>
+																			{section.sectionName}
+																		</SelectItem>
+																	))}
 															</SelectGroup>
 														</SelectContent>
 													</Select>
@@ -274,7 +379,7 @@ const FacultyScheduleInterface = ({
 										)}
 									/>
 								</div>
-								{/* Course Select Field */}
+								{/* Courses Select Field */}
 								<div>
 									<FormField
 										control={form.control}
@@ -287,7 +392,7 @@ const FacultyScheduleInterface = ({
 														onValueChange={field.onChange}
 														defaultValue={field.value}
 														{...field}
-														disabled={!section}
+														disabled={!(sectionWatcher && sectionId)}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -296,14 +401,19 @@ const FacultyScheduleInterface = ({
 														</FormControl>
 														<SelectContent>
 															<SelectGroup>
-																{programs.map((program) => (
-																	<SelectItem
-																		key={program.id}
-																		value={program.programCode}
-																	>
-																		{program.programCode}
-																	</SelectItem>
-																))}
+																{courses
+																	.filter(
+																		(course) =>
+																			course.yearLevelId === yearLevelId
+																	)
+																	.map((course) => (
+																		<SelectItem
+																			key={course.id}
+																			value={course.courseCode}
+																		>
+																			{course.courseCode}
+																		</SelectItem>
+																	))}
 															</SelectGroup>
 														</SelectContent>
 													</Select>
@@ -326,7 +436,7 @@ const FacultyScheduleInterface = ({
 														onValueChange={field.onChange}
 														defaultValue={field.value}
 														{...field}
-														disabled={!courseCode}
+														disabled={!courseCodeWatcher}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -335,14 +445,19 @@ const FacultyScheduleInterface = ({
 														</FormControl>
 														<SelectContent>
 															<SelectGroup>
-																{programs.map((program) => (
-																	<SelectItem
-																		key={program.id}
-																		value={program.programCode}
-																	>
-																		{program.programCode}
-																	</SelectItem>
-																))}
+																{professors
+																	.filter(
+																		(professor) =>
+																			professor.designation !== "Admin"
+																	)
+																	.map((professor) => (
+																		<SelectItem
+																			key={professor.id}
+																			value={`${professor.firstName} ${professor.lastName}`}
+																		>
+																			{`${professor.firstName} ${professor.lastName}`}
+																		</SelectItem>
+																	))}
 															</SelectGroup>
 														</SelectContent>
 													</Select>
