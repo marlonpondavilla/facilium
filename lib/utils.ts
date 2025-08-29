@@ -6,56 +6,50 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function validateScheduleTimeRange(
-	startTime: string,
-	endTime: string,
-	maxDurationMinutes: number = 360
+	startHour: number,
+	durationHours: number,
+	additionalMinutes: number = 0,
+	maxDurationMinutes: number = 300
 ): { isValid: boolean; error?: string } {
-	if (!startTime || !endTime) {
-		return { isValid: false, error: "Start and end time are required." };
+	if (startHour == null || durationHours == null) {
+		return { isValid: false, error: "Start time and duration are required." };
 	}
 
-	const [startHour, startMinute] = startTime.split(":").map(Number);
-	const [endHour, endMinute] = endTime.split(":").map(Number);
-
-	const startTotal = startHour * 60 + startMinute;
-	const endTotal = endHour * 60 + endMinute;
-
-	const minStart = 7 * 60;
-	const maxEnd = 20 * 60 + 30;
-
-	// checks if start time set to 12pm
-	if (startHour === 12 && startMinute === 0) {
+	if (startHour === 12) {
 		return {
 			isValid: false,
-			error: "Start time cannot be at 12:00pm (Lunch break)",
+			error: "Start time cannot be at 12pm (Lunchbreak)",
 		};
 	}
 
-	// checks if start begins at or after 7am
-	if (startTotal < minStart) {
+	if (startHour === 20 || startHour === 20.5) {
 		return {
 			isValid: false,
-			error: "Start time must be at or after 7:00 AM.",
+			error: "Start time must be before 8:00pm",
 		};
 	}
 
-	// checks if end time at or before 8:30pm
-	if (endTotal > maxEnd) {
-		return { isValid: false, error: "End time must be at or before 8:30 PM." };
+	if (durationHours <= 0) {
+		return { isValid: false, error: "Duration must be greater than 0." };
 	}
 
-	if (startTotal >= endTotal) {
-		return { isValid: false, error: "End time must be after start time." };
-	}
+	const totalDurationMinutes = durationHours * 60 + additionalMinutes;
 
-	const duration = endTotal - startTotal;
-
-	if (duration > maxDurationMinutes) {
+	if (totalDurationMinutes > maxDurationMinutes) {
 		return {
 			isValid: false,
-			error: `Time duration must not exceed ${maxDurationMinutes / 60} hours.`,
+			error: `Total duration cannot exceed ${maxDurationMinutes} minutes.`,
 		};
 	}
 
 	return { isValid: true };
+}
+
+export function formatProfessorName(fullName: string): string {
+	const parts = fullName.trim().split(" ");
+	if (parts.length < 2) return fullName;
+
+	const firstInitial = parts[0][0];
+	const lastName = parts.slice(-1)[0]; // handles middle names
+	return `${firstInitial}. ${lastName}`;
 }

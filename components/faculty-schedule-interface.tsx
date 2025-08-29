@@ -2,7 +2,7 @@
 
 import { Building, NotebookPen } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
 	Select,
 	SelectContent,
@@ -25,8 +25,15 @@ import {
 	FormMessage,
 } from "./ui/form";
 import toast from "react-hot-toast";
-import { Input } from "./ui/input";
 import { validateScheduleTimeRange } from "@/lib/utils";
+import { Checkbox } from "./ui/checkbox";
+import ScheduleTable from "./schedule-table";
+import { ScheduleItem } from "@/types/SceduleInterface";
+import {
+	addDocumentToFirestore,
+	checkIfDocumentExists,
+	checkIfScheduleConflictExists,
+} from "@/data/actions";
 
 type FacultyScheduleInterfaceProps = {
 	buildingName: string;
@@ -59,6 +66,7 @@ type FacultyScheduleInterfaceProps = {
 		firstName: string;
 		lastName: string;
 	}[];
+	scheduleItems: ScheduleItem[];
 };
 
 type ScheduleFormValues = z.infer<typeof scheduleSchema>;
@@ -71,6 +79,7 @@ const FacultyScheduleInterface = ({
 	sections,
 	courses,
 	professors,
+	scheduleItems,
 }: FacultyScheduleInterfaceProps) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
@@ -94,8 +103,9 @@ const FacultyScheduleInterface = ({
 			courseCode: "",
 			professor: "",
 			day: "",
-			start: "",
-			end: "",
+			start: 0,
+			duration: 0,
+			halfHour: 0,
 		},
 	});
 
@@ -125,6 +135,24 @@ const FacultyScheduleInterface = ({
 	const courseCodeWatcher = form.watch("courseCode");
 	const professorWatcher = form.watch("professor");
 	const dayWatcher = form.watch("day");
+	const startWatcher = form.watch("start");
+	const durationWatcher = form.watch("duration");
+	const halfHourWatcher = form.watch("halfHour");
+
+	useEffect(() => {
+		form.clearErrors();
+		setError("");
+	}, [
+		programWatcher,
+		yearLevelWatcher,
+		sectionWatcher,
+		courseCodeWatcher,
+		professorWatcher,
+		dayWatcher,
+		startWatcher,
+		durationWatcher,
+		halfHourWatcher,
+	]);
 
 	const handleClassroomClick = (id: string) => {
 		const params = new URLSearchParams({
@@ -132,6 +160,7 @@ const FacultyScheduleInterface = ({
 		});
 		router.push(`${pathname}?${params.toString()}`);
 		form.reset();
+		setError("");
 
 		makeLoading();
 	};
@@ -139,26 +168,47 @@ const FacultyScheduleInterface = ({
 	const handleScheduleSubmit = async (
 		values: z.infer<typeof scheduleSchema>
 	) => {
-		const scheduleResult = validateScheduleTimeRange(values.start, values.end);
+		const scheduleResult = validateScheduleTimeRange(
+			values.start,
+			values.duration
+		);
 
 		if (!scheduleResult.isValid) {
-			toast.error(scheduleResult.error || "Invalid time range.");
-			setError(scheduleResult.error || "Invalid time range.");
+			toast.error(scheduleResult.error || "Invalid time.");
+			setError(scheduleResult.error || "Invalid time.");
 			return;
 		}
 
-		// send to db
+		if (!classroomId) {
+			toast.error("Classroom ID is missing.");
+			return;
+		}
+
 		const scheduleData = {
 			...values,
-			classroomId: classroomId,
+			classroomId,
 		};
-		await new Promise((resolve) => {
-			form.reset();
-			setTimeout(resolve, 1000);
+
+		const scheduleConflictFound = await checkIfScheduleConflictExists(
+			scheduleData
+		);
+
+		if (scheduleConflictFound) {
+			toast.error(`There is a schedule conflict`);
+			setError("There is a same schedule like this in other classrooms");
+			return;
+		}
+
+		const result = await addDocumentToFirestore("scheduleData", {
+			...scheduleData,
+			created: new Date().toISOString(),
 		});
 
-		console.table(scheduleData);
-		toast.success("Schedule submitted!");
+		if (result.success) {
+			form.reset();
+			setError("");
+			toast.success("Schedule submitted!");
+		}
 
 		router.push(pathname);
 	};
@@ -167,7 +217,7 @@ const FacultyScheduleInterface = ({
 		<div className="flex flex-col gap-4 w-6xl scroll-smooth">
 			{/* loading spinner */}
 			{isLoading && (
-				<div className="absolute inset-0 bg-black/30 flex items-center justify-center z-50">
+				<div className="absolute inset-0 bg-black/30 flex items-center justify-center h-full z-50">
 					<div role="status">
 						<svg
 							aria-hidden="true"
@@ -557,62 +607,144 @@ const FacultyScheduleInterface = ({
 										)}
 									/>
 								</div>
-								{/* Start and End */}
-								<div className="">
-									<div className="border-t-2 border-t-pink-400 py-4 flex items-center justify-start gap-2">
+
+								{/* Start and Duration Section */}
+								<div className="border-t-2 border-t-pink-400 py-4">
+									<div className="flex flex-wrap items-center gap-2">
+										{/* Start Time */}
 										<FormField
 											control={form.control}
 											name="start"
 											render={({ field }) => (
-												<FormItem>
+												<FormItem className="flex flex-col">
 													<div className="flex items-center gap-2">
-														<FormLabel className="text-xs">Start:</FormLabel>
-														<Input
-															type="time"
-															{...field}
+														<FormLabel className="text-xs w-16">
+															Start:
+														</FormLabel>
+														<Select
+															onValueChange={(value) =>
+																field.onChange(Number(value))
+															}
+															value={field.value?.toString()}
 															disabled={!dayWatcher}
-															onChange={(e) => {
-																field.onChange(e);
-																setError("");
-															}}
-															className="border-gray-500"
-														/>
+														>
+															<FormControl>
+																<SelectTrigger className="w-24 border-gray-500">
+																	<SelectValue placeholder="Start time" />
+																</SelectTrigger>
+															</FormControl>
+															<SelectContent>
+																<SelectGroup>
+																	{Array.from({ length: 28 }, (_, i) => {
+																		const hour = 7 + Math.floor(i / 2);
+																		const minute = i % 2 === 0 ? "00" : "30";
+																		const label = `${hour}:${minute}`;
+																		// Value: encode as a number with `.5` for half hour, e.g. 7, 7.5, 8, 8.5 etc.
+																		const value =
+																			hour + (minute === "30" ? 0.5 : 0);
+																		return (
+																			<SelectItem
+																				key={i}
+																				value={value.toString()}
+																			>
+																				{label}
+																			</SelectItem>
+																		);
+																	})}
+																</SelectGroup>
+															</SelectContent>
+														</Select>
 													</div>
 													<FormMessage className="text-xs" />
 												</FormItem>
 											)}
 										/>
+
+										{/* Duration */}
 										<FormField
 											control={form.control}
-											name="end"
+											name="duration"
 											render={({ field }) => (
-												<FormItem>
+												<FormItem className="flex flex-col">
 													<div className="flex items-center gap-2">
-														<FormLabel className="text-xs">End:</FormLabel>
-														<Input
-															type="time"
-															{...field}
-															disabled={!dayWatcher}
-															onChange={(e) => {
-																field.onChange(e);
-																setError("");
-															}}
-															className="border-gray-500"
-														/>
+														<FormLabel className="text-xs w-16">
+															Duration:
+														</FormLabel>
+														<Select
+															onValueChange={(value) =>
+																field.onChange(Number(value))
+															}
+															value={field.value?.toString()}
+															disabled={!startWatcher}
+														>
+															<FormControl>
+																<SelectTrigger className="w-24 border-gray-500">
+																	<SelectValue placeholder="Select" />
+																</SelectTrigger>
+															</FormControl>
+															<SelectContent>
+																<SelectGroup>
+																	{Array.from({ length: 5 }, (_, i) => {
+																		const durationHour = i + 1;
+																		const label = `${durationHour} ${
+																			durationHour === 1 ? "hr" : "hrs"
+																		}`;
+																		return (
+																			<SelectItem
+																				key={durationHour}
+																				value={durationHour.toString()}
+																			>
+																				{label}
+																			</SelectItem>
+																		);
+																	})}
+																</SelectGroup>
+															</SelectContent>
+														</Select>
+													</div>
+													<FormMessage className="text-xs" />
+												</FormItem>
+											)}
+										/>
+
+										{/* +30 Minutes Checkbox */}
+										<FormField
+											control={form.control}
+											name="halfHour"
+											render={({ field }) => (
+												<FormItem className="flex flex-col">
+													<div className="flex items-center gap-2 h-10">
+														<FormLabel className="text-xs w-16">
+															+30mins:
+														</FormLabel>
+														<FormControl>
+															<Checkbox
+																checked={!!field.value}
+																disabled={!startWatcher && !durationWatcher}
+																className="border-gray-500"
+																onCheckedChange={(checked) =>
+																	field.onChange(checked ? 30 : 0)
+																}
+															/>
+														</FormControl>
 													</div>
 													<FormMessage className="text-xs" />
 												</FormItem>
 											)}
 										/>
 									</div>
+
+									{/* Conditional error messages */}
 									{!dayWatcher && (
-										<p className="text-red-400 text-xs text-center">
+										<p className="text-red-400 text-xs text-center mt-2">
 											Complete the information above first.
 										</p>
 									)}
-									{/* shows as error on the start and end time */}
+
 									{error && (
-										<p className="text-red-400 text-xs text-center">{error}</p>
+										<p className="text-red-400 text-xs text-center mt-2">
+											{error}
+										</p>
 									)}
 								</div>
 
@@ -630,9 +762,9 @@ const FacultyScheduleInterface = ({
 					</Form>
 				</div>
 
-				{/* Right Column Placeholder */}
+				{/* Schedule table */}
 				<div className="schedule-action-controls facilium-bg-whiter p-4 rounded col-span-2 row-span-12">
-					test
+					<ScheduleTable scheduleItems={scheduleItems} />
 				</div>
 			</div>
 		</div>

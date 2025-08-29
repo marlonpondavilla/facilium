@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addDocumentToFirestore } from "@/data/actions";
 import { Plus } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import React, { useState, useTransition } from "react";
 import toast from "react-hot-toast";
 

@@ -5,6 +5,7 @@ import {
 	getDocumentsFromFirestore,
 	getSingleDocumentFromFirestore,
 } from "@/data/actions";
+import { ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
 
 type PageProps = {
@@ -83,6 +84,11 @@ const Page = async ({ params }: PageProps) => {
 	// note: hindi naka sort by created field, just add the second argument(boolean) if needed.
 	const professors: Professors[] = await getDocumentsFromFirestore("userData");
 
+	const scheduleData: ScheduleItem[] = await getDocumentsFromFirestore(
+		"scheduleData",
+		true
+	);
+
 	return (
 		<FacultyHeader>
 			<FacultyScheduleInterface
@@ -93,6 +99,7 @@ const Page = async ({ params }: PageProps) => {
 				sections={sections}
 				courses={courses}
 				professors={professors}
+				scheduleItems={scheduleData}
 			/>
 		</FacultyHeader>
 	);

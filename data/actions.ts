@@ -1,6 +1,7 @@
 "use server";
 
 import { firestore } from "@/firebase/server";
+import { ScheduleItem } from "@/types/SceduleInterface";
 import {
 	CollectionReference,
 	DocumentData,
@@ -196,10 +197,10 @@ export const incrementDocumentCountById = async (
 		});
 };
 
-export const checkIfDocumentExists = async (
+export const checkIfDocumentExists = async <T = string | number>(
 	collectionName: string,
 	normalizedFieldName: string,
-	value: string,
+	value: T,
 	foreignField?: string,
 	foreignValue?: string
 ): Promise<boolean> => {
@@ -222,6 +223,52 @@ export const checkIfDocumentExists = async (
 		return exists;
 	} catch (e) {
 		console.error("Error checking document existence", e);
+		return false;
+	}
+};
+
+export const checkIfScheduleConflictExists = async (
+	newSchedule: ScheduleItem
+): Promise<boolean> => {
+	try {
+		// Query all schedule entries on the same day (excluding the current one if editing)
+		const snapshot = await firestore
+			.collection("scheduleData")
+			.where("day", "==", newSchedule.day)
+			.get();
+
+		// Iterate through all items, check for time overlap and resource conflict
+		const conflictExists = snapshot.docs.some((doc) => {
+			const existing: ScheduleItem = {
+				id: doc.id,
+				...doc.data(),
+			} as ScheduleItem;
+
+			// If editing an existing schedule, ignore the same record
+			if (existing.id === newSchedule.id) return false;
+
+			// Check time overlap
+			const existingStart = existing.start;
+			const existingEnd = existing.start + existing.duration;
+			const newStart = newSchedule.start;
+			const newEnd = newSchedule.start + newSchedule.duration;
+
+			const timeOverlap = !(newEnd <= existingStart || newStart >= existingEnd);
+
+			if (!timeOverlap) return false;
+
+			// Check for conflicts on professor, classroom, or section
+			const professorConflict = existing.professor === newSchedule.professor;
+			const classroomConflict =
+				existing.classroomId === newSchedule.classroomId;
+			const sectionConflict = existing.section === newSchedule.section;
+
+			return professorConflict || classroomConflict || sectionConflict;
+		});
+
+		return conflictExists;
+	} catch (error) {
+		console.error("Error checking for schedule conflicts:", error);
 		return false;
 	}
 };

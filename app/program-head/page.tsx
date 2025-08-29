@@ -1,6 +1,7 @@
 import FacultyHeader from "@/components/faculty-header";
 import FacultyMainInterface from "@/components/faculty-main-interface";
 import { getDocumentsFromFirestore } from "@/data/actions";
+import { colors } from "@/data/colors";
 import React from "react";
 
 type Building = {
@@ -10,15 +11,6 @@ type Building = {
 };
 
 const Page = async () => {
-	const colors = [
-		"facilium-bg-teal",
-		"facilium-bg-hot-pink",
-		"facilium-bg-royal-blue",
-		"facilium-bg-cornflower",
-		"facilium-bg-bubblegum",
-		"facilium-bg-fuscia",
-	];
-
 	const buildingData: Building[] = (
 		(await getDocumentsFromFirestore("buildings", true)) as Building[]
 	).map((bg, i) => ({
