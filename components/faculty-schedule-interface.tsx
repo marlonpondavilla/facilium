@@ -25,6 +25,8 @@ import {
 	FormMessage,
 } from "./ui/form";
 import toast from "react-hot-toast";
+import { Input } from "./ui/input";
+import { validateScheduleTimeRange } from "@/lib/utils";
 
 type FacultyScheduleInterfaceProps = {
 	buildingName: string;
@@ -71,6 +73,7 @@ const FacultyScheduleInterface = ({
 	professors,
 }: FacultyScheduleInterfaceProps) => {
 	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState("");
 
 	const pathname = usePathname();
 	const router = useRouter();
@@ -80,6 +83,8 @@ const FacultyScheduleInterface = ({
 	const yearLevelId = searchParams.get("yearLevelId");
 	const sectionId = searchParams.get("sectionId");
 
+	const days = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
+
 	const form = useForm<z.infer<typeof scheduleSchema>>({
 		resolver: zodResolver(scheduleSchema),
 		defaultValues: {
@@ -88,6 +93,9 @@ const FacultyScheduleInterface = ({
 			section: "",
 			courseCode: "",
 			professor: "",
+			day: "",
+			start: "",
+			end: "",
 		},
 	});
 
@@ -116,6 +124,7 @@ const FacultyScheduleInterface = ({
 	const sectionWatcher = form.watch("section");
 	const courseCodeWatcher = form.watch("courseCode");
 	const professorWatcher = form.watch("professor");
+	const dayWatcher = form.watch("day");
 
 	const handleClassroomClick = (id: string) => {
 		const params = new URLSearchParams({
@@ -130,6 +139,14 @@ const FacultyScheduleInterface = ({
 	const handleScheduleSubmit = async (
 		values: z.infer<typeof scheduleSchema>
 	) => {
+		const scheduleResult = validateScheduleTimeRange(values.start, values.end);
+
+		if (!scheduleResult.isValid) {
+			toast.error(scheduleResult.error || "Invalid time range.");
+			setError(scheduleResult.error || "Invalid time range.");
+			return;
+		}
+
 		// send to db
 		const scheduleData = {
 			...values,
@@ -504,6 +521,99 @@ const FacultyScheduleInterface = ({
 											</FormItem>
 										)}
 									/>
+								</div>
+								{/* Day select */}
+								<div>
+									<FormField
+										control={form.control}
+										name="day"
+										render={({ field }) => (
+											<FormItem>
+												<div className="flex items-center gap-4">
+													<FormLabel>Day</FormLabel>
+													<Select
+														onValueChange={field.onChange}
+														value={field.value}
+														disabled={!professorWatcher}
+													>
+														<FormControl>
+															<SelectTrigger>
+																<SelectValue placeholder="Select day" />
+															</SelectTrigger>
+														</FormControl>
+														<SelectContent>
+															<SelectGroup>
+																{days.map((day) => (
+																	<SelectItem key={day} value={day}>
+																		{day}
+																	</SelectItem>
+																))}
+															</SelectGroup>
+														</SelectContent>
+													</Select>
+												</div>
+												<FormMessage className="text-xs" />
+											</FormItem>
+										)}
+									/>
+								</div>
+								{/* Start and End */}
+								<div className="">
+									<div className="border-t-2 border-t-pink-400 py-4 flex items-center justify-start gap-2">
+										<FormField
+											control={form.control}
+											name="start"
+											render={({ field }) => (
+												<FormItem>
+													<div className="flex items-center gap-2">
+														<FormLabel className="text-xs">Start:</FormLabel>
+														<Input
+															type="time"
+															{...field}
+															disabled={!dayWatcher}
+															onChange={(e) => {
+																field.onChange(e);
+																setError("");
+															}}
+															className="border-gray-500"
+														/>
+													</div>
+													<FormMessage className="text-xs" />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="end"
+											render={({ field }) => (
+												<FormItem>
+													<div className="flex items-center gap-2">
+														<FormLabel className="text-xs">End:</FormLabel>
+														<Input
+															type="time"
+															{...field}
+															disabled={!dayWatcher}
+															onChange={(e) => {
+																field.onChange(e);
+																setError("");
+															}}
+															className="border-gray-500"
+														/>
+													</div>
+													<FormMessage className="text-xs" />
+												</FormItem>
+											)}
+										/>
+									</div>
+									{!dayWatcher && (
+										<p className="text-red-400 text-xs text-center">
+											Complete the information above first.
+										</p>
+									)}
+									{/* shows as error on the start and end time */}
+									{error && (
+										<p className="text-red-400 text-xs text-center">{error}</p>
+									)}
 								</div>
 
 								{/* Submit Button */}
