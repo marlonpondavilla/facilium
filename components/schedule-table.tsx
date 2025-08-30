@@ -110,7 +110,7 @@ export default function ScheduleTable({ scheduleItems }: ScheduleTableProps) {
 	}
 
 	return (
-		<div className="overflow-x border rounded-lg">
+		<div className="overflow-x-auto border rounded-lg">
 			<table className="min-w-full border-collapse table-fixed text-center text-sm">
 				<thead>
 					<tr className="bg-pink-100 text-gray-800">
@@ -152,7 +152,7 @@ export default function ScheduleTable({ scheduleItems }: ScheduleTableProps) {
 									const professorName =
 										professorNames[item.professor] || "Loading...";
 
-									// NEW: Determine color index based on current index in filteredScheduleItems
+									// Determine color index based on current index in filteredScheduleItems
 									const itemIndex = filteredScheduleItems.indexOf(item);
 									const colorClass =
 										scheduleColors[itemIndex % scheduleColors.length];

@@ -151,6 +151,9 @@ export const RegisterForm = () => {
 											placeholder="Degree Earned (e.g MSIT, MSCpE, or PhD)"
 											{...field}
 											className="w-xs"
+											onChange={(e) =>
+												field.onChange(e.target.value.toUpperCase())
+											}
 										/>
 									</FormControl>
 									<FormMessage />

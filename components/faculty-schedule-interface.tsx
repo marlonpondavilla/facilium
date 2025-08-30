@@ -229,7 +229,7 @@ const FacultyScheduleInterface = ({
 	};
 
 	return (
-		<div className="flex flex-col gap-4 w-6xl scroll-smooth">
+		<div className="flex flex-col gap-4 w-full max-w-7xl md:px-8 lg:px-10 mx-auto scroll-smooth">
 			{/* loading spinner */}
 			{isLoading && <Loading />}
 
@@ -254,7 +254,7 @@ const FacultyScheduleInterface = ({
 			</AlertDialog>
 
 			{/* Building Header */}
-			<div className="building-title facilium-bg-whiter flex items-center justify-center gap-3 py-8 rounded-2xl">
+			<div className="building-title facilium-bg-whiter flex flex-wrap items-center justify-center gap-3 py-6 px-4 sm:px-6 md:px-10 rounded-2xl text-center">
 				<Link className="flex" href={"/dashboard"}>
 					<ArrowLeft />
 					Go to Home
@@ -266,14 +266,15 @@ const FacultyScheduleInterface = ({
 			</div>
 
 			{/* Classrooms */}
-			<div className="classrooms-container facilium-bg-whiter py-4 px-4 rounded-t-2xl">
+			<div className="classrooms-container facilium-bg-whiter py-4 px-2 sm:px-4 rounded-t-2xl max-w-full">
 				<div className="classrom-title flex items-center gap-2 border-b border-gray-300">
 					<NotebookPen className="w-5 h-5" />
 					<p className="facilium-color-indigo font-bold text-lg py-2">
 						Classrooms
 					</p>
 				</div>
-				<div className="classroom-item flex justify-start gap-3 py-3 flex-wrap">
+
+				<div className="classroom-item flex flex-wrap gap-3 py-3 justify-center sm:justify-start">
 					{data.map((classroom) => (
 						<p
 							key={classroom.id}
@@ -282,22 +283,24 @@ const FacultyScheduleInterface = ({
 								classroom.id === classroomId
 									? "facilium-bg-indigo facilium-color-white"
 									: "border border-black font-semibold facilium-color-indigo"
-							} py-2 px-4 rounded cursor-pointer text-sm`}
+							} cursor-pointer rounded text-sm py-3 px-5 sm:py-2 sm:px-4 transition-colors`}
 						>
 							{classroom.classroomName}
 						</p>
 					))}
 				</div>
+
 				{data.length < 1 && (
-					<p className="text-center text-gray-500">
+					<p className="text-center text-gray-500 text-sm sm:text-base">
 						No available classrooms for this building.
 					</p>
 				)}
 			</div>
 
-			{/* Schedule Form */}
-			<div className="schedule-container grid grid-cols-3 gap-4 w-full">
-				<div className="schedule-actions-wrapper facilium-bg-whiter">
+			{/* Schedule Form & Table Container */}
+			<div className="w-full max-w-7xl mx-auto px-0 grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
+				{/* Schedule Form */}
+				<div className="schedule-actions-wrapper facilium-bg-whiter p-4 rounded w-full max-w-full self-start">
 					<div className="text-xl facilium-color-indigo text-center font-semibold border-b border-gray-400 py-4">
 						<h2>
 							{classroomId
@@ -323,6 +326,7 @@ const FacultyScheduleInterface = ({
 										*select a classroom first to start scheduling
 									</p>
 								)}
+
 								{/* Program Select Field */}
 								<div>
 									<FormField
@@ -334,20 +338,14 @@ const FacultyScheduleInterface = ({
 													<FormLabel>Program</FormLabel>
 													<Select
 														onValueChange={(value) => {
-															// match the selected program
 															const selectedProgram = programs.find(
 																(p) => p.programCode === value
 															);
-															// exit early if nothing found
-															if (!selectedProgram) {
-																return;
-															}
-
+															if (!selectedProgram) return;
 															updateQueryParamAndForm(
 																"programId",
 																selectedProgram.id
 															);
-
 															form.setValue("program", value);
 														}}
 														{...field}
@@ -378,6 +376,7 @@ const FacultyScheduleInterface = ({
 										)}
 									/>
 								</div>
+
 								{/* Year Select Field */}
 								<div>
 									<FormField
@@ -793,8 +792,8 @@ const FacultyScheduleInterface = ({
 					</Form>
 				</div>
 
-				{/* Schedule table */}
-				<div className="schedule-action-controls facilium-bg-whiter p-4 rounded col-span-2 row-span-12">
+				{/* Schedule Table */}
+				<div className="schedule-action-controls facilium-bg-whiter p-4 rounded w-full max-w-full">
 					{!classroomId && (
 						<p className="text-base text-center py-2 text-pink-600">
 							Select a classroom first to view plotted schedule.
