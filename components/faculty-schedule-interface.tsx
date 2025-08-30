@@ -33,6 +33,7 @@ import {
 	addDocumentToFirestore,
 	checkIfDocumentExists,
 	checkIfScheduleConflictExists,
+	getSingleDocumentFromFirestore,
 } from "@/data/actions";
 import Loading from "./loading";
 import {
@@ -202,16 +203,30 @@ const FacultyScheduleInterface = ({
 			classroomId,
 		};
 
-		const scheduleConflictFound = await checkIfScheduleConflictExists(
+		const scheduleConflictId = await checkIfScheduleConflictExists(
 			scheduleData
 		);
 
-		if (scheduleConflictFound) {
+		if (scheduleConflictId) {
+			const classroomId = await getSingleDocumentFromFirestore(
+				scheduleConflictId,
+				"scheduleData",
+				"classroomId"
+			);
+
+			const classroomConflictName = await getSingleDocumentFromFirestore(
+				classroomId,
+				"classrooms",
+				"classroomName"
+			);
+
 			toast.error(`There is a schedule conflict`);
-			setError("A schedule conflict occured.");
+			setError(`A schedule conflict occured with ${classroomConflictName}`);
 			setOpen(true);
 			return;
 		}
+
+		// console.table(scheduleData);
 
 		const result = await addDocumentToFirestore("scheduleData", {
 			...scheduleData,
