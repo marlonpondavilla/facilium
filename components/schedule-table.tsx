@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { getSingleDocumentFromFirestore } from "@/data/actions";
 import { formatProfessorName } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
+import { scheduleColors } from "@/data/colors";
 
 const days: string[] = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
 
@@ -38,6 +39,9 @@ export default function ScheduleTable({ scheduleItems }: ScheduleTableProps) {
 	const [classroomNames, setClassroomNames] = useState<Record<string, string>>(
 		{}
 	);
+	const [professorNames, setProfessorNames] = useState<Record<string, string>>(
+		{}
+	);
 
 	const searchParams = useSearchParams();
 	const classroomId = searchParams.get("classroomId");
@@ -47,15 +51,37 @@ export default function ScheduleTable({ scheduleItems }: ScheduleTableProps) {
 		(item) => item.classroomId === classroomId
 	);
 
-	// Fetch classroom names and cache them
+	// Fetch classroom and professor name
 	useEffect(() => {
-		const fetchClassroomNames = async () => {
-			const uniqueIds = Array.from(
+		const fetchProfessorAndClassroomNames = async () => {
+			const uniqueProfIds = Array.from(
+				new Set(filteredScheduleItems.map((i) => i.professor))
+			);
+
+			const uniqueClassroomIds = Array.from(
 				new Set(filteredScheduleItems.map((i) => i.classroomId))
 			);
 
-			const entries = await Promise.all(
-				uniqueIds.map(async (id) => {
+			const profEntries = await Promise.all(
+				uniqueProfIds.map(async (id) => {
+					const firstName = await getSingleDocumentFromFirestore(
+						id,
+						"userData",
+						"firstName"
+					);
+					const lastName = await getSingleDocumentFromFirestore(
+						id,
+						"userData",
+						"lastName"
+					);
+					const fullName =
+						firstName && lastName ? `${firstName} ${lastName}` : "Unknown";
+					return [id, fullName];
+				})
+			);
+
+			const classroomEntries = await Promise.all(
+				uniqueClassroomIds.map(async (id) => {
 					const name = await getSingleDocumentFromFirestore(
 						id,
 						"classrooms",
@@ -65,10 +91,11 @@ export default function ScheduleTable({ scheduleItems }: ScheduleTableProps) {
 				})
 			);
 
-			setClassroomNames(Object.fromEntries(entries));
+			setProfessorNames(Object.fromEntries(profEntries));
+			setClassroomNames(Object.fromEntries(classroomEntries));
 		};
 
-		fetchClassroomNames();
+		fetchProfessorAndClassroomNames();
 	}, [classroomId]);
 
 	function getStartIndexFromDecimal(startDecimal: number): number {
@@ -122,18 +149,25 @@ export default function ScheduleTable({ scheduleItems }: ScheduleTableProps) {
 
 									const classroomName =
 										classroomNames[item.classroomId] || "Loading...";
+									const professorName =
+										professorNames[item.professor] || "Loading...";
+
+									// NEW: Determine color index based on current index in filteredScheduleItems
+									const itemIndex = filteredScheduleItems.indexOf(item);
+									const colorClass =
+										scheduleColors[itemIndex % scheduleColors.length];
 
 									return (
 										<td
 											key={cellKey}
 											rowSpan={rowSpan}
-											className="border p-2 bg-yellow-100 font-medium"
+											className={`border p-2 font-medium ${colorClass}`}
 										>
 											{item.courseCode}
 											<br />
 											{item.section}
 											<br />
-											{formatProfessorName(item.professor)}
+											{formatProfessorName(professorName)}
 											<br />
 											{`(${classroomName})`}
 										</td>

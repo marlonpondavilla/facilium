@@ -4,7 +4,7 @@ import { currentDate } from "@/lib/date";
 import { Building, Calendar, Download } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
 import {
 	Select,
 	SelectContent,
@@ -15,6 +15,7 @@ import {
 	SelectValue,
 } from "./ui/select";
 import { Button } from "./ui/button";
+import Loading from "./loading";
 
 type FacultyMainInterfaceProps = {
 	data: {
@@ -25,16 +26,25 @@ type FacultyMainInterfaceProps = {
 };
 
 const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
+	const [isLoading, setIsLoading] = useState(false);
+
 	const router = useRouter();
 	const pathname = usePathname();
 
 	const handleClickBuilding = (id: string) => {
+		setIsLoading(true);
+
+		setTimeout(() => {
+			setIsLoading(false);
+		}, 2000);
 		router.push(`${pathname}/${id}`);
 	};
 
 	return (
 		<div className="border flex flex-col justify-center gap-4 w-5xl">
 			<div className="relative border w-full h-[200px] bg-[url('/bsu-meneses-logo.png')] bg-cover bg-center rounded-2xl overflow-hidden">
+				{/* loading spinner */}
+				{isLoading && <Loading />}
 				{/* Dark pink gradient from bottom to top */}
 				<div className="absolute inset-0 bg-gradient-to-t from-pink-800/80 via-pink-800/60 to-pink-600/70 z-10" />
 
