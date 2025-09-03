@@ -187,23 +187,23 @@ body {
 		background-color: #8d99ae;
 	}
 	/* buildings custom colors */
-	.facilium-bg-teal {
-		background-color: #02394a;
+	.facilium-bg-dark-brown {
+		background-color: #3a0519;
 	}
-	.facilium-bg-hot-pink {
-		background-color: #ff1b8d;
+	.facilium-bg-peach {
+		background-color: #d76c82;
 	}
-	.facilium-bg-royal-blue {
-		background-color: #043565;
+	.facilium-bg-brown-rose {
+		background-color: #a53860;
 	}
-	.facilium-bg-cornflower {
-		background-color: #043565;
+	.facilium-bg-brown-soft {
+		background-color: #670d2f;
 	}
-	.facilium-bg-bubblegum {
-		background-color: #f26df9;
+	.facilium-bg-peach-dark {
+		background-color: #b03052;
 	}
-	.facilium-bg-fuscia {
-		background-color: #eb4b98;
+	.facilium-bg-magenta {
+		background-color: #ac1754;
 	}
 }
 

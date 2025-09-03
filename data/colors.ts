@@ -1,10 +1,10 @@
 export const colors = [
-	"facilium-bg-teal",
-	"facilium-bg-hot-pink",
-	"facilium-bg-royal-blue",
-	"facilium-bg-bubblegum",
-	"facilium-bg-cornflower",
-	"facilium-bg-fuscia",
+	"facilium-bg-dark-brown",
+	"facilium-bg-peach",
+	"facilium-bg-brown-rose",
+	"facilium-bg-brown-soft",
+	"facilium-bg-peach-dark",
+	"facilium-bg-magenta",
 ];
 
 export const scheduleColors = [

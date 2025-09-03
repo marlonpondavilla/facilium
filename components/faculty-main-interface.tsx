@@ -43,11 +43,11 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 	return (
 		<div className="border flex flex-col justify-center gap-4 w-full sm:w-5xl md:px-4 sm:px-0">
 			{/* Banner Section */}
-			<div className="relative border w-full h-[200px] bg-[url('/bsu-meneses-logo.png')] bg-cover bg-center rounded-2xl overflow-hidden">
+			<div className="relative border w-full h-[200px] bg-[url('/bsu-meneses-interface-bg.jpg')] bg-cover bg-center rounded-2xl overflow-hidden">
 				{/* Loading Spinner */}
 				{isLoading && <Loading />}
 				{/* Dark pink gradient from bottom to top */}
-				<div className="absolute inset-0 bg-gradient-to-t from-pink-800/80 via-pink-800/60 to-pink-600/70 z-10" />
+				<div className="absolute inset-0 bg-gradient-to-b from-pink-700/80 via-pink-700/60 to-pink-500/60 z-10" />
 
 				{/* Content */}
 				<div className="relative z-20 flex justify-center items-center h-full">
@@ -87,7 +87,7 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 						<div
 							key={building.id}
 							onClick={() => handleClickBuilding(building.id)}
-							className={`buildings-item ${building.color} p-6 sm:p-10 rounded w-full sm:w-48 text-center text-xl sm:text-2xl cursor-pointer`}
+							className={`buildings-item ${building.color} p-6 sm:p-7 rounded w-full sm:w-48 text-center text-base cursor-pointer`}
 						>
 							<p>{building.buildingName}</p>
 						</div>

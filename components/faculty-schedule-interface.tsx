@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Building, NotebookPen } from "lucide-react";
+import { ArrowLeft, Building, NotebookPen, TriangleAlert } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import {
@@ -31,7 +31,6 @@ import ScheduleTable from "./schedule-table";
 import { ScheduleItem } from "@/types/SceduleInterface";
 import {
 	addDocumentToFirestore,
-	checkIfDocumentExists,
 	checkIfScheduleConflictExists,
 	getSingleDocumentFromFirestore,
 } from "@/data/actions";
@@ -95,6 +94,7 @@ const FacultyScheduleInterface = ({
 }: FacultyScheduleInterfaceProps) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [open, setOpen] = useState(false);
+	const [openNoClassroom, setOpenNoClassroom] = useState(false);
 	const [error, setError] = useState("");
 
 	const pathname = usePathname();
@@ -156,6 +156,10 @@ const FacultyScheduleInterface = ({
 		form.clearErrors();
 		makeLoading();
 		setError("");
+
+		if (data.length < 1) {
+			setOpenNoClassroom(true);
+		}
 	}, [
 		programWatcher,
 		yearLevelWatcher,
@@ -226,8 +230,6 @@ const FacultyScheduleInterface = ({
 			return;
 		}
 
-		// console.table(scheduleData);
-
 		const result = await addDocumentToFirestore("scheduleData", {
 			...scheduleData,
 			created: new Date().toISOString(),
@@ -269,15 +271,17 @@ const FacultyScheduleInterface = ({
 			</AlertDialog>
 
 			{/* Building Header */}
-			<div className="building-title facilium-bg-whiter flex flex-wrap items-center justify-center gap-3 py-6 px-4 sm:px-6 md:px-10 rounded-2xl text-center">
-				<Link className="flex" href={"/dashboard"}>
-					<ArrowLeft />
-					Go to Home
+			<div className="building-title facilium-bg-whiter items-center gap-3 py-6 px-4 sm:px-6 md:px-10 rounded-2xl text-center">
+				<Link className="flex items-center text-xs" href={"/dashboard"}>
+					<ArrowLeft className="w-4 h-auto" />
+					<p className="hover:opacity-50">Home</p>
 				</Link>
-				<Building className="w-10 h-10" />
-				<h1 className="text-4xl facilium-color-indigo font-bold tracking-wide">
-					{buildingName}
-				</h1>
+				<div className="flex justify-center items-center">
+					<Building className="w-10 h-10" />
+					<h1 className="text-4xl facilium-color-indigo font-bold tracking-wide">
+						{buildingName}
+					</h1>
+				</div>
 			</div>
 
 			{/* Classrooms */}
@@ -288,7 +292,6 @@ const FacultyScheduleInterface = ({
 						Classrooms
 					</p>
 				</div>
-
 				<div className="classroom-item flex flex-wrap gap-3 py-3 justify-center sm:justify-start">
 					{data.map((classroom) => (
 						<p
@@ -297,20 +300,52 @@ const FacultyScheduleInterface = ({
 							className={`${
 								classroom.id === classroomId
 									? "facilium-bg-indigo facilium-color-white"
-									: "border border-black font-semibold facilium-color-indigo"
+									: "border border-black font-semibold facilium-color-indigo hover:bg-gray-200"
 							} cursor-pointer rounded text-sm py-3 px-5 sm:py-2 sm:px-4 transition-colors`}
 						>
 							{classroom.classroomName}
 						</p>
 					))}
 				</div>
-
-				{data.length < 1 && (
-					<p className="text-center text-gray-500 text-sm sm:text-base">
-						No available classrooms for this building.
+				{!classroomId && data.length > 1 && (
+					<p className="text-start text-red-400 text-xs">
+						*select a classroom first to start scheduling
 					</p>
 				)}
+
+				{data.length < 1 && (
+					<>
+						<p className="text-center text-gray-500 text-sm sm:text-base">
+							No available classrooms for this building.
+						</p>
+					</>
+				)}
 			</div>
+			{/* Pop up message when there is no classrooms available */}
+			<AlertDialog open={openNoClassroom} onOpenChange={setOpenNoClassroom}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle className="text-red-500 text-base">
+							<div className="flex items-center gap-2">
+								<TriangleAlert />
+								There is no classroom available on this building
+							</div>
+						</AlertDialogTitle>
+						<AlertDialogDescription className="text-xs text-center py-2">
+							contact admin if this is not true, or you may view other buildings
+							available.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel
+							onClick={() => setOpenNoClassroom(false)}
+							className="text-xs"
+						>
+							Ok, I understand.
+						</AlertDialogCancel>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{/* Schedule Form & Table Container */}
 			<div className="w-full max-w-7xl mx-auto px-0 grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
@@ -336,12 +371,6 @@ const FacultyScheduleInterface = ({
 								disabled={form.formState.isSubmitting}
 								className="flex flex-col gap-3"
 							>
-								{!classroomId && (
-									<p className="text-center text-red-400 text-sm">
-										*select a classroom first to start scheduling
-									</p>
-								)}
-
 								{/* Program Select Field */}
 								<div>
 									<FormField
@@ -780,7 +809,7 @@ const FacultyScheduleInterface = ({
 									</div>
 
 									{/* Conditional error messages */}
-									{!dayWatcher && (
+									{!dayWatcher && data.length > 1 && (
 										<p className="text-red-400 text-xs text-center mt-2">
 											Complete the information above first.
 										</p>
@@ -797,6 +826,7 @@ const FacultyScheduleInterface = ({
 								<Button
 									type="submit"
 									className="facilium-bg-indigo text-white w-full"
+									disabled={data.length < 1}
 								>
 									{form.formState.isSubmitting
 										? "Submitting"
@@ -809,7 +839,7 @@ const FacultyScheduleInterface = ({
 
 				{/* Schedule Table */}
 				<div className="schedule-action-controls facilium-bg-whiter p-4 rounded w-full max-w-full">
-					{!classroomId && (
+					{!classroomId && data.length > 1 && (
 						<p className="text-base text-center py-2 text-pink-600">
 							Select a classroom first to view plotted schedule.
 						</p>

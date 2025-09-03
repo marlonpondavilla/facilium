@@ -56,7 +56,7 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 		<div className="min-h-screen flex flex-col">
 			{/* Header */}
 
-			<div className="flex flex-wrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 facilium-bg-whiter">
+			<div className="flex flex-wrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 bg-[linear-gradient(to_right,_#AC1754_55%,_#F5F5F5_97%)]">
 				<Link href={"/dashboard"}>
 					<div className="left-section flex items-center gap-4">
 						<Image
@@ -64,12 +64,12 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 							width={100}
 							height={100}
 							alt="Meneses Logo"
-							className="w-14 sm:w-20 md:w-24"
+							className="w-14 sm:w-20"
 						/>
-						<div className={`logo-name ${alegreyaSC.className} font-bold`}>
-							<h1 className="text-lg sm:text-xl md:text-2xl">
-								Bulacan State University
-							</h1>
+						<div
+							className={`logo-name ${alegreyaSC.className} font-bold facilium-color-white`}
+						>
+							<h1 className="text-lg sm:text-xl">Bulacan State University</h1>
 							<h2 className="text-sm sm:text-base">Meneses Campus</h2>
 						</div>
 					</div>
