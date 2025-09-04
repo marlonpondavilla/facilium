@@ -35,16 +35,8 @@ import {
 	getSingleDocumentFromFirestore,
 } from "@/data/actions";
 import Loading from "./loading";
-import {
-	AlertDialog,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "./ui/alert-dialog";
 import Link from "next/link";
+import WarningPopUp from "./warning-pop-up";
 
 type FacultyScheduleInterfaceProps = {
 	buildingName: string;
@@ -52,26 +44,26 @@ type FacultyScheduleInterfaceProps = {
 		id: string;
 		classroomName: string;
 	}[];
-	programs: {
+	programs?: {
 		id: string;
 		programCode: string;
 	}[];
-	yearLevels: {
+	yearLevels?: {
 		id: string;
 		programId: string;
 		yearLevel: string;
 	}[];
-	sections: {
+	sections?: {
 		id: string;
 		yearLevelId: string;
 		sectionName: string;
 	}[];
-	courses: {
+	courses?: {
 		id: string;
 		yearLevelId: string;
 		courseCode: string;
 	}[];
-	professors: {
+	professors?: {
 		id: string;
 		designation: string;
 		firstName: string;
@@ -93,8 +85,9 @@ const FacultyScheduleInterface = ({
 	scheduleItems,
 }: FacultyScheduleInterfaceProps) => {
 	const [isLoading, setIsLoading] = useState(false);
-	const [open, setOpen] = useState(false);
+	const [openConflict, setOpenConflict] = useState(false);
 	const [openNoClassroom, setOpenNoClassroom] = useState(false);
+	const [openNoSchedule, setOpenNoSchedule] = useState(false);
 	const [error, setError] = useState("");
 
 	const pathname = usePathname();
@@ -104,6 +97,9 @@ const FacultyScheduleInterface = ({
 	const programId = searchParams.get("programId");
 	const yearLevelId = searchParams.get("yearLevelId");
 	const sectionId = searchParams.get("sectionId");
+	const hasSchedule =
+		scheduleItems.filter((schedule) => schedule.classroomId === classroomId)
+			.length < 1 && classroomId;
 
 	const days = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
 
@@ -176,6 +172,11 @@ const FacultyScheduleInterface = ({
 		const params = new URLSearchParams({
 			classroomId: id,
 		});
+
+		if (!hasSchedule && classroomId) {
+			setOpenNoSchedule(true);
+		}
+
 		router.push(`${pathname}?${params.toString()}`);
 		form.reset();
 		setError("");
@@ -226,7 +227,7 @@ const FacultyScheduleInterface = ({
 
 			toast.error(`There is a schedule conflict`);
 			setError(`A schedule conflict occured with ${classroomConflictName}`);
-			setOpen(true);
+			setOpenConflict(true);
 			return;
 		}
 
@@ -250,25 +251,13 @@ const FacultyScheduleInterface = ({
 			{/* loading spinner */}
 			{isLoading && <Loading />}
 
-			{/* alert dialog pop up */}
-			<AlertDialog open={open} onOpenChange={setOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle className="text-red-600">
-							{error}
-						</AlertDialogTitle>
-						<AlertDialogDescription>
-							please check your schedule and other classrooms before plotting
-							again.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel onClick={() => setOpen(false)}>
-							Ok, I understand.
-						</AlertDialogCancel>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			{/* alert dialog pop up when conflict arise */}
+			<WarningPopUp
+				open={openConflict}
+				setOpen={setOpenConflict}
+				title={error}
+				description="please check your schedule and other classrooms before plotting again."
+			/>
 
 			{/* Building Header */}
 			<div className="building-title facilium-bg-whiter items-center gap-3 py-6 px-4 sm:px-6 md:px-10 rounded-2xl text-center">
@@ -308,49 +297,51 @@ const FacultyScheduleInterface = ({
 					))}
 				</div>
 				{!classroomId && data.length > 1 && (
-					<p className="text-start text-red-400 text-xs">
-						*select a classroom first to start scheduling
+					<p className={`text-start text-red-400 text-xs `}>
+						Select a classroom first to
+						{pathname.startsWith("/faculty") || pathname.startsWith("/dean")
+							? " view a schedule"
+							: " start scheduling"}
 					</p>
 				)}
 
 				{data.length < 1 && (
-					<>
-						<p className="text-center text-gray-500 text-sm sm:text-base">
-							No available classrooms for this building.
-						</p>
-					</>
+					<p className="text-center text-gray-500 text-sm sm:text-base">
+						No available classrooms for this building.
+					</p>
+				)}
+
+				{hasSchedule && (
+					<p className="text-xs text-red-500">
+						No available schedules for this classroom
+					</p>
 				)}
 			</div>
+
 			{/* Pop up message when there is no classrooms available */}
-			<AlertDialog open={openNoClassroom} onOpenChange={setOpenNoClassroom}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle className="text-red-500 text-base">
-							<div className="flex items-center gap-2">
-								<TriangleAlert />
-								There is no classroom available on this building
-							</div>
-						</AlertDialogTitle>
-						<AlertDialogDescription className="text-xs text-center py-2">
-							contact admin if this is not true, or you may view other buildings
-							available.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel
-							onClick={() => setOpenNoClassroom(false)}
-							className="text-xs"
-						>
-							Ok, I understand.
-						</AlertDialogCancel>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<WarningPopUp
+				open={openNoClassroom}
+				setOpen={setOpenNoClassroom}
+				title="There is no classroom available in this building."
+				description="If you think this is wrong please contact your admin or try viewing other buildings available."
+			/>
+
+			{/* Pop up message when there is no schedules available */}
+			<WarningPopUp
+				open={openNoSchedule}
+				setOpen={setOpenNoSchedule}
+				title="There is no available schedule in this classroom."
+				description="If you think this is wrong please contact your admin"
+			/>
 
 			{/* Schedule Form & Table Container */}
 			<div className="w-full max-w-7xl mx-auto px-0 grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
 				{/* Schedule Form */}
-				<div className="schedule-actions-wrapper facilium-bg-whiter p-4 rounded w-full max-w-full self-start">
+				<div
+					className={`schedule-actions-wrapper facilium-bg-whiter p-4 rounded w-full self-start ${
+						!pathname.startsWith("/program-head") ? "hidden" : "max-w-full"
+					}`}
+				>
 					<div className="text-xl facilium-color-indigo text-center font-semibold border-b border-gray-400 py-4">
 						<h2>
 							{classroomId
@@ -361,11 +352,12 @@ const FacultyScheduleInterface = ({
 								: "Schedule Classroom"}
 						</h2>
 					</div>
-
 					<Form {...form}>
 						<form
 							onSubmit={form.handleSubmit(handleScheduleSubmit)}
-							className="p-4 flex flex-col gap-4"
+							className={`p-4 flex-col gap-4 ${
+								!pathname.startsWith("/program-head") ? "hidden" : "flex"
+							}`}
 						>
 							<fieldset
 								disabled={form.formState.isSubmitting}
@@ -382,7 +374,7 @@ const FacultyScheduleInterface = ({
 													<FormLabel>Program</FormLabel>
 													<Select
 														onValueChange={(value) => {
-															const selectedProgram = programs.find(
+															const selectedProgram = programs?.find(
 																(p) => p.programCode === value
 															);
 															if (!selectedProgram) return;
@@ -403,7 +395,7 @@ const FacultyScheduleInterface = ({
 														</FormControl>
 														<SelectContent>
 															<SelectGroup>
-																{programs.map((program) => (
+																{programs?.map((program) => (
 																	<SelectItem
 																		key={program.id}
 																		value={program.programCode}
@@ -433,7 +425,7 @@ const FacultyScheduleInterface = ({
 													<Select
 														onValueChange={(value) => {
 															// reflects select item change
-															const selectedYear = yearLevels.find(
+															const selectedYear = yearLevels?.find(
 																(y) => y.id === value
 															);
 
@@ -461,7 +453,7 @@ const FacultyScheduleInterface = ({
 															<SelectContent>
 																<SelectGroup>
 																	{yearLevels
-																		.filter(
+																		?.filter(
 																			(yearLevel) =>
 																				yearLevel.programId === programId
 																		)
@@ -494,7 +486,7 @@ const FacultyScheduleInterface = ({
 													<FormLabel>Section</FormLabel>
 													<Select
 														onValueChange={(value) => {
-															const selectedSection = sections.find(
+															const selectedSection = sections?.find(
 																(s) => s.sectionName === value
 															);
 
@@ -521,7 +513,7 @@ const FacultyScheduleInterface = ({
 														<SelectContent>
 															<SelectGroup>
 																{sections
-																	.filter(
+																	?.filter(
 																		(section) =>
 																			section.yearLevelId === yearLevelId
 																	)
@@ -565,7 +557,7 @@ const FacultyScheduleInterface = ({
 														<SelectContent>
 															<SelectGroup>
 																{courses
-																	.filter(
+																	?.filter(
 																		(course) =>
 																			course.yearLevelId === yearLevelId
 																	)
@@ -598,7 +590,7 @@ const FacultyScheduleInterface = ({
 													<Select
 														onValueChange={(value) => {
 															// reflects select item change
-															const selectedProf = professors.find(
+															const selectedProf = professors?.find(
 																(p) => p.id === value
 															);
 
@@ -625,7 +617,7 @@ const FacultyScheduleInterface = ({
 														<SelectContent>
 															<SelectGroup>
 																{professors
-																	.filter(
+																	?.filter(
 																		(professor) =>
 																			professor.designation !== "Admin"
 																	)
@@ -838,9 +830,27 @@ const FacultyScheduleInterface = ({
 				</div>
 
 				{/* Schedule Table */}
-				<div className="schedule-action-controls facilium-bg-whiter p-4 rounded w-full max-w-full">
+				<div
+					className={`schedule-action-controls facilium-bg-whiter p-4 rounded w-full ${
+						!pathname.startsWith("/program-head")
+							? "lg:col-span-2"
+							: "max-w-full"
+					}`}
+				>
+					{/* warning message for faculty */}
+					{pathname.startsWith("/faculty") && (
+						<div className="flex w-full border justify-center gap-2 bg-blue-200 text-blue-500 items-center text-center text-xs tracking-wide mb-2 p-2">
+							<TriangleAlert color="black" className="w-6 h-auto" />
+							Read-Only Access: You can download and view all room schedules,
+							but only Program Chairs can add, edit, and delete schedules.
+						</div>
+					)}
 					{!classroomId && data.length > 1 && (
-						<p className="text-base text-center py-2 text-pink-600">
+						<p
+							className={`text-base text-center py-2 text-pink-600 ${
+								!pathname.startsWith("/program-head") ? "hidden" : "block"
+							}`}
+						>
 							Select a classroom first to view plotted schedule.
 						</p>
 					)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { currentDate } from "@/lib/date";
-import { Building, Calendar, Download } from "lucide-react";
+import { Building, Calendar, Eye } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
@@ -100,7 +100,7 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 				{/* View Schedule Action */}
 				<div className="view-schedule group border border-gray-300 rounded-xl p-6 w-full sm:w-auto bg-white hover:bg-gray-100 hover:shadow-md transition duration-300 cursor-pointer">
 					<div className="view-schedule-action flex flex-col justify-center items-center gap-3">
-						<Download className="w-10 h-10 transition-colors duration-300" />
+						<Eye className="w-10 h-10 transition-colors duration-300" />
 						<p className="font-semibold text-xl text-gray-800 group-hover:text-indigo-800">
 							View My Schedule
 						</p>

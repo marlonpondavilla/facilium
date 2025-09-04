@@ -1,10 +1,12 @@
 import FacultyHeader from "@/components/faculty-header";
 import FacultyScheduleInterface from "@/components/faculty-schedule-interface";
+import { getDocumentsFromFirestore } from "@/data/actions";
 import {
-	getDocumentsByFieldIds,
-	getDocumentsFromFirestore,
-	getSingleDocumentFromFirestore,
-} from "@/data/actions";
+	Classroom,
+	getBuildingName,
+	getClassrooms,
+	getScheduleData,
+} from "@/data/faculty-building";
 import { ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
 
@@ -12,11 +14,6 @@ type PageProps = {
 	params: {
 		id: string;
 	};
-};
-
-type Classroom = {
-	id: string;
-	classroomName: string;
 };
 
 type Programs = {
@@ -52,18 +49,6 @@ type Professors = {
 const Page = async ({ params }: PageProps) => {
 	const { id } = await Promise.resolve(params);
 
-	const buildingName = await getSingleDocumentFromFirestore(
-		id,
-		"buildings",
-		"buildingName"
-	);
-
-	const classrooms = await getDocumentsByFieldIds<Classroom>(
-		"classrooms",
-		"buildingId",
-		id
-	);
-
 	const programs: Programs[] = await getDocumentsFromFirestore(
 		"programs",
 		true
@@ -84,10 +69,9 @@ const Page = async ({ params }: PageProps) => {
 	// note: hindi naka sort by created field, just add the second argument(boolean) if needed.
 	const professors: Professors[] = await getDocumentsFromFirestore("userData");
 
-	const scheduleData: ScheduleItem[] = await getDocumentsFromFirestore(
-		"scheduleData",
-		true
-	);
+	const scheduleData = await getScheduleData();
+	const classrooms: Classroom[] = await getClassrooms(id);
+	const buildingName = await getBuildingName(id);
 
 	return (
 		<FacultyHeader>
