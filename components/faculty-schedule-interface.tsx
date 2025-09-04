@@ -97,9 +97,9 @@ const FacultyScheduleInterface = ({
 	const programId = searchParams.get("programId");
 	const yearLevelId = searchParams.get("yearLevelId");
 	const sectionId = searchParams.get("sectionId");
-	const hasSchedule =
-		scheduleItems.filter((schedule) => schedule.classroomId === classroomId)
-			.length < 1 && classroomId;
+	const hasSchedule = scheduleItems.some(
+		(schedule) => schedule.classroomId === classroomId
+	);
 
 	const days = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
 
@@ -168,14 +168,18 @@ const FacultyScheduleInterface = ({
 		halfHourWatcher,
 	]);
 
+	useEffect(() => {
+		if (!classroomId) return;
+
+		if (!hasSchedule) {
+			setOpenNoSchedule(true);
+		}
+	}, [classroomId]);
+
 	const handleClassroomClick = (id: string) => {
 		const params = new URLSearchParams({
 			classroomId: id,
 		});
-
-		if (!hasSchedule && classroomId) {
-			setOpenNoSchedule(true);
-		}
 
 		router.push(`${pathname}?${params.toString()}`);
 		form.reset();
@@ -311,7 +315,7 @@ const FacultyScheduleInterface = ({
 					</p>
 				)}
 
-				{hasSchedule && (
+				{!hasSchedule && classroomId && (
 					<p className="text-xs text-red-500">
 						No available schedules for this classroom
 					</p>
