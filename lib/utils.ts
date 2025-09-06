@@ -50,6 +50,15 @@ export function formatProfessorName(fullName: string): string {
 	if (parts.length < 2) return fullName;
 
 	const firstInitial = parts[0][0];
-	const lastName = parts.slice(-1)[0]; // handles middle names
+	const lastName = parts.slice(-1)[0];
 	return `${firstInitial}. ${lastName}`;
 }
+
+export const isValidYear = (yearStr: string): boolean => {
+	const year = Number(yearStr);
+
+	const currentYear = new Date().getFullYear();
+	const maxYear = currentYear;
+
+	return /^\d{4}$/.test(yearStr) && year >= maxYear;
+};

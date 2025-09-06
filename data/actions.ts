@@ -79,6 +79,23 @@ export const updateDocumentById = async (
 		.update({ [fieldName]: newData });
 };
 
+export const updateDocumentsByBatch = async (
+	updates: {
+		docId: string;
+		collectionName: string;
+		data: Record<string, any>;
+	}[]
+): Promise<void> => {
+	const batch = firestore.batch();
+
+	updates.forEach(({ docId, collectionName, data }) => {
+		const docRef = firestore.collection(collectionName).doc(docId);
+		batch.update(docRef, data);
+	});
+
+	await batch.commit();
+};
+
 export const addDocumentToFirestore = async (
 	collectionName: string,
 	data: Record<string, any>
