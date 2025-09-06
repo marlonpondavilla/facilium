@@ -13,7 +13,7 @@ const ActionButtons = ({ yearLevelId }: { yearLevelId: string }) => {
 	};
 
 	const handleAddCourses = () => {
-		router.push(`/admin/programs/${programId}/courses/${yearLevelId}`);
+		router.push(`/admin/programs/${programId}/term/${yearLevelId}`);
 	};
 
 	return (

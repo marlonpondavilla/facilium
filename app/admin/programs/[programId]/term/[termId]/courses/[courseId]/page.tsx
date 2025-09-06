@@ -1,11 +1,9 @@
 import AdminHeaderTitle from "@/components/admin-header-title";
-import { Button } from "@/components/ui/button";
 import {
 	getDocumentsFromFirestore,
 	getSingleDocumentFromFirestore,
 } from "@/data/actions";
 import React from "react";
-import AddCoursesButton from "./add-courses";
 import {
 	Table,
 	TableBody,
@@ -14,6 +12,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import AddCoursesButton from "./add-courses";
 import CoursesActions from "./courses-actions";
 
 type PageProps = {
@@ -24,7 +23,7 @@ type PageProps = {
 
 type Courses = {
 	id: string;
-	yearLevelId: string;
+	termId: string;
 	programId: string;
 	courseCode: string;
 	subjectTitle: string;
@@ -33,10 +32,10 @@ type Courses = {
 const Page = async ({ params }: PageProps) => {
 	const { courseId } = await Promise.resolve(params);
 
-	const yearLevel = await getSingleDocumentFromFirestore(
+	const term = await getSingleDocumentFromFirestore(
 		courseId,
-		"year-levels",
-		"yearLevel"
+		"academic-terms",
+		"term"
 	);
 
 	const courses: Courses[] = await getDocumentsFromFirestore("courses");
@@ -48,7 +47,7 @@ const Page = async ({ params }: PageProps) => {
 			<div className="flex flex-col justify-center facilium-bg-whiter gap-4">
 				<div className="flex items-center justify-between py-6 px-8 border">
 					<h1 className="text-2xl text-gray-500 font-semibold tracking-wide">
-						{yearLevel} Year
+						{term} Semester
 					</h1>
 
 					<AddCoursesButton id={courseId} />
@@ -67,7 +66,7 @@ const Page = async ({ params }: PageProps) => {
 				</TableHeader>
 				<TableBody>
 					{courses
-						.filter((course) => courseId === course.yearLevelId)
+						.filter((course) => courseId === course.termId)
 						.map((course) => (
 							<TableRow className="facilium-bg-whiter" key={course.id}>
 								<TableCell>{course.courseCode}</TableCell>
@@ -86,8 +85,9 @@ const Page = async ({ params }: PageProps) => {
 				</TableBody>
 			</Table>
 
-			{courses.filter((course) => courseId === course.yearLevelId).length <
-				1 && <p className="text-center text-gray-500">No data found.</p>}
+			{courses.filter((course) => courseId === course.termId).length < 1 && (
+				<p className="text-center text-gray-500">No data found.</p>
+			)}
 		</div>
 	);
 };

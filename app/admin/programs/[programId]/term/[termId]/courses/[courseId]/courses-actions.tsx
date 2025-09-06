@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { deleteDocumentById, updateDocumentById } from "@/data/actions";
 import { PencilIcon, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState, useTransition } from "react";
+import React, { useState } from "react";
 import toast from "react-hot-toast";
 
 type CoursesProps = {

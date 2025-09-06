@@ -34,6 +34,7 @@ const ProgramActionsDropdown = ({ program }: ProgramProps) => {
 				{ collectionName: "year-levels", fieldName: "programId" },
 				{ collectionName: "sections", fieldName: "programId" },
 				{ collectionName: "courses", fieldName: "programId" },
+				{ collectionName: "academic-terms", fieldName: "programId" },
 			],
 		});
 	};

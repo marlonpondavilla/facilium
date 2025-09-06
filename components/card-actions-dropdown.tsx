@@ -99,6 +99,7 @@ const CardActionsDropdown = ({
 	const handleDeleteClick = async () => {
 		startTransition(async () => {
 			try {
+				setDropDownOpen(false);
 				setDeleteOpen(false);
 				await onDelete();
 				toast.success("Deleted successfully");

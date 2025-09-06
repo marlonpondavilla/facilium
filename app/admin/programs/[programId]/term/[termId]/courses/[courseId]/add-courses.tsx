@@ -14,12 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addDocumentToFirestore } from "@/data/actions";
 import { Plus } from "lucide-react";
-import { useParams } from "next/navigation";
-import React, { useState, useTransition } from "react";
+import { useParams, useRouter } from "next/navigation";
+import React, { useState } from "react";
 import toast from "react-hot-toast";
 
 type AddCoursesButtonProps = {
-	yearLevelId: string;
+	termId: string;
 	programId: string;
 	courseCode: string;
 	subjectTitle: string;
@@ -29,15 +29,15 @@ type AddCoursesButtonProps = {
 const AddCoursesButton = ({ id }: { id: string }) => {
 	const [open, setOpen] = useState(false);
 	const [inputError, setInputError] = useState("");
-	const [isPending, startTransition] = useTransition();
 	const [courseData, setCourseData] = useState<AddCoursesButtonProps>({
-		yearLevelId: id,
+		termId: id,
 		programId: "",
 		courseCode: "",
 		subjectTitle: "",
 	});
 
-	const { programId } = useParams();
+	const { programId, termId } = useParams();
+	const router = useRouter();
 
 	const handleAddCourse = async () => {
 		// validate course data
@@ -67,21 +67,30 @@ const AddCoursesButton = ({ id }: { id: string }) => {
 			return;
 		}
 
+		setOpen(false);
+
 		// firestore add document function
 		const result = await addDocumentToFirestore("courses", {
 			...courseData,
 			programId,
+			yearLevelId: termId,
 			created: new Date().toISOString(),
 		});
 
 		// result in adding firestore data
 		if (result.success) {
 			toast.success("New course added successfully");
-			setOpen(false);
-			startTransition(() => {
-				window.location.reload();
+			router.refresh();
+			setCourseData({
+				termId: id,
+				programId: String(programId),
+				courseCode: "",
+				subjectTitle: "",
 			});
+			return;
 		}
+
+		setOpen(true);
 	};
 
 	return (
@@ -92,7 +101,7 @@ const AddCoursesButton = ({ id }: { id: string }) => {
 				// remove previous values of each field
 				if (!isOpen) {
 					setCourseData({
-						yearLevelId: id,
+						termId: id,
 						programId: String(programId),
 						courseCode: "",
 						subjectTitle: "",
@@ -120,7 +129,7 @@ const AddCoursesButton = ({ id }: { id: string }) => {
 
 				<Label htmlFor="course-code">Course Code</Label>
 				<Input
-					placeholder="(e.g.., IT-101, Programming-1)"
+					placeholder="(e.g.., IT-101, DSA-102)"
 					id="course-code"
 					value={courseData.courseCode}
 					onChange={(e) => {
@@ -151,7 +160,6 @@ const AddCoursesButton = ({ id }: { id: string }) => {
 				<DialogFooter>
 					<Button
 						onClick={handleAddCourse}
-						disabled={isPending}
 						className="w-full mt-2 facilium-bg-indigo hover:opacity-80 rounded-full"
 					>
 						Add now

@@ -22,13 +22,14 @@ const DeleteYearLevel = ({ id }: { id: string }) => {
 	const router = useRouter();
 
 	const handleDelete = async () => {
-		// delete year level and relative section and [courses - to be implemented]
+		// delete year level and relative section and courses
 		await deleteDocumentById({
 			id,
 			collectionName: "year-levels",
 			relatedFields: [
 				{ collectionName: "sections", fieldName: "yearLevelId" },
-				// add courses to be deleted here stop cramming dude
+				{ collectionName: "courses", fieldName: "yearLevelId" },
+				{ collectionName: "academic-terms", fieldName: "yearLevelId" },
 			],
 		});
 		startTransition(() => {
