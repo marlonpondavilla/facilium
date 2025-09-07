@@ -31,12 +31,17 @@ import ScheduleTable from "./schedule-table";
 import { ScheduleItem } from "@/types/SceduleInterface";
 import {
 	addDocumentToFirestore,
+	checkIfDocumentExists,
 	checkIfScheduleConflictExists,
+	getDocumentsByFieldIds,
+	getDocumentsFromFirestore,
 	getSingleDocumentFromFirestore,
 } from "@/data/actions";
 import Loading from "./loading";
 import Link from "next/link";
 import WarningPopUp from "./warning-pop-up";
+import { AcademicYear } from "@/types/academicYearType";
+import ConfirmationHandleDialog from "./confirmation-handle-dialog";
 
 type FacultyScheduleInterfaceProps = {
 	buildingName: string;
@@ -60,9 +65,17 @@ type FacultyScheduleInterfaceProps = {
 	}[];
 	courses?: {
 		id: string;
+		termId: string;
 		yearLevelId: string;
 		courseCode: string;
 	}[];
+	academicTerms?: {
+		id: string;
+		programId: string;
+		yearLevelId: string;
+		term: string;
+	}[];
+	academicYears?: AcademicYear[];
 	professors?: {
 		id: string;
 		designation: string;
@@ -74,6 +87,11 @@ type FacultyScheduleInterfaceProps = {
 
 type ScheduleFormValues = z.infer<typeof scheduleSchema>;
 
+type ScheduleForDean = {
+	id: string;
+	classroomId: string;
+};
+
 const FacultyScheduleInterface = ({
 	buildingName,
 	data,
@@ -81,6 +99,8 @@ const FacultyScheduleInterface = ({
 	yearLevels,
 	sections,
 	courses,
+	academicTerms,
+	academicYears,
 	professors,
 	scheduleItems,
 }: FacultyScheduleInterfaceProps) => {
@@ -88,6 +108,9 @@ const FacultyScheduleInterface = ({
 	const [openConflict, setOpenConflict] = useState(false);
 	const [openNoClassroom, setOpenNoClassroom] = useState(false);
 	const [openNoSchedule, setOpenNoSchedule] = useState(false);
+	const [openPendingScheduleExist, setOpenPendingScheduleExist] =
+		useState(false);
+	const [isPendingScheduleExist, setIsPendingScheduleExist] = useState(false);
 	const [error, setError] = useState("");
 
 	const pathname = usePathname();
@@ -100,8 +123,28 @@ const FacultyScheduleInterface = ({
 	const hasSchedule = scheduleItems.some(
 		(schedule) => schedule.classroomId === classroomId
 	);
+	const scheduleLength = scheduleItems.filter(
+		(schedule) => schedule.classroomId === classroomId
+	).length;
 
 	const days = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
+	const activeYear = academicYears?.find((year) => year.isActive);
+	const activeTermName = activeYear?.term;
+
+	const matchingTerm = academicTerms?.find(
+		(term) =>
+			term.term.trim().toLowerCase() === activeTermName?.trim().toLowerCase() &&
+			term.yearLevelId === yearLevelId
+	);
+
+	const filteredCourses =
+		matchingTerm && Array.isArray(courses)
+			? courses.filter(
+					(course) =>
+						course.yearLevelId === yearLevelId &&
+						course.termId === matchingTerm.id
+			  )
+			: [];
 
 	const form = useForm<z.infer<typeof scheduleSchema>>({
 		resolver: zodResolver(scheduleSchema),
@@ -168,13 +211,40 @@ const FacultyScheduleInterface = ({
 		halfHourWatcher,
 	]);
 
+	// Pop up state and effect
 	useEffect(() => {
 		if (!classroomId) return;
+
+		setIsPendingScheduleExist(false);
 
 		if (!hasSchedule) {
 			setOpenNoSchedule(true);
 		}
-	}, [classroomId]);
+
+		let isCancelled = false;
+
+		const checkPendingSchedule = async () => {
+			try {
+				const exists = await checkIfDocumentExists(
+					"pendingScheduleData",
+					"classroomId",
+					classroomId
+				);
+
+				if (!isCancelled && exists) {
+					setIsPendingScheduleExist(true);
+				}
+			} catch (error) {
+				console.error("Error checking pending schedule:", error);
+			}
+		};
+
+		checkPendingSchedule();
+
+		return () => {
+			isCancelled = true;
+		};
+	}, [classroomId, hasSchedule]);
 
 	const handleClassroomClick = (id: string) => {
 		const params = new URLSearchParams({
@@ -187,10 +257,14 @@ const FacultyScheduleInterface = ({
 		makeLoading();
 	};
 
-	// submit function for schedule
-	const handleScheduleSubmit = async (
-		values: z.infer<typeof scheduleSchema>
-	) => {
+	// add function for schedule
+	const handleScheduleAdd = async (values: z.infer<typeof scheduleSchema>) => {
+		if (isPendingScheduleExist) {
+			setOpenPendingScheduleExist(true);
+			setError("Schedule submitted can be updated once the Dean reviewed it.");
+			return;
+		}
+
 		const scheduleResult = validateScheduleTimeRange(
 			values.start,
 			values.duration
@@ -237,17 +311,54 @@ const FacultyScheduleInterface = ({
 
 		const result = await addDocumentToFirestore("scheduleData", {
 			...scheduleData,
+			status: false,
 			created: new Date().toISOString(),
 		});
 
 		if (result.success) {
-			toast.success("Schedule submitted!");
+			toast.success("New schedule added!");
 			makeLoading();
 			form.reset();
 			setError("");
 		}
 
 		router.push(pathname);
+	};
+
+	// Submit schedule to dean function
+	const handleSubmitScheduleToDean = async () => {
+		if (!classroomId) return;
+		try {
+			if (isPendingScheduleExist) {
+				toast.error(
+					"This schedule is already in pending, wait for the Dean to Approve"
+				);
+				return;
+			}
+
+			const scheduleData = await getDocumentsFromFirestore<ScheduleForDean>(
+				"scheduleData"
+			);
+
+			const scheduleForDean = scheduleData.filter(
+				(schedule) => schedule.classroomId === classroomId
+			);
+
+			const result = await addDocumentToFirestore("pendingScheduleData", {
+				scheduleItems: scheduleForDean,
+				classroomId,
+				submitted: new Date().toISOString(),
+			});
+
+			if (result.success) {
+				toast.success("Your schedule is submitted to the Dean.");
+				// maybe create a pop up dialog here
+				router.push(pathname);
+				return;
+			}
+		} catch (e) {
+			console.error(e);
+		}
 	};
 
 	return (
@@ -338,6 +449,14 @@ const FacultyScheduleInterface = ({
 				description="If you think this is wrong please contact your admin"
 			/>
 
+			{/* Pop up message when there is pending schedule and add try to a schedule */}
+			<WarningPopUp
+				open={openPendingScheduleExist}
+				setOpen={setOpenPendingScheduleExist}
+				title="Please wait until the Dean approve or reject this schedule."
+				description="You can make changes again once the status of this schedule is updated."
+			/>
+
 			{/* Schedule Form & Table Container */}
 			<div className="w-full max-w-7xl mx-auto px-0 grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
 				{/* Schedule Form */}
@@ -358,7 +477,7 @@ const FacultyScheduleInterface = ({
 					</div>
 					<Form {...form}>
 						<form
-							onSubmit={form.handleSubmit(handleScheduleSubmit)}
+							onSubmit={form.handleSubmit(handleScheduleAdd)}
 							className={`p-4 flex-col gap-4 ${
 								!pathname.startsWith("/program-head") ? "hidden" : "flex"
 							}`}
@@ -560,19 +679,20 @@ const FacultyScheduleInterface = ({
 														</FormControl>
 														<SelectContent>
 															<SelectGroup>
-																{courses
-																	?.filter(
-																		(course) =>
-																			course.yearLevelId === yearLevelId
-																	)
-																	.map((course) => (
+																{filteredCourses.length > 0 ? (
+																	filteredCourses.map((course) => (
 																		<SelectItem
 																			key={course.id}
 																			value={course.courseCode}
 																		>
 																			{course.courseCode}
 																		</SelectItem>
-																	))}
+																	))
+																) : (
+																	<SelectItem disabled value="no-course">
+																		No courses found
+																	</SelectItem>
+																)}
 															</SelectGroup>
 														</SelectContent>
 													</Select>
@@ -818,16 +938,35 @@ const FacultyScheduleInterface = ({
 									)}
 								</div>
 
-								{/* Submit Button */}
-								<Button
-									type="submit"
-									className="facilium-bg-indigo text-white w-full"
-									disabled={data.length < 1}
-								>
-									{form.formState.isSubmitting
-										? "Submitting"
-										: "Submit Schedule"}
-								</Button>
+								{/* Add schedule Button */}
+								{classroomId && (
+									<Button
+										type="submit"
+										className="facilium-bg-indigo text-white w-full"
+										disabled={data.length < 1}
+									>
+										{form.formState.isSubmitting ? "Adding" : "Add Schedule"}
+									</Button>
+								)}
+
+								{/* Submit schedule to dean */}
+								{classroomId && (
+									<ConfirmationHandleDialog
+										trigger={
+											<Button
+												type="button"
+												variant={"destructive"}
+												disabled={scheduleLength < 3 || isPendingScheduleExist}
+												className="w-full"
+											>
+												Submit schedule to Dean
+											</Button>
+										}
+										title="Are you sure you want to submit this schedule to Dean?"
+										description="You cannot make changes in this schedule until the Dean change the status of your plotted schedule."
+										onConfirm={handleSubmitScheduleToDean}
+									/>
+								)}
 							</fieldset>
 						</form>
 					</Form>
@@ -841,6 +980,18 @@ const FacultyScheduleInterface = ({
 							: "max-w-full"
 					}`}
 				>
+					{/* status message */}
+					{isPendingScheduleExist &&
+						pathname.startsWith("/program-head") &&
+						classroomId && (
+							<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
+								<TriangleAlert />
+								<p>
+									{"This schedule is pending approval from the Campus Dean."}
+								</p>
+							</div>
+						)}
+
 					{/* warning message for faculty */}
 					{pathname.startsWith("/faculty") && (
 						<div className="flex w-full border justify-center gap-2 bg-blue-200 text-blue-500 items-center text-center text-xs tracking-wide mb-2 p-2">

@@ -12,8 +12,8 @@ import {
 	UserCog,
 	UsersRound,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Alegreya_SC } from "next/font/google";
 import Link from "next/link";
 
@@ -25,6 +25,14 @@ const alegreyaSC = Alegreya_SC({
 const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 	const auth = useAuth();
 	const pathname = usePathname();
+	const router = useRouter();
+
+	// block non auth user
+	useEffect(() => {
+		if (!auth?.user) {
+			router.replace("/login");
+		}
+	}, [auth?.user]);
 
 	const [showSidebar, setShowSidebar] = useState(false);
 

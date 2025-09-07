@@ -7,6 +7,7 @@ import {
 	getClassrooms,
 	getScheduleData,
 } from "@/data/faculty-building";
+import { AcademicYear } from "@/types/academicYearType";
 import { ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
 
@@ -35,8 +36,16 @@ type Sections = {
 
 type Courses = {
 	id: string;
+	termId: string;
 	yearLevelId: string;
 	courseCode: string;
+};
+
+type AcademicTerms = {
+	id: string;
+	programId: string;
+	yearLevelId: string;
+	term: string;
 };
 
 type Professors = {
@@ -66,10 +75,21 @@ const Page = async ({ params }: PageProps) => {
 
 	const courses: Courses[] = await getDocumentsFromFirestore("courses", true);
 
+	const academicTerms: AcademicTerms[] = await getDocumentsFromFirestore(
+		"academic-terms",
+		true
+	);
+
+	const academicYears: AcademicYear[] = await getDocumentsFromFirestore(
+		"academic-years"
+	);
+
+	// console.log(academicYears);
+
 	// note: hindi naka sort by created field, just add the second argument(boolean) if needed.
 	const professors: Professors[] = await getDocumentsFromFirestore("userData");
 
-	const scheduleData = await getScheduleData();
+	const scheduleData = await getScheduleData("scheduleData");
 	const classrooms: Classroom[] = await getClassrooms(id);
 	const buildingName = await getBuildingName(id);
 
@@ -82,6 +102,8 @@ const Page = async ({ params }: PageProps) => {
 				yearLevels={yearLevels}
 				sections={sections}
 				courses={courses}
+				academicTerms={academicTerms}
+				academicYears={academicYears}
 				professors={professors}
 				scheduleItems={scheduleData}
 			/>

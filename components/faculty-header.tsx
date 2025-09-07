@@ -5,7 +5,7 @@ import { Alegreya_SC } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "./ui/button";
 
 const alegreyaSC = Alegreya_SC({
@@ -18,6 +18,13 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 	const pathname = usePathname();
 	const auth = useAuth();
 	const userDisplayName = auth?.user?.displayName ?? "--";
+
+	// block non auth user
+	useEffect(() => {
+		if (!auth?.user) {
+			router.replace("/login");
+		}
+	}, [auth?.user]);
 
 	const getInitials = (name: string): string => {
 		const words = name.trim().split(" ");

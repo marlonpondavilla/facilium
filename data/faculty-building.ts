@@ -28,9 +28,9 @@ export const getBuildingData = async (): Promise<Building[]> => {
 	}));
 };
 
-export const getScheduleData = async () => {
+export const getScheduleData = async (collectionName: string) => {
 	return (await getDocumentsFromFirestore(
-		"scheduleData",
+		collectionName,
 		true
 	)) as ScheduleItem[];
 };

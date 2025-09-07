@@ -17,14 +17,14 @@ type PageProps = {
 const Page = async ({ params }: PageProps) => {
 	const { id } = await Promise.resolve(params);
 
-	const scheduleData = await getScheduleData();
+	const approvedScheduleData = await getScheduleData("approvedScheduleData");
 	const buildingName = await getBuildingName(id);
 	const clasrooms: Classroom[] = await getClassrooms(id);
 
 	return (
 		<FacultyHeader>
 			<FacultyScheduleInterface
-				scheduleItems={scheduleData}
+				scheduleItems={approvedScheduleData}
 				buildingName={buildingName}
 				data={clasrooms}
 			/>
