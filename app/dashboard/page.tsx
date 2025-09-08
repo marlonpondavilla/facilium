@@ -57,7 +57,9 @@ const DashboardRedirectPage = () => {
 		return <p>Redirecting...</p>;
 	}
 
-	return null;
+	return (
+		<p className="text-center">Welcome to facilium please reload the page</p>
+	);
 };
 
 export default DashboardRedirectPage;

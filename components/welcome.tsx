@@ -31,7 +31,7 @@ const Welcome = () => {
 			<Button
 				onClick={handleRefreshClaims}
 				disabled={refreshing}
-				variant="secondary"
+				variant="destructive"
 			>
 				{refreshing ? "Continuing..." : "Continue"}
 			</Button>

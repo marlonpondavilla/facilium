@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 const VerifyEmailPage = () => {
 	const { user, loading } = useAuth() || {};
@@ -16,7 +17,7 @@ const VerifyEmailPage = () => {
 		// If already verified, redirect to dashboard or login
 		if (user?.emailVerified) {
 			toast.success("Email already verified.");
-			router.push("/login"); // Or "/dashboard" depending on flow
+			router.push("/login");
 		}
 	}, [user]);
 
@@ -34,6 +35,10 @@ const VerifyEmailPage = () => {
 		}
 	};
 
+	const handleGoToLogin = () => {
+		router.push("/login");
+	};
+
 	if (loading) return <p>Loading...</p>;
 
 	return (
@@ -43,9 +48,15 @@ const VerifyEmailPage = () => {
 				We’ve sent a verification email to <strong>{user?.email}</strong>.
 				Please check your inbox (and spam folder) to verify your email address.
 			</p>
+			<div className="flex justify-center gap-2 my-4 ">
+				<ArrowLeft />
+				<p onClick={handleGoToLogin} className="cursor-pointer">
+					Go back to login
+				</p>
+			</div>
 			<Button
 				onClick={handleResend}
-				className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+				className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition"
 				disabled={resent}
 			>
 				{resent ? "Email Sent!" : "Resend Verification Email"}
