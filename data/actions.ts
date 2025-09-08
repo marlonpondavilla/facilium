@@ -163,6 +163,31 @@ export const getDocumentsByFieldIds = async <T>(
 	}
 };
 
+export const getDocumentsWithNestedObject = async <T>(
+	collectionName: string,
+	sortField?: string,
+	sortDirection: "asc" | "desc" = "asc"
+): Promise<(T & { id: string })[]> => {
+	try {
+		let collectionRef: CollectionReference<DocumentData> | Query<DocumentData> =
+			firestore.collection(collectionName);
+
+		if (sortField) {
+			collectionRef = collectionRef.orderBy(sortField, sortDirection);
+		}
+
+		const snapshot = await collectionRef.get();
+
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...(doc.data() as T),
+		}));
+	} catch (error) {
+		console.error(`Error fetching documents from ${collectionName}`, error);
+		return [];
+	}
+};
+
 export const getSingleDocumentFromFirestore = async (
 	id: string,
 	collectionName: string,

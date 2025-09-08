@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowLeft, Building, NotebookPen, TriangleAlert } from "lucide-react";
+import {
+	ArrowLeft,
+	Building,
+	Check,
+	NotebookPen,
+	TriangleAlert,
+	X,
+} from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import {
@@ -971,6 +978,19 @@ const FacultyScheduleInterface = ({
 						</form>
 					</Form>
 				</div>
+
+				{/* Dean controls and approvals */}
+				{pathname.startsWith("/dean") && classroomId && (
+					<div className="flex items-center gap-4 facilium-bg-whiter p-4 rounded w-full self-start">
+						<p className="font-semibold">Actions:</p>
+						<Button className="bg-blue-500 hover:opacity-50 cursor-pointer">
+							<Check /> Approve this Schedule
+						</Button>
+						<Button variant={"destructive"} className="cursor-pointer">
+							<X /> Reject
+						</Button>
+					</div>
+				)}
 
 				{/* Schedule Table */}
 				<div

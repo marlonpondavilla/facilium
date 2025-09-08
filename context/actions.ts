@@ -30,7 +30,7 @@ export const setToken = async ({
 		//Check for role by env email, and assign respective designation
 		if (email === process.env.ADMIN_EMAIL) {
 			role = "admin";
-		} else if (email === "ayanokoujisan26@gmail.com") {
+		} else if (email === process.env.DEAN_EMAIL) {
 			role = "dean";
 		} else {
 			// Try fetching designation from Firestore
