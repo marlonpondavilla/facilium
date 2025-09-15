@@ -11,6 +11,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/context/auth";
 import { adminLoginSchema } from "@/validation/adminLoginSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -161,11 +162,7 @@ const AdminForm = () => {
 											<FormItem>
 												<FormLabel>Password</FormLabel>
 												<FormControl>
-													<Input
-														type="password"
-														placeholder="******"
-														{...field}
-													/>
+													<PasswordInput placeholder="******" {...field} />
 												</FormControl>
 												<FormMessage />
 											</FormItem>

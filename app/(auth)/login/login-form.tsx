@@ -10,6 +10,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/auth";
 import { loginSchema } from "@/validation/loginSchema";
@@ -112,8 +113,7 @@ const LoginForm = () => {
 							<FormItem className="text-left">
 								<FormLabel>Password</FormLabel>
 								<FormControl>
-									<Input
-										type="password"
+									<PasswordInput
 										placeholder="********"
 										{...field}
 										className="w-full"
