@@ -58,6 +58,7 @@ type FacultyScheduleInterfaceProps = {
 	buildingName: string;
 	data: {
 		id: string;
+		status: string;
 		classroomName: string;
 	}[];
 	programs?: {
@@ -608,19 +609,21 @@ const FacultyScheduleInterface = ({
 					</p>
 				</div>
 				<div className="classroom-item flex flex-wrap gap-3 py-3 justify-center sm:justify-start">
-					{data.map((classroom) => (
-						<p
-							key={classroom.id}
-							onClick={() => handleClassroomClick(classroom.id)}
-							className={`${
-								classroom.id === classroomId
-									? "facilium-bg-indigo facilium-color-white"
-									: "border border-black font-semibold facilium-color-indigo hover:bg-gray-200"
-							} cursor-pointer rounded text-sm py-3 px-5 sm:py-2 sm:px-4 transition-colors`}
-						>
-							{classroom.classroomName}
-						</p>
-					))}
+					{data
+						.filter((classroom) => classroom.status === "Enabled")
+						.map((classroom) => (
+							<p
+								key={classroom.id}
+								onClick={() => handleClassroomClick(classroom.id)}
+								className={`${
+									classroom.id === classroomId
+										? "facilium-bg-indigo facilium-color-white"
+										: "border border-black font-semibold facilium-color-indigo hover:bg-gray-200"
+								} cursor-pointer rounded text-sm py-3 px-5 sm:py-2 sm:px-4 transition-colors`}
+							>
+								{classroom.classroomName}
+							</p>
+						))}
 				</div>
 				{!classroomId && data.length > 1 && (
 					<p className={`text-start text-red-400 text-xs `}>

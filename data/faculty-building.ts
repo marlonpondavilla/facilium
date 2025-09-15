@@ -15,6 +15,7 @@ type Building = {
 export type Classroom = {
 	id: string;
 	classroomName: string;
+	status: string;
 };
 
 export const getBuildingData = async (): Promise<Building[]> => {
