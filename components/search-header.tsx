@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 type SearchHeaderProps = {
 	search: string;
@@ -22,25 +22,28 @@ const SearchHeader = ({
 
 	const DEBOUNCE_DELAY = 500;
 
+	const lastPushedRef = useRef<string | null>(null);
 	useEffect(() => {
 		const timeout = setTimeout(() => {
 			const params = new URLSearchParams(searchParams.toString());
-
 			if ((query ?? "").trim()) {
 				params.set("search", query.trim());
 			} else {
 				params.delete("search");
 			}
-
+			// reset pagination-related params
 			params.delete("page");
 			params.delete("cursor");
 			params.delete("previousCursors");
 
-			router.push(`?${params.toString()}`);
+			const newQueryString = `?${params.toString()}`;
+			if (lastPushedRef.current !== newQueryString) {
+				lastPushedRef.current = newQueryString;
+				router.push(newQueryString);
+			}
 		}, DEBOUNCE_DELAY);
-
 		return () => clearTimeout(timeout);
-	}, [query]);
+	}, [query, searchParams, router]);
 
 	useEffect(() => {
 		setQuery(search);

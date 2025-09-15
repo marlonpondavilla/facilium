@@ -5,8 +5,9 @@ import { Alegreya_SC } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import React from "react";
 import { Button } from "./ui/button";
+import { useRequireAuth } from "@/lib/use-require-auth";
 
 const alegreyaSC = Alegreya_SC({
 	subsets: ["latin"],
@@ -19,12 +20,8 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 	const auth = useAuth();
 	const userDisplayName = auth?.user?.displayName ?? "--";
 
-	// block non auth user
-	useEffect(() => {
-		if (!auth?.user) {
-			router.replace("/login");
-		}
-	}, [auth?.user, router]);
+	// Centralized guard
+	useRequireAuth();
 
 	const getInitials = (name: string): string => {
 		const words = name.trim().split(" ");

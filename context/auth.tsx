@@ -34,6 +34,8 @@ type AuthContextType = {
 	signup: (formData: SignupFormData) => Promise<void>;
 	logout: () => Promise<void>;
 	customClaims: ParsedToken | null;
+	loggingOut: boolean;
+	refreshSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -42,6 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [customClaims, setCustomClaims] = useState<ParsedToken | null>(null);
+	const [loggingOut, setLoggingOut] = useState(false);
 	const router = useRouter();
 
 	useEffect(() => {
@@ -132,10 +135,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 	};
 
 	const logout = async () => {
-		await signOut(auth);
-		await removeToken();
-		router.push("/login");
+		if (loggingOut) return; // prevent double clicks
+		setLoggingOut(true);
+		// Run signOut and token removal in parallel; ignore individual errors to ensure navigation proceeds
+		await Promise.allSettled([
+			(async () => {
+				try {
+					await signOut(auth);
+				} catch (_) {}
+			})(),
+			(async () => {
+				try {
+					await removeToken();
+				} catch (_) {}
+			})(),
+		]);
+		// Use replace to avoid adding to history stack and reduce flicker
+		router.replace("/login");
+		// Small timeout to allow navigation before resetting state (optional safeguard)
+		setTimeout(() => setLoggingOut(false), 500);
 	};
+
+	// Manual / interval token refresh
+	const refreshSession = async () => {
+		if (!user) return;
+		try {
+			const tokenResult = await user.getIdTokenResult(true);
+			const token = tokenResult.token;
+			const refreshToken = user.refreshToken;
+			if (token && refreshToken) {
+				await setToken({ token, refreshToken });
+				setCustomClaims(tokenResult.claims ?? null);
+			}
+		} catch (e) {
+			console.warn("refreshSession failed", e);
+		}
+	};
+
+	useEffect(() => {
+		if (!user) return;
+		// 25 min interval (Firebase tokens ~1h) to keep claims fresh
+		const interval = setInterval(() => {
+			refreshSession();
+		}, 25 * 60 * 1000);
+		return () => clearInterval(interval);
+	}, [user]);
 
 	return (
 		<AuthContext.Provider
@@ -147,6 +191,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 				login,
 				signup,
 				logout,
+				loggingOut,
+				refreshSession,
 			}}
 		>
 			{children}
