@@ -48,7 +48,7 @@ const DeleteDocumentWithConfirmation = ({
 			}
 			// dynamically delete document based on id
 			await deleteDocumentById({ id: id, collectionName: collectionName });
-			toast.success("Deleted successfully!");
+			toast.success(`${label} deleted successfully!`);
 			router.refresh();
 		} catch (e: unknown) {
 			const error = e as { message?: string };

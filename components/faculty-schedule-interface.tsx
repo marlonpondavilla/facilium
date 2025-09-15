@@ -4,7 +4,9 @@ import {
 	ArrowLeft,
 	Building,
 	Check,
+	Info,
 	NotebookPen,
+	RotateCcw,
 	TriangleAlert,
 	X,
 } from "lucide-react";
@@ -35,13 +37,14 @@ import toast from "react-hot-toast";
 import { validateScheduleTimeRange } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
 import ScheduleTable from "./schedule-table";
-import { ScheduleItem } from "@/types/SceduleInterface";
+import { PendingSchedule, ScheduleItem } from "@/types/SceduleInterface";
 import {
 	addDocumentToFirestore,
 	checkIfDocumentExists,
 	checkIfScheduleConflictExists,
-	getDocumentsByFieldIds,
+	deleteDocumentById,
 	getDocumentsFromFirestore,
+	getDocumentsWithNestedObject,
 	getSingleDocumentFromFirestore,
 } from "@/data/actions";
 import Loading from "./loading";
@@ -49,6 +52,7 @@ import Link from "next/link";
 import WarningPopUp from "./warning-pop-up";
 import { AcademicYear } from "@/types/academicYearType";
 import ConfirmationHandleDialog from "./confirmation-handle-dialog";
+import { useAuth } from "@/context/auth";
 
 type FacultyScheduleInterfaceProps = {
 	buildingName: string;
@@ -99,6 +103,24 @@ type ScheduleForDean = {
 	classroomId: string;
 };
 
+type PendingScheduleDetailsDB = {
+	id: string;
+	classroomId: string;
+	professorId: string;
+	submitted: string;
+};
+
+type PendingScheduleDetails = {
+	classroomName: string;
+	professorName: string;
+	dateSubmitted: string;
+};
+interface Professor {
+	uid: string;
+	firstName: string;
+	lastName: string;
+}
+
 const FacultyScheduleInterface = ({
 	buildingName,
 	data,
@@ -118,8 +140,16 @@ const FacultyScheduleInterface = ({
 	const [openPendingScheduleExist, setOpenPendingScheduleExist] =
 		useState(false);
 	const [isPendingScheduleExist, setIsPendingScheduleExist] = useState(false);
+	const [isApprovedScheduleExist, setIsApprovedScheduleExist] = useState(false);
 	const [error, setError] = useState("");
+	const [pendingScheduleDetails, setPendingScheduleDetails] =
+		useState<PendingScheduleDetails>({
+			classroomName: "",
+			professorName: "",
+			dateSubmitted: "",
+		});
 
+	const auth = useAuth();
 	const pathname = usePathname();
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -223,6 +253,7 @@ const FacultyScheduleInterface = ({
 		if (!classroomId) return;
 
 		setIsPendingScheduleExist(false);
+		setIsApprovedScheduleExist(false);
 
 		if (!hasSchedule) {
 			setOpenNoSchedule(true);
@@ -232,14 +263,24 @@ const FacultyScheduleInterface = ({
 
 		const checkPendingSchedule = async () => {
 			try {
-				const exists = await checkIfDocumentExists(
+				const pendingExists = await checkIfDocumentExists(
 					"pendingScheduleData",
 					"classroomId",
 					classroomId
 				);
 
-				if (!isCancelled && exists) {
+				const approveExists = await checkIfDocumentExists(
+					"approvedScheduleData",
+					"classroomId",
+					classroomId
+				);
+
+				if (!isCancelled && pendingExists) {
 					setIsPendingScheduleExist(true);
+				}
+
+				if (!isCancelled && approveExists) {
+					setIsApprovedScheduleExist(true);
 				}
 			} catch (error) {
 				console.error("Error checking pending schedule:", error);
@@ -251,6 +292,73 @@ const FacultyScheduleInterface = ({
 		return () => {
 			isCancelled = true;
 		};
+	}, [classroomId, hasSchedule]);
+
+	// retrieve pending schedule details submitted by program head
+	useEffect(() => {
+		if (!classroomId) return;
+		if (!pathname.startsWith("/dean")) return;
+		if (!hasSchedule) return;
+
+		const fetchPendingScheduleDetails = async () => {
+			// Get all pending schedules
+			const pendingSchedules =
+				await getDocumentsWithNestedObject<PendingScheduleDetailsDB>(
+					"pendingScheduleData",
+					"submitted"
+				);
+
+			// Filter only schedules matching this classroom
+			const ids = pendingSchedules
+				.filter((schedule) => schedule.classroomId === classroomId)
+				.map((schedule) => ({
+					classroomId: schedule.classroomId,
+					professorId: schedule.professorId,
+					submitted: schedule.submitted,
+				}));
+
+			// Fetch all professors
+			const allProfessors = await getDocumentsFromFirestore<Professor>(
+				"userData"
+			);
+
+			for (const { classroomId, professorId, submitted } of ids) {
+				// Get classroom name by doc ID
+				const classroomDoc = await getSingleDocumentFromFirestore(
+					classroomId,
+					"classrooms",
+					"classroomName"
+				);
+
+				// Match professor by UID field
+				const matchedProfessor = allProfessors.find(
+					(prof) => prof.uid === professorId
+				);
+
+				// Build full name
+				const fullName =
+					matchedProfessor?.firstName && matchedProfessor?.lastName
+						? `${matchedProfessor.firstName} ${matchedProfessor.lastName}`
+						: "Unknown";
+
+				// Format date
+				const formattedDate = submitted
+					? new Date(submitted).toLocaleString("en-US", {
+							dateStyle: "medium",
+							timeStyle: "short",
+					  })
+					: "";
+
+				// Set the final state
+				setPendingScheduleDetails({
+					classroomName: classroomDoc ?? "Unknown",
+					professorName: fullName,
+					dateSubmitted: formattedDate,
+				});
+			}
+		};
+
+		fetchPendingScheduleDetails();
 	}, [classroomId, hasSchedule]);
 
 	const handleClassroomClick = (id: string) => {
@@ -354,6 +462,7 @@ const FacultyScheduleInterface = ({
 			const result = await addDocumentToFirestore("pendingScheduleData", {
 				scheduleItems: scheduleForDean,
 				classroomId,
+				professorId: auth?.user?.uid,
 				submitted: new Date().toISOString(),
 			});
 
@@ -365,6 +474,101 @@ const FacultyScheduleInterface = ({
 			}
 		} catch (e) {
 			console.error(e);
+		}
+	};
+
+	// Approve handle for dean
+	const handleApproveSchedule = async () => {
+		const pendingSchedules =
+			await getDocumentsWithNestedObject<PendingSchedule>(
+				"pendingScheduleData",
+				"submitted"
+			);
+
+		const pendingScheduleItems: ScheduleItem[] = pendingSchedules.flatMap(
+			(doc) => doc.scheduleItems
+		);
+
+		for (const pendingSchedule of pendingSchedules) {
+			if (pendingSchedule.classroomId === classroomId) {
+				try {
+					const result = await addDocumentToFirestore("approvedScheduleData", {
+						id: pendingSchedule.id,
+						scheduleItems: pendingScheduleItems,
+						classroomId,
+						dean: auth?.user?.displayName,
+						approved: new Date().toISOString(),
+					});
+
+					if (result.success) {
+						toast.success("Schedule has been approved by you.");
+						router.push(pathname);
+					}
+				} catch (e) {
+					console.error("Error on approving schedule", e);
+				}
+			}
+		}
+	};
+
+	// Reject handle for dean
+	const handleRejectSchedule = async () => {
+		if (!classroomId) return;
+
+		const rejectSchedules = await getDocumentsWithNestedObject<PendingSchedule>(
+			"pendingScheduleData",
+			"submitted"
+		);
+
+		for (const rejectSchedule of rejectSchedules) {
+			try {
+				if (rejectSchedule.classroomId === classroomId) {
+					await deleteDocumentById({
+						id: rejectSchedule.id,
+						collectionName: "pendingScheduleData",
+					});
+					toast.success(
+						`Schedule for ${pendingScheduleDetails.classroomName} is rejected successfully!`
+					);
+					router.push(pathname);
+					return;
+				}
+			} catch (e) {
+				console.error("error rejecting a schedule", e);
+				toast.error(`Failed to reject schedule ${rejectSchedule.id}`);
+				return;
+			}
+		}
+	};
+
+	// Reset handle for program-head
+	const handleResetSchedule = async () => {
+		if (!classroomId) return;
+
+		try {
+			const updateSchedules =
+				await getDocumentsWithNestedObject<PendingSchedule>(
+					"pendingScheduleData",
+					"submitted"
+				);
+
+			for (const updateSchedule of updateSchedules) {
+				if (updateSchedule.classroomId === classroomId) {
+					await deleteDocumentById({
+						id: updateSchedule.id,
+						collectionName: "pendingScheduleData",
+						relatedFields: [
+							{ collectionName: "approvedScheduleData", fieldName: "id" },
+						],
+					});
+					toast.success(`The schedule has been reset by you.`);
+					router.push(pathname);
+					return;
+				}
+			}
+		} catch (e) {
+			console.error("Error on updating schedule", e);
+			return;
 		}
 	};
 
@@ -950,7 +1154,7 @@ const FacultyScheduleInterface = ({
 									<Button
 										type="submit"
 										className="facilium-bg-indigo text-white w-full"
-										disabled={data.length < 1}
+										disabled={isPendingScheduleExist}
 									>
 										{form.formState.isSubmitting ? "Adding" : "Add Schedule"}
 									</Button>
@@ -971,7 +1175,24 @@ const FacultyScheduleInterface = ({
 										}
 										title="Are you sure you want to submit this schedule to Dean?"
 										description="You cannot make changes in this schedule until the Dean change the status of your plotted schedule."
+										label="submit"
 										onConfirm={handleSubmitScheduleToDean}
+									/>
+								)}
+
+								{/* Reset schedule for pending and approve will be deleted*/}
+								{isApprovedScheduleExist && classroomId && (
+									<ConfirmationHandleDialog
+										trigger={
+											<Button type="button" className="facilium-bg-indigo">
+												<RotateCcw />
+												Update classroom schedule
+											</Button>
+										}
+										title="Are you sure you want to update this approved schedule?"
+										description="You will have to submit this schedule again and dean has to review it."
+										label="update"
+										onConfirm={handleResetSchedule}
 									/>
 								)}
 							</fieldset>
@@ -980,17 +1201,67 @@ const FacultyScheduleInterface = ({
 				</div>
 
 				{/* Dean controls and approvals */}
-				{pathname.startsWith("/dean") && classroomId && (
-					<div className="flex items-center gap-4 facilium-bg-whiter p-4 rounded w-full self-start">
-						<p className="font-semibold">Actions:</p>
-						<Button className="bg-blue-500 hover:opacity-50 cursor-pointer">
-							<Check /> Approve this Schedule
-						</Button>
-						<Button variant={"destructive"} className="cursor-pointer">
-							<X /> Reject
-						</Button>
-					</div>
-				)}
+				{pathname.startsWith("/dean") &&
+					!isApprovedScheduleExist &&
+					classroomId &&
+					hasSchedule &&
+					pendingScheduleDetails && (
+						<div className="bg-white p-6 rounded-lg shadow w-full self-start space-y-6">
+							{/* Header */}
+							<div>
+								<h2 className="text-lg font-semibold text-gray-800 mb-2">
+									Schedule Submission Details
+								</h2>
+								<p className="text-sm text-gray-600">
+									<span className="font-medium facilium-color-indigo">
+										Plotted By:
+									</span>{" "}
+									{pendingScheduleDetails.professorName || "Loading..."}
+								</p>
+								<p className="text-sm text-gray-600">
+									<span className="font-medium facilium-color-indigo">
+										Classroom:
+									</span>{" "}
+									{pendingScheduleDetails.classroomName || "Loading..."}
+								</p>
+								<p className="text-sm text-gray-600">
+									<span className="font-medium facilium-color-indigo">
+										Date submitted/updated:
+									</span>{" "}
+									{pendingScheduleDetails.dateSubmitted || "Loading..."}
+								</p>
+							</div>
+
+							{/* Actions */}
+							<div className="flex flex-wrap items-center gap-4">
+								<ConfirmationHandleDialog
+									trigger={
+										<Button className="bg-blue-600 hover:bg-blue-700 text-white">
+											<Check className="mr-2 h-4 w-4" />
+											Approve
+										</Button>
+									}
+									title={`You are about to approve this schedule for ${pendingScheduleDetails.classroomName}.`}
+									description="This will reflect to all faculty members."
+									label="approve"
+									onConfirm={handleApproveSchedule}
+								/>
+
+								<ConfirmationHandleDialog
+									trigger={
+										<Button variant="destructive" className="text-white">
+											<X className="mr-2 h-4 w-4" />
+											Reject
+										</Button>
+									}
+									title={`Are you sure you want to reject this schedule for ${pendingScheduleDetails.classroomName}?`}
+									description="This action cannot be undone."
+									label="reject"
+									onConfirm={handleRejectSchedule}
+								/>
+							</div>
+						</div>
+					)}
 
 				{/* Schedule Table */}
 				<div
@@ -1000,14 +1271,30 @@ const FacultyScheduleInterface = ({
 							: "max-w-full"
 					}`}
 				>
-					{/* status message */}
+					{/* status message when pending schedule */}
 					{isPendingScheduleExist &&
+						!isApprovedScheduleExist &&
 						pathname.startsWith("/program-head") &&
 						classroomId && (
 							<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
 								<TriangleAlert />
 								<p>
 									{"This schedule is pending approval from the Campus Dean."}
+								</p>
+							</div>
+						)}
+
+					{/* rejected status */}
+					{!isPendingScheduleExist &&
+						!isApprovedScheduleExist &&
+						pathname.startsWith("/program-head") &&
+						classroomId && (
+							<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
+								<Info />
+								<p>
+									{
+										"This schedule has been reset or rejected. You can update it now."
+									}
 								</p>
 							</div>
 						)}
@@ -1020,6 +1307,16 @@ const FacultyScheduleInterface = ({
 							but only Program Chairs can add, edit, and delete schedules.
 						</div>
 					)}
+
+					{/* approved status */}
+					{!pathname.startsWith("/faculty") &&
+						classroomId &&
+						isApprovedScheduleExist && (
+							<div className="flex w-full border justify-center gap-2 bg-blue-200 text-blue-500 items-center text-center text-xs tracking-wide mb-2 p-2">
+								You are viewing the approved schedule for this room.
+							</div>
+						)}
+
 					{!classroomId && data.length > 1 && (
 						<p
 							className={`text-base text-center py-2 text-pink-600 ${
@@ -1029,7 +1326,11 @@ const FacultyScheduleInterface = ({
 							Select a classroom first to view plotted schedule.
 						</p>
 					)}
-					<ScheduleTable scheduleItems={scheduleItems} />
+					<ScheduleTable
+						scheduleItems={scheduleItems}
+						isPending={isPendingScheduleExist}
+						isApproved={isApprovedScheduleExist}
+					/>
 				</div>
 			</div>
 		</div>

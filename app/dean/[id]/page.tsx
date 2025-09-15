@@ -5,21 +5,14 @@ import {
 	Classroom,
 	getBuildingName,
 	getClassrooms,
-	getScheduleData,
 } from "@/data/faculty-building";
-import { ScheduleItem } from "@/types/SceduleInterface";
+import { PendingSchedule, ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
 
 type PageProps = {
 	params: {
 		id: string;
 	};
-};
-
-type PendingSchedule = {
-	classroomId: string;
-	scheduleItems: ScheduleItem[];
-	submitted: string;
 };
 
 const Page = async ({ params }: PageProps) => {

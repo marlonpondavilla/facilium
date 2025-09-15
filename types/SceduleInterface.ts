@@ -11,3 +11,10 @@ export interface ScheduleItem {
 	halfHour?: number;
 	classroomId: string;
 }
+
+export type PendingSchedule = {
+	id: string;
+	classroomId: string;
+	scheduleItems: ScheduleItem[];
+	submitted: string;
+};
