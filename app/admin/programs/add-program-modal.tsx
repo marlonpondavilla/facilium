@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
-import { PlusIcon } from "lucide-react";
+// Legacy direct firestore helpers replaced by server action usage with revalidation
+// import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
+import { addProgramAction } from "./actions";
+import { PlusIcon, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
@@ -35,43 +37,37 @@ const AddProgramModal = () => {
 	});
 
 	const handleAddProgram = async () => {
-		try {
-			if (!programData.programCode || !programData.programName) {
-				setError(true);
-				setOpen(true);
-				return;
-			}
-
-			setSubmitting(true);
-
-			const isProgramCodeExist = await checkIfDocumentExists(
-				"programs",
-				"programCode",
-				programData.programCode
-			);
-
-			if (isProgramCodeExist) {
-				setExistError(true);
-				setSubmitting(false);
-				setOpen(true);
-				return;
-			}
-
-			const result = await addDocumentToFirestore("programs", {
-				...programData,
-				created: new Date().toISOString(),
-			});
-
-			if (result.success) {
-				toast.success("New Program Added Successfully");
-				setSubmitting(false);
-				setError(false);
-				setOpen(false);
-				router.refresh();
-			}
-		} catch (e) {
-			console.error(e);
+		if (!programData.programCode || !programData.programName) {
+			setError(true);
+			setOpen(true);
+			return;
 		}
+
+		setSubmitting(true);
+
+		// Call server action (handles duplicate detection & revalidation)
+		const res = await addProgramAction({
+			programCode: programData.programCode,
+			programName: programData.programName,
+		});
+
+		if (!res.success) {
+			if (res.error?.includes("exists")) {
+				setExistError(true);
+			} else {
+				toast.error(res.error || "Failed to add program");
+			}
+			setSubmitting(false);
+			return;
+		}
+
+		toast.success("New Program Added Successfully");
+		setSubmitting(false);
+		setError(false);
+		setOpen(false);
+		// router.refresh() is usually not necessary because revalidatePath in server action
+		// is enough, but keep as a fallback for immediate UI consistency.
+		router.refresh();
 	};
 
 	return (
@@ -89,9 +85,9 @@ const AddProgramModal = () => {
 			}}
 		>
 			<DialogTrigger asChild>
-				<Button className="cursor-pointer text-white" variant={"link"}>
-					<PlusIcon />
-					Add New Program
+				<Button className="cursor-pointer" variant="default">
+					<PlusIcon className="mr-1" />
+					Add Program
 				</Button>
 			</DialogTrigger>
 			<DialogContent>
@@ -142,12 +138,19 @@ const AddProgramModal = () => {
 				/>
 				<DialogFooter>
 					<Button
-						variant={"destructive"}
+						variant="default"
 						onClick={handleAddProgram}
-						className="flex w-full mt-2"
+						className="flex w-full mt-2 justify-center"
 						disabled={submitting}
 					>
-						Add Program
+						{submitting ? (
+							<>
+								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+								Saving...
+							</>
+						) : (
+							"Save"
+						)}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

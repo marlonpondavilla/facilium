@@ -1,8 +1,14 @@
 "use client";
 
 import CardActionsDropdown from "@/components/card-actions-dropdown";
-import { deleteDocumentById, updateDocumentById } from "@/data/actions";
-import React from "react";
+import React, { useState } from "react";
+import {
+	deleteProgramAction,
+	updateProgramCodeAction,
+	updateProgramNameAction,
+} from "./actions";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 type ProgramProps = {
 	program: {
@@ -13,43 +19,67 @@ type ProgramProps = {
 };
 
 const ProgramActionsDropdown = ({ program }: ProgramProps) => {
+	const router = useRouter();
+	const [busy, setBusy] = useState(false);
+
 	const handleUpdate = async (newProgramCode: string) => {
-		await updateDocumentById(
-			program.id,
-			"programs",
-			"programCode",
-			newProgramCode
-		);
+		if (!newProgramCode.trim()) return;
+		setBusy(true);
+		const res = await updateProgramCodeAction(program.id, newProgramCode);
+		if (!res.success) {
+			toast.error(res.error || "Update failed");
+		} else {
+			toast.success("Program code updated");
+		}
+		setBusy(false);
+		router.refresh();
 	};
 
 	const handleExtraUpdate = async (newProgramName: string) => {
-		updateDocumentById(program.id, "programs", "programName", newProgramName);
+		if (!newProgramName.trim()) return;
+		setBusy(true);
+		const res = await updateProgramNameAction(program.id, newProgramName);
+		if (!res.success) {
+			toast.error(res.error || "Update failed");
+		} else {
+			toast.success("Program name updated");
+		}
+		setBusy(false);
+		router.refresh();
 	};
 
 	const handleDelete = async () => {
-		await deleteDocumentById({
-			id: program.id,
-			collectionName: "programs",
-			relatedFields: [
-				{ collectionName: "year-levels", fieldName: "programId" },
-				{ collectionName: "sections", fieldName: "programId" },
-				{ collectionName: "courses", fieldName: "programId" },
-				{ collectionName: "academic-terms", fieldName: "programId" },
-			],
-		});
+		setBusy(true);
+		const res = await deleteProgramAction(program.id);
+		if (!res.success) {
+			toast.error("Delete failed");
+		} else {
+			toast.success("Program deleted");
+		}
+		setBusy(false);
+		router.refresh();
 	};
 
 	return (
 		<div>
 			<CardActionsDropdown
 				itemName={program.programCode}
-				onUpdate={handleUpdate}
-				onDelete={handleDelete}
+				onUpdate={async (v) => {
+					if (busy) return;
+					await handleUpdate(v);
+				}}
+				onDelete={async () => {
+					if (busy) return;
+					await handleDelete();
+				}}
 				updateLabel="Rename"
 				updatePlaceholder="New Program Code"
 				extraField={{
 					extraUpdatePlaceholder: "New Program Name",
-					onExtraUpdate: handleExtraUpdate,
+					onExtraUpdate: async (v) => {
+						if (busy) return;
+						await handleExtraUpdate(v);
+					},
 				}}
 			/>
 		</div>

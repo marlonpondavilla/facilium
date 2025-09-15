@@ -27,12 +27,13 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 	const pathname = usePathname();
 	const router = useRouter();
 
-	// block non auth user
+	// block non auth user (avoid redirect flicker while an intentional logout is in progress)
 	useEffect(() => {
+		if (auth?.loggingOut) return; // skip while logout flow handles navigation
 		if (!auth?.user) {
 			router.replace("/login");
 		}
-	}, [auth?.user, router]);
+	}, [auth?.user, auth?.loggingOut, router]);
 
 	const [showSidebar, setShowSidebar] = useState(false);
 

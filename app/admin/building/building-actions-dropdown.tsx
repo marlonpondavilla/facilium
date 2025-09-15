@@ -1,8 +1,10 @@
 "use client";
 
 import toast from "react-hot-toast";
-import { deleteDocumentById, updateDocumentById } from "@/data/actions";
 import CardActionsDropdown from "@/components/card-actions-dropdown";
+import { deleteBuildingAction, updateBuildingNameAction } from "./actions";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type BuildingProps = {
 	building: {
@@ -12,31 +14,46 @@ type BuildingProps = {
 };
 
 export function BuildingActionsDropdown({ building }: BuildingProps) {
+	const router = useRouter();
+	const [busy, setBusy] = useState(false);
+
 	const handleDelete = async () => {
-		try {
-			await deleteDocumentById({
-				id: building.id,
-				collectionName: "buildings",
-				relatedFields: [
-					{ collectionName: "classrooms", fieldName: "buildingId" },
-				],
-			});
-		} catch (e: unknown) {
-			const error = e as { message?: string };
-			toast.error(error.message ?? "error deleting a building");
+		setBusy(true);
+		const res = await deleteBuildingAction(building.id);
+		if (!res.success) {
+			toast.error("Delete failed");
+		} else {
+			toast.success("Building deleted");
 		}
+		setBusy(false);
+		router.refresh();
 	};
 
 	const handleUpdate = async (newName: string) => {
-		await updateDocumentById(building.id, "buildings", "buildingName", newName);
+		if (!newName.trim()) return;
+		setBusy(true);
+		const res = await updateBuildingNameAction(building.id, newName);
+		if (!res.success) {
+			toast.error(res.error || "Update failed");
+		} else {
+			toast.success("Building name updated");
+		}
+		setBusy(false);
+		router.refresh();
 	};
 
 	return (
 		<>
 			<CardActionsDropdown
 				itemName={building.buildingName}
-				onDelete={handleDelete}
-				onUpdate={handleUpdate}
+				onDelete={async () => {
+					if (busy) return;
+					await handleDelete();
+				}}
+				onUpdate={async (v) => {
+					if (busy) return;
+					await handleUpdate(v);
+				}}
 				updateLabel="Rename"
 				updatePlaceholder="New Building Name"
 			/>

@@ -11,11 +11,13 @@ import {
 	DialogTrigger,
 } from "../../../components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { HousePlus } from "lucide-react";
+import { HousePlus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { BuildingCreate } from "@/types/buildingType";
-import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
+// Replaced direct firestore calls with server action for add + revalidation
+// import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
+import { addBuildingAction } from "./actions";
 import { useRouter } from "next/navigation";
 
 const NewBuildingModal = () => {
@@ -39,35 +41,27 @@ const NewBuildingModal = () => {
 
 		setSubmitting(true);
 
-		try {
-			const isBuildingExist = await checkIfDocumentExists(
-				"buildings",
-				"buildingName",
-				buildingData.buildingName
-			);
+		const res = await addBuildingAction({
+			buildingCode: "", // deprecated: server action now derives slug
+			buildingName: buildingData.buildingName,
+		});
 
-			if (isBuildingExist) {
+		if (!res.success) {
+			if (res.error?.includes("exists")) {
 				setExistError(true);
-				setOpen(true);
-				return;
+			} else {
+				toast.error(res.error || "Failed to add building");
 			}
-
-			const result = await addDocumentToFirestore("buildings", {
-				...buildingData,
-				created: new Date().toISOString(),
-			});
-
-			if (result?.success) {
-				toast.success("New Building added");
-				setError(false);
-				setSubmitting(false);
-				setOpen(false);
-				router.refresh();
-			}
-		} catch (e: unknown) {
-			const error = e as { message?: string };
-			toast.error(error.message || "Error on adding building");
+			setSubmitting(false);
+			return;
 		}
+
+		toast.success("New Building added");
+		setError(false);
+		setSubmitting(false);
+		setOpen(false);
+		// Keep router.refresh as a safety, though revalidatePath should handle it
+		router.refresh();
 	};
 
 	return (
@@ -84,12 +78,9 @@ const NewBuildingModal = () => {
 			}}
 		>
 			<DialogTrigger asChild>
-				<Button
-					variant="link"
-					className="hover:bg-blue-700 transition text-white text-base"
-				>
-					<HousePlus className="w-5 h-5" />
-					Add New Building
+				<Button variant="default" className="text-base">
+					<HousePlus className="w-5 h-5 mr-1" />
+					Add Building
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px]">
@@ -125,12 +116,19 @@ const NewBuildingModal = () => {
 				</DialogHeader>
 				<DialogFooter>
 					<Button
-						variant={"destructive"}
+						variant="default"
 						onClick={handleAddBuilding}
 						disabled={submitting}
-						className="flex w-full mt-2"
+						className="flex w-full mt-2 justify-center"
 					>
-						Add New
+						{submitting ? (
+							<>
+								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+								Saving...
+							</>
+						) : (
+							"Save"
+						)}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

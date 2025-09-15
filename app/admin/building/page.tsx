@@ -1,4 +1,5 @@
 import React from "react";
+export const dynamic = "force-dynamic";
 import BuildingComponent from "../(admin-components)/building-component";
 import {
 	Card,
