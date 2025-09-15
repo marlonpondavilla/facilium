@@ -47,10 +47,11 @@ export const RegisterForm = () => {
 				"Signup successful! Please check your email to verify your account."
 			);
 			router.push("/verify-email");
-		} catch (error: any) {
+		} catch (error: unknown) {
 			// Firebase errors usually have a code like 'auth/email-already-in-use'
-			const errorCode = error.code || "";
-			const errorMessage = error.message || "Signup failed";
+			const err = error as { code?: string; message?: string } | undefined;
+			const errorCode = err?.code || "";
+			const errorMessage = err?.message || "Signup failed";
 
 			// Map Firebase errors to form fields:
 			if (errorCode === "auth/email-already-in-use") {

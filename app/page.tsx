@@ -119,7 +119,7 @@ export default function Home() {
 						<span>Smarter Scheduling.</span>
 					</h1>
 					<h2 className="text-sm sm:text-base mt-2 tracking-wide font-light italic text-gray-700">
-						Because scheduling doesn't have to be stressful
+						Because scheduling doesn&apos;t have to be stressful
 					</h2>
 
 					{/* Loader */}

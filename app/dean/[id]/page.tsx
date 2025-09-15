@@ -9,14 +9,10 @@ import {
 import { PendingSchedule, ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
 
-type PageProps = {
-	params: {
-		id: string;
-	};
-};
+type PageProps = { params: Promise<{ id: string }> };
 
 const Page = async ({ params }: PageProps) => {
-	const { id } = await Promise.resolve(params);
+	const { id } = await params;
 
 	const pendingScheduleDocs =
 		await getDocumentsWithNestedObject<PendingSchedule>(

@@ -89,7 +89,7 @@ const AddSectionButton = ({ id }: { id: string }) => {
 		fetchData();
 	}, [programId, id]);
 
-	// set the full section name everytime suffix is changed
+	// set the full section name everytime suffix / prefix (or programId) changes
 	useEffect(() => {
 		if (suffix && sectionPrefix) {
 			setSectionData((prev) => ({
@@ -98,7 +98,7 @@ const AddSectionButton = ({ id }: { id: string }) => {
 				sectionName: `${sectionPrefix}${suffix}`,
 			}));
 		}
-	}, [suffix, sectionPrefix]);
+	}, [suffix, sectionPrefix, programId]);
 
 	// creates letters from A-Z
 	const alphabet = Array.from({ length: 26 }, (_, i) =>

@@ -7,11 +7,7 @@ import React from "react";
 import AddSectionButton from "./add-section";
 import DeleteSectionButton from "./delete-section";
 
-type PageProps = {
-	params: {
-		sectionId: string;
-	};
-};
+type PageProps = { params: Promise<{ sectionId: string }> };
 
 type Sections = {
 	id: string;
@@ -20,7 +16,7 @@ type Sections = {
 };
 
 const Page = async ({ params }: PageProps) => {
-	const { sectionId } = await Promise.resolve(params);
+	const { sectionId } = await params;
 
 	const yearLevel = await getSingleDocumentFromFirestore(
 		sectionId,

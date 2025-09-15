@@ -19,7 +19,7 @@ const VerifyEmailPage = () => {
 			toast.success("Email already verified.");
 			router.push("/login");
 		}
-	}, [user]);
+	}, [user, router]);
 
 	const handleResend = async () => {
 		if (!user) return;

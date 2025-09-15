@@ -14,7 +14,15 @@ export const signupUser = async (data: {
 	confirmPassword: string;
 }) => {
 	const result = signupSchema.safeParse(data);
-	const { password, confirmPassword, ...userData } = data;
+	// Build userData without password fields to avoid unused var lint issues
+	const userData = {
+		firstName: data.firstName,
+		middleName: data.middleName,
+		lastName: data.lastName,
+		degreeEarned: data.degreeEarned,
+		email: data.email,
+		department: data.department,
+	};
 
 	if (!result.success) {
 		const errors = result.error.flatten();

@@ -4,11 +4,7 @@ import AddTerm from "./add-term";
 import { getDocumentsFromFirestore } from "@/data/actions";
 import ActionTermBtn from "./actions-term";
 
-type PageProps = {
-	params: {
-		termId: string;
-	};
-};
+type PageProps = { params: Promise<{ termId: string }> };
 
 type Term = {
 	id: string;
@@ -17,7 +13,7 @@ type Term = {
 };
 
 const Page = async ({ params }: PageProps) => {
-	const { termId } = await Promise.resolve(params);
+	const { termId } = await params;
 	const termData = await getDocumentsFromFirestore<Term>(
 		"academic-terms",
 		true

@@ -11,7 +11,7 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
+import { addDocumentToFirestore } from "@/data/actions";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";

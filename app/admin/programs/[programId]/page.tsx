@@ -8,11 +8,8 @@ import {
 import DeleteYearLevel from "./delete-year-level";
 import ActionButtons from "./actions-btn";
 
-type PageProps = {
-	params: {
-		programId: string;
-	};
-};
+// Using Promise-wrapped params to align with Next.js generated types for this route
+type PageProps = { params: Promise<{ programId: string }> };
 
 type YearLevels = {
 	id: string;
@@ -21,8 +18,7 @@ type YearLevels = {
 };
 
 const Page = async ({ params }: PageProps) => {
-	// watch out for this tinry ko lang i-wrap since nagco-complain na (params should be awaited)
-	const { programId } = await Promise.resolve(params);
+	const { programId } = await params;
 
 	const programName = await getSingleDocumentFromFirestore(
 		programId,

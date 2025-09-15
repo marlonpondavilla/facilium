@@ -24,7 +24,7 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 		if (!auth?.user) {
 			router.replace("/login");
 		}
-	}, [auth?.user]);
+	}, [auth?.user, router]);
 
 	const getInitials = (name: string): string => {
 		const words = name.trim().split(" ");

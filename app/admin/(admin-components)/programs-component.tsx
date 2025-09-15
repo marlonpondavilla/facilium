@@ -1,5 +1,5 @@
 import AdminHeaderTitle from "@/components/admin-header-title";
-import { GraduationCap, LayoutTemplate, PlusIcon } from "lucide-react";
+import { GraduationCap, LayoutTemplate } from "lucide-react";
 import React from "react";
 import AddProgramModal from "../programs/add-program-modal";
 import { getCollectionSize } from "@/data/actions";

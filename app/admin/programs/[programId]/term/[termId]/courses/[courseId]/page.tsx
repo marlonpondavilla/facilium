@@ -15,11 +15,7 @@ import {
 import AddCoursesButton from "./add-courses";
 import CoursesActions from "./courses-actions";
 
-type PageProps = {
-	params: {
-		courseId: string;
-	};
-};
+type PageProps = { params: Promise<{ courseId: string }> };
 
 type Courses = {
 	id: string;
@@ -30,7 +26,7 @@ type Courses = {
 };
 
 const Page = async ({ params }: PageProps) => {
-	const { courseId } = await Promise.resolve(params);
+	const { courseId } = await params;
 
 	const term = await getSingleDocumentFromFirestore(
 		courseId,

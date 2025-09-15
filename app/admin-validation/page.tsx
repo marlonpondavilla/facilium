@@ -19,7 +19,7 @@ const AdminRedirectPage = () => {
 			if (!loading && customClaims?.role) {
 				if (customClaims.role !== "admin") {
 					toast.error("Unauthorized access. Please use the correct page.");
-					auth?.logout();
+					auth?.logout?.();
 				} else {
 					if (user?.uid) {
 						try {
@@ -37,7 +37,7 @@ const AdminRedirectPage = () => {
 			}
 		};
 		handleRedirectAssign();
-	}, [loading, customClaims, router]);
+	}, [loading, customClaims, router, auth, user?.uid]);
 
 	if (loading || !customClaims) {
 		return <p>Redirecting...</p>;

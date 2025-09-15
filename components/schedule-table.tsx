@@ -1,7 +1,7 @@
 "use client";
 
 import { ScheduleItem } from "@/types/SceduleInterface";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
 	deleteDocumentById,
 	getSingleDocumentFromFirestore,
@@ -60,9 +60,10 @@ export default function ScheduleTable({
 	const pathname = usePathname();
 	const router = useRouter();
 
-	// Filter after reading classroomId
-	const filteredScheduleItems = scheduleItems.filter(
-		(item) => item.classroomId === classroomId
+	// Filter after reading classroomId (memoized for stable reference)
+	const filteredScheduleItems = useMemo(
+		() => scheduleItems.filter((item) => item.classroomId === classroomId),
+		[scheduleItems, classroomId]
 	);
 
 	// Fetch classroom and professor name
@@ -118,7 +119,7 @@ export default function ScheduleTable({
 		};
 
 		fetchProfessorAndClassroomNames();
-	}, [classroomId]);
+	}, [classroomId, filteredScheduleItems]);
 
 	function getStartIndexFromDecimal(startDecimal: number): number {
 		return Math.round((startDecimal - 7) * 2);

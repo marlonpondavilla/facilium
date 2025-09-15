@@ -32,7 +32,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 		if (!auth?.user) {
 			router.replace("/login");
 		}
-	}, [auth?.user]);
+	}, [auth?.user, router]);
 
 	const [showSidebar, setShowSidebar] = useState(false);
 

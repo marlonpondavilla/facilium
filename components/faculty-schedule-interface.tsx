@@ -135,6 +135,15 @@ const FacultyScheduleInterface = ({
 	scheduleItems,
 }: FacultyScheduleInterfaceProps) => {
 	const [isLoading, setIsLoading] = useState(false);
+	// Local state for optimistic schedule updates
+	const [localScheduleItems, setLocalScheduleItems] = useState<ScheduleItem[]>(
+		() => scheduleItems
+	);
+
+	// Keep localScheduleItems in sync with prop updates (post-refresh reconciliation)
+	useEffect(() => {
+		setLocalScheduleItems(scheduleItems);
+	}, [scheduleItems]);
 	const [openConflict, setOpenConflict] = useState(false);
 	const [openNoClassroom, setOpenNoClassroom] = useState(false);
 	const [openNoSchedule, setOpenNoSchedule] = useState(false);
@@ -208,46 +217,52 @@ const FacultyScheduleInterface = ({
 		router.push(`${pathname}?${params.toString()}`, { scroll: false });
 	};
 
-	const makeLoading = () => {
+	// Utility: manage loading tied only to real async operations
+	const withLoading = async <T,>(fn: () => Promise<T>): Promise<T> => {
 		setIsLoading(true);
-
-		setTimeout(() => {
+		try {
+			return await fn();
+		} finally {
 			setIsLoading(false);
-		}, 2000);
-
-		return;
+		}
 	};
 
-	// form watchers
-	const programWatcher = form.watch("program");
-	const yearLevelWatcher = form.watch("yearLevel");
-	const sectionWatcher = form.watch("section");
-	const courseCodeWatcher = form.watch("courseCode");
-	const professorWatcher = form.watch("professor");
-	const dayWatcher = form.watch("day");
-	const startWatcher = form.watch("start");
-	const durationWatcher = form.watch("duration");
-	const halfHourWatcher = form.watch("halfHour");
-
+	// Single subscription to form changes instead of large dependency array.
+	// This avoids excessive re-renders when only one field changes and keeps lint happy with minimal deps.
 	useEffect(() => {
-		form.clearErrors();
-		makeLoading();
-		setError("");
-
+		const subscription = form.watch((_value, { name }) => {
+			if (!name) return;
+			form.clearErrors();
+			setError("");
+		});
 		if (data.length < 1) {
 			setOpenNoClassroom(true);
 		}
-	}, [
-		programWatcher,
-		yearLevelWatcher,
-		sectionWatcher,
-		courseCodeWatcher,
-		professorWatcher,
-		dayWatcher,
-		startWatcher,
-		durationWatcher,
-		halfHourWatcher,
-	]);
+		return () => subscription.unsubscribe();
+	}, [data.length, form]);
+
+	// Keep local (optimistic) schedule items in sync with server-provided scheduleItems
+	useEffect(() => {
+		setLocalScheduleItems((prev) => {
+			const serverIds = new Set(scheduleItems.map((s) => s.id));
+			const stillOptimistic = prev.filter(
+				(i) =>
+					i.id?.toString().startsWith("optimistic-") && !serverIds.has(i.id)
+			);
+			return [...scheduleItems, ...stillOptimistic];
+		});
+	}, [scheduleItems]);
+
+	// Reactive derived booleans: use form.watch so parent re-renders when values change.
+	// Previous implementation used getValues() which didn't trigger re-render after we removed the global watch side-effect.
+	const programSelected = !!form.watch("program");
+	const yearLevelSelected = !!form.watch("yearLevel");
+	const sectionSelected = !!form.watch("section");
+	const courseCodeSelected = !!form.watch("courseCode");
+	const professorSelected = !!form.watch("professor");
+	const daySelected = !!form.watch("day");
+	const startSelected = !!form.watch("start");
+	const durationSelected = !!form.watch("duration");
 
 	// Pop up state and effect
 	useEffect(() => {
@@ -293,6 +308,7 @@ const FacultyScheduleInterface = ({
 		return () => {
 			isCancelled = true;
 		};
+		// Only dependent on classroomId & hasSchedule to prevent redundant async fetches.
 	}, [classroomId, hasSchedule]);
 
 	// retrieve pending schedule details submitted by program head
@@ -360,7 +376,7 @@ const FacultyScheduleInterface = ({
 		};
 
 		fetchPendingScheduleDetails();
-	}, [classroomId, hasSchedule]);
+	}, [classroomId, hasSchedule, pathname]);
 
 	const handleClassroomClick = (id: string) => {
 		const params = new URLSearchParams({
@@ -370,7 +386,6 @@ const FacultyScheduleInterface = ({
 		router.push(`${pathname}?${params.toString()}`);
 		form.reset();
 		setError("");
-		makeLoading();
 	};
 
 	// add function for schedule
@@ -402,6 +417,13 @@ const FacultyScheduleInterface = ({
 			classroomId,
 		};
 
+		const navigateToClassroomOnly = () => {
+			if (!classroomId) return;
+			const params = new URLSearchParams();
+			params.set("classroomId", classroomId);
+			router.push(`${pathname}?${params.toString()}`, { scroll: false });
+		};
+
 		const scheduleConflictId = await checkIfScheduleConflictExists(
 			scheduleData
 		);
@@ -425,20 +447,41 @@ const FacultyScheduleInterface = ({
 			return;
 		}
 
-		const result = await addDocumentToFirestore("scheduleData", {
-			...scheduleData,
-			status: false,
-			created: new Date().toISOString(),
+		const optimisticId = `optimistic-${Date.now()}`;
+		setLocalScheduleItems((prev) => [
+			...prev,
+			{
+				...scheduleData,
+				id: optimisticId,
+				status: false,
+				created: new Date().toISOString(),
+			},
+		]);
+
+		await withLoading(async () => {
+			const result = await addDocumentToFirestore("scheduleData", {
+				...scheduleData,
+				status: false,
+				created: new Date().toISOString(),
+			});
+
+			if (result.success) {
+				toast.success("New schedule added!");
+				form.reset();
+				setError("");
+				navigateToClassroomOnly();
+				// A new schedule means 'hasSchedule' becomes true locally (status flag already derived elsewhere)
+				// If you want immediate banner removal of 'no schedule', close it here
+				setOpenNoSchedule(false);
+			} else {
+				setLocalScheduleItems((prev) =>
+					prev.filter((i) => i.id !== optimisticId)
+				);
+				toast.error("Failed to add schedule.");
+			}
+
+			router.refresh();
 		});
-
-		if (result.success) {
-			toast.success("New schedule added!");
-			makeLoading();
-			form.reset();
-			setError("");
-		}
-
-		router.push(pathname);
 	};
 
 	// Submit schedule to dean function
@@ -460,19 +503,25 @@ const FacultyScheduleInterface = ({
 				(schedule) => schedule.classroomId === classroomId
 			);
 
-			const result = await addDocumentToFirestore("pendingScheduleData", {
-				scheduleItems: scheduleForDean,
-				classroomId,
-				professorId: auth?.user?.uid,
-				submitted: new Date().toISOString(),
-			});
+			await withLoading(async () => {
+				const result = await addDocumentToFirestore("pendingScheduleData", {
+					scheduleItems: scheduleForDean,
+					classroomId,
+					professorId: auth?.user?.uid,
+					submitted: new Date().toISOString(),
+				});
 
-			if (result.success) {
-				toast.success("Your schedule is submitted to the Dean.");
-				// maybe create a pop up dialog here
-				router.push(pathname);
-				return;
-			}
+				if (result.success) {
+					toast.success("Your schedule is submitted to the Dean.");
+					setIsPendingScheduleExist(true); // immediate UI reflection
+					router.refresh();
+					if (classroomId) {
+						const params = new URLSearchParams();
+						params.set("classroomId", classroomId);
+						router.push(`${pathname}?${params.toString()}`, { scroll: false });
+					}
+				}
+			});
 		} catch (e) {
 			console.error(e);
 		}
@@ -492,22 +541,28 @@ const FacultyScheduleInterface = ({
 
 		for (const pendingSchedule of pendingSchedules) {
 			if (pendingSchedule.classroomId === classroomId) {
-				try {
-					const result = await addDocumentToFirestore("approvedScheduleData", {
-						id: pendingSchedule.id,
-						scheduleItems: pendingScheduleItems,
-						classroomId,
-						dean: auth?.user?.displayName,
-						approved: new Date().toISOString(),
-					});
+				await withLoading(async () => {
+					try {
+						const result = await addDocumentToFirestore(
+							"approvedScheduleData",
+							{
+								id: pendingSchedule.id,
+								scheduleItems: pendingScheduleItems,
+								classroomId,
+								dean: auth?.user?.displayName,
+								approved: new Date().toISOString(),
+							}
+						);
 
-					if (result.success) {
-						toast.success("Schedule has been approved by you.");
-						router.push(pathname);
+						if (result.success) {
+							toast.success("Schedule has been approved by you.");
+							setIsApprovedScheduleExist(true);
+							router.refresh();
+						}
+					} catch (e) {
+						console.error("Error on approving schedule", e);
 					}
-				} catch (e) {
-					console.error("Error on approving schedule", e);
-				}
+				});
 			}
 		}
 	};
@@ -524,14 +579,16 @@ const FacultyScheduleInterface = ({
 		for (const rejectSchedule of rejectSchedules) {
 			try {
 				if (rejectSchedule.classroomId === classroomId) {
-					await deleteDocumentById({
-						id: rejectSchedule.id,
-						collectionName: "pendingScheduleData",
+					await withLoading(async () => {
+						await deleteDocumentById({
+							id: rejectSchedule.id,
+							collectionName: "pendingScheduleData",
+						});
+						toast.success(
+							`Schedule for ${pendingScheduleDetails.classroomName} is rejected successfully!`
+						);
+						router.refresh();
 					});
-					toast.success(
-						`Schedule for ${pendingScheduleDetails.classroomName} is rejected successfully!`
-					);
-					router.push(pathname);
 					return;
 				}
 			} catch (e) {
@@ -555,15 +612,27 @@ const FacultyScheduleInterface = ({
 
 			for (const updateSchedule of updateSchedules) {
 				if (updateSchedule.classroomId === classroomId) {
-					await deleteDocumentById({
-						id: updateSchedule.id,
-						collectionName: "pendingScheduleData",
-						relatedFields: [
-							{ collectionName: "approvedScheduleData", fieldName: "id" },
-						],
+					await withLoading(async () => {
+						await deleteDocumentById({
+							id: updateSchedule.id,
+							collectionName: "pendingScheduleData",
+							relatedFields: [
+								{ collectionName: "approvedScheduleData", fieldName: "id" },
+							],
+						});
+						toast.success(`The schedule has been reset by you.`);
+						// Immediate local UI state adjustments
+						setIsPendingScheduleExist(false);
+						setIsApprovedScheduleExist(false);
+						setLocalScheduleItems((prev) =>
+							prev.filter(
+								(i) =>
+									!i.id?.toString().startsWith("optimistic-") &&
+									i.classroomId !== classroomId
+							)
+						);
+						router.refresh();
 					});
-					toast.success(`The schedule has been reset by you.`);
-					router.push(pathname);
 					return;
 				}
 			}
@@ -779,7 +848,7 @@ const FacultyScheduleInterface = ({
 														}}
 														defaultValue={field.value}
 														{...field}
-														disabled={!(programWatcher && programId)}
+														disabled={!(programSelected && programId)}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -840,7 +909,7 @@ const FacultyScheduleInterface = ({
 														}}
 														defaultValue={field.value}
 														{...field}
-														disabled={!(yearLevelId && yearLevelWatcher)}
+														disabled={!(yearLevelId && yearLevelSelected)}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -884,7 +953,7 @@ const FacultyScheduleInterface = ({
 														onValueChange={field.onChange}
 														defaultValue={field.value}
 														{...field}
-														disabled={!(sectionWatcher && sectionId)}
+														disabled={!(sectionSelected && sectionId)}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -945,7 +1014,7 @@ const FacultyScheduleInterface = ({
 														}}
 														defaultValue={field.value}
 														{...field}
-														disabled={!courseCodeWatcher}
+														disabled={!courseCodeSelected}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -988,7 +1057,7 @@ const FacultyScheduleInterface = ({
 													<Select
 														onValueChange={field.onChange}
 														value={field.value}
-														disabled={!professorWatcher}
+														disabled={!professorSelected}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -1030,7 +1099,7 @@ const FacultyScheduleInterface = ({
 																field.onChange(Number(value))
 															}
 															value={field.value?.toString()}
-															disabled={!dayWatcher}
+															disabled={!daySelected}
 														>
 															<FormControl>
 																<SelectTrigger className="w-24 border-gray-500">
@@ -1079,7 +1148,7 @@ const FacultyScheduleInterface = ({
 																field.onChange(Number(value))
 															}
 															value={field.value?.toString()}
-															disabled={!startWatcher}
+															disabled={!startSelected}
 														>
 															<FormControl>
 																<SelectTrigger className="w-24 border-gray-500">
@@ -1124,7 +1193,7 @@ const FacultyScheduleInterface = ({
 														<FormControl>
 															<Checkbox
 																checked={!!field.value}
-																disabled={!durationWatcher}
+																disabled={!durationSelected}
 																className="border-gray-500"
 																onCheckedChange={(checked) =>
 																	field.onChange(checked ? 30 : 0)
@@ -1139,7 +1208,7 @@ const FacultyScheduleInterface = ({
 									</div>
 
 									{/* Conditional error messages */}
-									{!dayWatcher && data.length > 1 && (
+									{!daySelected && data.length > 1 && (
 										<p className="text-red-400 text-xs text-center mt-2">
 											Complete the information above first.
 										</p>
@@ -1330,7 +1399,7 @@ const FacultyScheduleInterface = ({
 						</p>
 					)}
 					<ScheduleTable
-						scheduleItems={scheduleItems}
+						scheduleItems={localScheduleItems}
 						isPending={isPendingScheduleExist}
 						isApproved={isApprovedScheduleExist}
 					/>

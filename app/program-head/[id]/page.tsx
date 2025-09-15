@@ -8,14 +8,9 @@ import {
 	getScheduleData,
 } from "@/data/faculty-building";
 import { AcademicYear } from "@/types/academicYearType";
-import { ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
 
-type PageProps = {
-	params: {
-		id: string;
-	};
-};
+type PageProps = { params: Promise<{ id: string }> };
 
 type Programs = {
 	id: string;
@@ -56,7 +51,7 @@ type Professors = {
 };
 
 const Page = async ({ params }: PageProps) => {
-	const { id } = await Promise.resolve(params);
+	const { id } = await params;
 
 	const programs: Programs[] = await getDocumentsFromFirestore(
 		"programs",
