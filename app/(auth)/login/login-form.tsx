@@ -45,15 +45,8 @@ const LoginForm = () => {
 						type: "custom",
 						message: "Invalid email or password",
 					});
-					form.setError("email", {
-						type: "custom",
-						message: "",
-					});
-
-					form.setError("password", {
-						type: "custom",
-						message: "",
-					});
+					form.setError("email", { type: "custom", message: "" });
+					form.setError("password", { type: "custom", message: "" });
 					await auth?.logout();
 				} else if (
 					error.message === "Please verify your email before logging in."
@@ -62,45 +55,28 @@ const LoginForm = () => {
 						type: "custom",
 						message: "Please verify your email before logging in.",
 					});
-					form.setError("email", {
-						type: "custom",
-						message: "",
-					});
-
-					form.setError("password", {
-						type: "custom",
-						message: "",
-					});
+					form.setError("email", { type: "custom", message: "" });
+					form.setError("password", { type: "custom", message: "" });
 					await auth?.logout();
 				} else {
 					form.setError("root", {
 						type: "custom",
 						message: error.message ?? "An error occurred",
 					});
-					form.setError("email", {
-						type: "custom",
-						message: "",
-					});
-
-					form.setError("password", {
-						type: "custom",
-						message: "",
-					});
+					form.setError("email", { type: "custom", message: "" });
+					form.setError("password", { type: "custom", message: "" });
 				}
 			} else {
-				form.setError("root", {
-					type: "custom",
-					message: "An error occurred",
-				});
+				form.setError("root", { type: "custom", message: "An error occurred" });
 			}
 		}
 	};
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(handleSubmit)}>
+			<form onSubmit={form.handleSubmit(handleSubmit)} className="w-full">
 				{form.formState.errors.root && (
-					<div className="error-container text-center">
+					<div className="error-container text-center mb-2">
 						<p className="text-red-500">
 							{form.formState.errors.root?.message ?? "Invalid credentials"}
 						</p>
@@ -108,20 +84,20 @@ const LoginForm = () => {
 				)}
 				<fieldset
 					disabled={form.formState.isSubmitting}
-					className="flex flex-col gap-4"
+					className="flex flex-col gap-4 w-full max-w-sm mx-auto"
 				>
 					<FormField
 						control={form.control}
 						name="email"
 						render={({ field }) => (
-							<FormItem>
+							<FormItem className="text-left">
 								<FormLabel>Email</FormLabel>
 								<FormControl>
 									<Input
 										type="email"
 										placeholder="you@example.com"
 										{...field}
-										className="w-xs"
+										className="w-full"
 									/>
 								</FormControl>
 								<FormMessage />
@@ -133,32 +109,32 @@ const LoginForm = () => {
 						control={form.control}
 						name="password"
 						render={({ field }) => (
-							<FormItem>
+							<FormItem className="text-left">
 								<FormLabel>Password</FormLabel>
 								<FormControl>
 									<Input
 										type="password"
 										placeholder="********"
 										{...field}
-										className="w-xs"
+										className="w-full"
 									/>
 								</FormControl>
-								<FormMessage className="w-xs" />
+								<FormMessage />
 							</FormItem>
 						)}
 					/>
-					<Button type="submit" className="mt-2">
+					<Button type="submit" className="mt-2 w-full">
 						{form.formState.isSubmitting ? "Logging in" : "Login"}
 					</Button>
-					<div className="links flex flex-col justify-center items-center">
+					<div className="links flex flex-col justify-center items-center mt-2">
 						<Link
 							href={"/forgot-password"}
 							className="text-sm hover:text-amber-600 mb-4"
 						>
 							Forgot password?
 						</Link>
-						<Separator />
-						<span>or</span>
+						<Separator className="w-full" />
+						<span className="mt-2">or</span>
 						<Link href={"/signup"} className="underline mt-2 font-medium">
 							Create new account
 						</Link>
