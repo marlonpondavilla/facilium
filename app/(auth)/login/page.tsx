@@ -52,10 +52,10 @@ const Login = () => {
 				</div>
 				<Image
 					src="/bsu-meneses-bg-logo.png"
-					width={1200}
-					height={1200}
-					alt="Meneses Watermark Logo"
-					className="pointer-events-none select-none opacity-20 absolute -right-32 top-1/2 -translate-y-1/2 w-[1200px] max-w-none"
+					width={800}
+					height={800}
+					alt="Bulsu Meneses Logo"
+					className="rounded-lg shadow-lg w-full max-w-3xl h-auto absolute opacity-20"
 					priority
 				/>
 			</section>
