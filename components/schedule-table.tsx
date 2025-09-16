@@ -11,6 +11,7 @@ import React, {
 import {
 	deleteDocumentById,
 	getSingleDocumentFromFirestore,
+	getFirstUserByDesignation,
 } from "@/data/actions";
 import { formatProfessorName } from "@/lib/utils";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -18,6 +19,7 @@ import { scheduleColors } from "@/data/colors";
 import PleaseWait from "./please-wait";
 import ConfirmationHandleDialog from "./confirmation-handle-dialog";
 import toast from "react-hot-toast";
+import { useAuth } from "@/context/auth";
 const days: string[] = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
 
 interface ScheduleTableProps {
@@ -27,6 +29,7 @@ interface ScheduleTableProps {
 	enableExport?: boolean;
 	enablePrint?: boolean;
 	enableLegend?: boolean;
+	plottedBy?: string;
 }
 
 function formatHourNoSuffix(hour24: number) {
@@ -57,6 +60,7 @@ export default function ScheduleTable({
 	enableExport = true,
 	enablePrint = true,
 	enableLegend = true,
+	plottedBy,
 }: ScheduleTableProps) {
 	const skipMap: Record<string, boolean> = {};
 	const [classroomNames, setClassroomNames] = useState<Record<string, string>>(
@@ -77,6 +81,10 @@ export default function ScheduleTable({
 	const classroomId = searchParams.get("classroomId");
 	const pathname = usePathname();
 	const router = useRouter();
+	const { user } = useAuth() || {};
+
+	// State for signatures
+	const [deanName, setDeanName] = useState<string>("");
 
 	// Filter after reading classroomId (memoized for stable reference)
 	const filteredScheduleItems = useMemo(
@@ -86,6 +94,21 @@ export default function ScheduleTable({
 
 	const showEmptyBanner =
 		classroomId && filteredScheduleItems.length === 0 && !isLoading;
+
+	// Fetch dean name and set prepared by
+	useEffect(() => {
+		const fetchSignatures = async () => {
+			try {
+				const dean = await getFirstUserByDesignation("Dean");
+				if (dean) {
+					setDeanName(`${dean.firstName} ${dean.lastName}`);
+				}
+			} catch (error) {
+				console.error("Error fetching dean", error);
+			}
+		};
+		fetchSignatures();
+	}, [user]);
 
 	// Fetch classroom and professor name
 	useEffect(() => {
@@ -192,6 +215,13 @@ export default function ScheduleTable({
 
 	const handlePrint = useCallback(() => {
 		if (!tableRef.current) return;
+
+		// Restrict printing if not approved or still pending
+		if (!isApproved) {
+			toast.error("Cannot print: Schedule must be approved first.");
+			return;
+		}
+
 		const tableHtml = tableRef.current.outerHTML;
 		// Derive classroom display (first item's classroom or query)
 		const classroomDisplay =
@@ -326,7 +356,9 @@ export default function ScheduleTable({
 </head><body>
 	<div id='page-wrapper'>
 		<div class='header'>
-			<img class='logo' src='${window.location.origin}/bsu-meneses-logo.png' alt='Bulsu Meneses Logo' />
+			<img class='logo' src='${
+				window.location.origin
+			}/bsu-meneses-logo.png' alt='Bulsu Meneses Logo' />
 			<div class='branding'>
 				<h1>Bulacan State University – Meneses Campus</h1>
 				<h2>Official Classroom Schedule</h2>
@@ -334,6 +366,10 @@ export default function ScheduleTable({
 			</div>
 		</div>
 		${tableHtml}
+		<div class='signatures' style='margin-top: 20px; display: flex; justify-content: space-between; font-size: 10px;'>
+			<div>Prepared by: ${plottedBy || "Unknown"}</div>
+			<div>Approved by: ${deanName || "Dean"}</div>
+		</div>
 		<div class='footer'>Generated via Facilium</div>
 	</div>
 	<script>
@@ -358,7 +394,7 @@ export default function ScheduleTable({
 			win.focus();
 			win.print();
 		};
-	}, [classroomId, classroomNames]);
+	}, [classroomId, classroomNames, plottedBy, deanName, isApproved]);
 
 	function getStartIndexFromDecimal(startDecimal: number): number {
 		return Math.round((startDecimal - 7) * 2);
@@ -446,7 +482,7 @@ export default function ScheduleTable({
 					{enableExport && (
 						<button
 							onClick={exportCsv}
-							disabled={!filteredScheduleItems.length}
+							disabled={!filteredScheduleItems.length || !isApproved}
 							className="border rounded px-2 py-0.5 hover:bg-indigo-50 disabled:opacity-40"
 							aria-label="Export classroom schedule as CSV"
 						>
@@ -456,7 +492,7 @@ export default function ScheduleTable({
 					{enablePrint && (
 						<button
 							onClick={handlePrint}
-							disabled={!filteredScheduleItems.length}
+							disabled={!filteredScheduleItems.length || !isApproved}
 							className="border rounded px-2 py-0.5 hover:bg-indigo-50 disabled:opacity-40"
 							aria-label="Print classroom schedule"
 						>

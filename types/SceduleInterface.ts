@@ -26,4 +26,5 @@ export type ApprovedScheduleDoc = {
 	scheduleItems: ScheduleItem[];
 	approved: string;
 	dean?: string;
+	submittedBy?: string;
 };

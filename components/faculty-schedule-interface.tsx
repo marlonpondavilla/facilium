@@ -37,7 +37,11 @@ import toast from "react-hot-toast";
 import { validateScheduleTimeRange } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
 import ScheduleTable from "./schedule-table";
-import { PendingSchedule, ScheduleItem } from "@/types/SceduleInterface";
+import {
+	ScheduleItem,
+	PendingSchedule,
+	ApprovedScheduleDoc,
+} from "@/types/SceduleInterface";
 import {
 	addDocumentToFirestore,
 	checkIfDocumentExists,
@@ -151,6 +155,7 @@ const FacultyScheduleInterface = ({
 		useState(false);
 	const [isPendingScheduleExist, setIsPendingScheduleExist] = useState(false);
 	const [isApprovedScheduleExist, setIsApprovedScheduleExist] = useState(false);
+	const [approvedSubmittedBy, setApprovedSubmittedBy] = useState<string>("");
 	const [error, setError] = useState("");
 	const [pendingScheduleDetails, setPendingScheduleDetails] =
 		useState<PendingScheduleDetails>({
@@ -268,6 +273,7 @@ const FacultyScheduleInterface = ({
 
 		setIsPendingScheduleExist(false);
 		setIsApprovedScheduleExist(false);
+		setApprovedSubmittedBy("");
 
 		if (!hasSchedule) {
 			setOpenNoSchedule(true);
@@ -295,6 +301,18 @@ const FacultyScheduleInterface = ({
 
 				if (!isCancelled && approveExists) {
 					setIsApprovedScheduleExist(true);
+					// Fetch the submittedBy information from approved schedule
+					const approvedSchedules =
+						await getDocumentsWithNestedObject<ApprovedScheduleDoc>(
+							"approvedScheduleData",
+							"approved"
+						);
+					const approvedSchedule = approvedSchedules.find(
+						(s) => s.classroomId === classroomId
+					);
+					if (approvedSchedule?.submittedBy) {
+						setApprovedSubmittedBy(approvedSchedule.submittedBy);
+					}
 				}
 			} catch (error) {
 				console.error("Error checking pending schedule:", error);
@@ -553,6 +571,7 @@ const FacultyScheduleInterface = ({
 					classroomId,
 					dean: auth?.user?.displayName,
 					approved: new Date().toISOString(),
+					submittedBy: pendingScheduleDetails.professorName,
 				});
 
 				if (result.success) {
@@ -1348,6 +1367,11 @@ const FacultyScheduleInterface = ({
 								scheduleItems={localScheduleItems}
 								isPending={isPendingScheduleExist}
 								isApproved={isApprovedScheduleExist}
+								plottedBy={
+									isApprovedScheduleExist && approvedSubmittedBy
+										? approvedSubmittedBy
+										: pendingScheduleDetails.professorName
+								}
 							/>
 						</div>
 					</div>
@@ -1418,6 +1442,11 @@ const FacultyScheduleInterface = ({
 							scheduleItems={localScheduleItems}
 							isPending={isPendingScheduleExist}
 							isApproved={isApprovedScheduleExist}
+							plottedBy={
+								isApprovedScheduleExist && approvedSubmittedBy
+									? approvedSubmittedBy
+									: pendingScheduleDetails.professorName
+							}
 						/>
 					</div>
 				)}

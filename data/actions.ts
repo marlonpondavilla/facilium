@@ -9,6 +9,15 @@ import {
 	Query,
 } from "firebase-admin/firestore";
 
+// Generic user shape subset for lookups
+export type BasicUserRecord = {
+	id: string;
+	uid?: string;
+	firstName?: string;
+	lastName?: string;
+	designation?: string;
+};
+
 type DeleteDocumentOptions = {
 	id: string;
 	collectionName: string;
@@ -160,6 +169,33 @@ export const getDocumentsByFieldIds = async <T>(
 	} catch (error) {
 		console.error("Error on fetching documents field by id", error);
 		return [];
+	}
+};
+
+export const getFirstUserByDesignation = async (
+	designation: string
+): Promise<BasicUserRecord | null> => {
+	try {
+		const snapshot = await firestore
+			.collection("userData")
+			.where("designation", "==", designation)
+			.limit(1)
+			.get();
+
+		if (snapshot.empty) return null;
+
+		const doc = snapshot.docs[0];
+		const data = doc.data();
+		return {
+			id: doc.id,
+			uid: data.uid,
+			firstName: data.firstName,
+			lastName: data.lastName,
+			designation: data.designation,
+		};
+	} catch (error) {
+		console.error("Error fetching user by designation", error);
+		return null;
 	}
 };
 
