@@ -438,12 +438,12 @@ export default function ScheduleTable({
 			  };
 
 	return (
-		<div className="overflow-x-auto border rounded-lg">
+		<div className="w-full border rounded-lg">
 			{/* please wait loader synchronous when classroom and professor fetch in use effect */}
 			{isLoading && <PleaseWait />}
 
 			{showEmptyBanner && (
-				<div className="p-4 text-sm bg-amber-50 border-b border-amber-200 text-amber-800 flex items-start gap-2">
+				<div className="p-3 sm:p-4 text-sm bg-amber-50 border-b border-amber-200 text-amber-800 flex flex-col sm:flex-row items-start gap-2">
 					<span className="font-medium">
 						No approved schedule for this classroom.
 					</span>
@@ -453,11 +453,11 @@ export default function ScheduleTable({
 				</div>
 			)}
 
-			<div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 border-b bg-gray-50">
+			<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 border-b bg-gray-50">
 				<div className="flex items-center gap-2 text-xs">
 					<span className="font-semibold">View:</span>
 					<button
-						className={`rounded border px-2 py-0.5 ${
+						className={`rounded border px-2 py-0.5 text-xs ${
 							density === "compact" ? "bg-indigo-600 text-white" : "bg-white"
 						}`}
 						onClick={() => setDensity("compact")}
@@ -466,7 +466,7 @@ export default function ScheduleTable({
 						Compact
 					</button>
 					<button
-						className={`rounded border px-2 py-0.5 ${
+						className={`rounded border px-2 py-0.5 text-xs ${
 							density === "comfortable"
 								? "bg-indigo-600 text-white"
 								: "bg-white"
@@ -483,7 +483,7 @@ export default function ScheduleTable({
 						<button
 							onClick={exportCsv}
 							disabled={!filteredScheduleItems.length || !isApproved}
-							className="border rounded px-2 py-0.5 hover:bg-indigo-50 disabled:opacity-40"
+							className="border rounded px-2 py-0.5 text-xs hover:bg-indigo-50 disabled:opacity-40"
 							aria-label="Export classroom schedule as CSV"
 						>
 							CSV
@@ -493,7 +493,7 @@ export default function ScheduleTable({
 						<button
 							onClick={handlePrint}
 							disabled={!filteredScheduleItems.length || !isApproved}
-							className="border rounded px-2 py-0.5 hover:bg-indigo-50 disabled:opacity-40"
+							className="border rounded px-2 py-0.5 text-xs hover:bg-indigo-50 disabled:opacity-40"
 							aria-label="Print classroom schedule"
 						>
 							Print
@@ -501,121 +501,123 @@ export default function ScheduleTable({
 					)}
 				</div>
 			</div>
-			<table
-				ref={tableRef}
-				role="table"
-				aria-label="Classroom schedule"
-				className={`min-w-full border-collapse text-center ${densityClasses.font}`}
-			>
-				<thead>
-					<tr className="bg-pink-100 text-gray-800 sticky top-0 z-10">
-						<th scope="col" className={`border ${densityClasses.cell} w-16`}>
-							Time
-						</th>
-						{days.map((day) => (
-							<th
-								scope="col"
-								key={day}
-								className={`border ${densityClasses.cell}`}
-								aria-label={day}
-							>
-								{day}
+			<div className="overflow-x-auto">
+				<table
+					ref={tableRef}
+					role="table"
+					aria-label="Classroom schedule"
+					className={`w-full min-w-[800px] border-collapse text-center ${densityClasses.font}`}
+				>
+					<thead>
+						<tr className="bg-pink-100 text-gray-800 sticky top-0 z-10">
+							<th scope="col" className={`border ${densityClasses.cell} w-16`}>
+								Time
 							</th>
-						))}
-					</tr>
-				</thead>
-				<tbody>
-					{hours.map((hourLabel, rowIndex) => (
-						<tr key={rowIndex} className={densityClasses.row} role="row">
-							<td
-								className={`border font-semibold bg-gray-50 ${densityClasses.cell}`}
-								role="rowheader"
-							>
-								{hourLabel}
-							</td>
-							{days.map((day) => {
-								const cellKey = `${day}-${rowIndex}`;
-								if (skipMap[cellKey]) return null;
+							{days.map((day) => (
+								<th
+									scope="col"
+									key={day}
+									className={`border ${densityClasses.cell}`}
+									aria-label={day}
+								>
+									{day}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>
+						{hours.map((hourLabel, rowIndex) => (
+							<tr key={rowIndex} className={densityClasses.row} role="row">
+								<td
+									className={`border font-semibold bg-gray-50 ${densityClasses.cell}`}
+									role="rowheader"
+								>
+									{hourLabel}
+								</td>
+								{days.map((day) => {
+									const cellKey = `${day}-${rowIndex}`;
+									if (skipMap[cellKey]) return null;
 
-								const item = filteredScheduleItems.find((item) => {
-									const startIndex = getStartIndexFromDecimal(item.start);
-									return item.day === day && startIndex === rowIndex;
-								});
+									const item = filteredScheduleItems.find((item) => {
+										const startIndex = getStartIndexFromDecimal(item.start);
+										return item.day === day && startIndex === rowIndex;
+									});
 
-								if (item) {
-									const rowSpan = getRowSpanFromDuration(
-										item.duration,
-										item.halfHour ?? 0
-									);
+									if (item) {
+										const rowSpan = getRowSpanFromDuration(
+											item.duration,
+											item.halfHour ?? 0
+										);
 
-									for (let i = 1; i < rowSpan; i++) {
-										skipMap[`${day}-${rowIndex + i}`] = true;
+										for (let i = 1; i < rowSpan; i++) {
+											skipMap[`${day}-${rowIndex + i}`] = true;
+										}
+
+										const classroomName =
+											classroomNames[item.classroomId] || "Loading...";
+										const professorName =
+											professorNames[item.professor] || "Loading...";
+
+										// Determine color index based on current index in filteredScheduleItems
+										const itemIndex = filteredScheduleItems.indexOf(item);
+										const colorClass =
+											scheduleColors[itemIndex % scheduleColors.length];
+
+										return (
+											<td
+												key={cellKey}
+												rowSpan={rowSpan}
+												title={`${item.section}`}
+												className={`border px-2 py-1 font-medium transition-colors ${colorClass}`}
+											>
+												{pathname.startsWith("/program-head") && !isApproved ? (
+													<ConfirmationHandleDialog
+														trigger={
+															<div className="hover:opacity-50 cursor-pointer transition-colors">
+																{item.courseCode}
+																<br />
+																{item.section}
+																<br />
+																{formatProfessorName(professorName)}
+																<br />
+																{`(${classroomName})`}
+															</div>
+														}
+														title={`You are about to delete schedule for ${item.section}`}
+														description="This action cannot be undone."
+														label="delete"
+														onConfirm={() =>
+															handleDeleteSpecificSchedule(item.id ?? "no id")
+														}
+													/>
+												) : (
+													<>
+														{item.courseCode}
+														<br />
+														{item.section}
+														<br />
+														{formatProfessorName(professorName)}
+														<br />
+														{`(${classroomName})`}
+													</>
+												)}
+											</td>
+										);
 									}
-
-									const classroomName =
-										classroomNames[item.classroomId] || "Loading...";
-									const professorName =
-										professorNames[item.professor] || "Loading...";
-
-									// Determine color index based on current index in filteredScheduleItems
-									const itemIndex = filteredScheduleItems.indexOf(item);
-									const colorClass =
-										scheduleColors[itemIndex % scheduleColors.length];
 
 									return (
 										<td
 											key={cellKey}
-											rowSpan={rowSpan}
-											title={`${item.section}`}
-											className={`border px-2 py-1 font-medium transition-colors ${colorClass}`}
-										>
-											{pathname.startsWith("/program-head") && !isApproved ? (
-												<ConfirmationHandleDialog
-													trigger={
-														<div className="hover:opacity-50 cursor-pointer transition-colors">
-															{item.courseCode}
-															<br />
-															{item.section}
-															<br />
-															{formatProfessorName(professorName)}
-															<br />
-															{`(${classroomName})`}
-														</div>
-													}
-													title={`You are about to delete schedule for ${item.section}`}
-													description="This action cannot be undone."
-													label="delete"
-													onConfirm={() =>
-														handleDeleteSpecificSchedule(item.id ?? "no id")
-													}
-												/>
-											) : (
-												<>
-													{item.courseCode}
-													<br />
-													{item.section}
-													<br />
-													{formatProfessorName(professorName)}
-													<br />
-													{`(${classroomName})`}
-												</>
-											)}
-										</td>
+											className={`border ${densityClasses.cell}`}
+											role="gridcell"
+										/>
 									);
-								}
-
-								return (
-									<td
-										key={cellKey}
-										className={`border ${densityClasses.cell}`}
-										role="gridcell"
-									/>
-								);
-							})}
-						</tr>
-					))}
-				</tbody>
-			</table>
+								})}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
 			{enableLegend && filteredScheduleItems.length > 0 && (
 				<div className="p-3 border-t bg-gray-50 text-[10px] sm:text-xs flex flex-wrap gap-3">
 					{filteredScheduleItems.slice(0, 20).map((item, idx) => {

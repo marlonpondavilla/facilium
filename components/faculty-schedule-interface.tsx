@@ -759,10 +759,10 @@ const FacultyScheduleInterface = ({
 			/>
 
 			{/* Schedule Form & Table Container */}
-			<div className="w-full max-w-7xl mx-auto px-0 grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
+			<div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-0 grid grid-cols-1 xl:grid-cols-[1fr_2fr] gap-4 lg:gap-6">
 				{/* Schedule Form */}
 				<div
-					className={`schedule-actions-wrapper facilium-bg-whiter p-4 rounded w-full self-start ${
+					className={`schedule-actions-wrapper facilium-bg-whiter p-3 sm:p-4 rounded w-full self-start ${
 						!pathname.startsWith("/program-head") ? "hidden" : "max-w-full"
 					}`}
 				>
@@ -1296,13 +1296,13 @@ const FacultyScheduleInterface = ({
 				classroomId &&
 				hasSchedule &&
 				pendingScheduleDetails ? (
-					<div className="flex flex-col lg:flex-row w-full lg:col-span-2 gap-6 items-start">
+					<div className="flex flex-col lg:flex-row w-full xl:col-span-2 gap-4 lg:gap-6 items-start">
 						{/* Submission summary card styled similar width to scheduling form for visual parity */}
-						<div className="facilium-bg-whiter p-4 rounded-lg shadow w-1/4 lg:max-w-md shrink-0 space-y-4">
-							<h2 className="text-base font-semibold text-gray-800">
+						<div className="facilium-bg-whiter p-3 sm:p-4 rounded-lg shadow w-full lg:w-1/4 lg:max-w-md shrink-0 space-y-3 sm:space-y-4">
+							<h2 className="text-base sm:text-lg font-semibold text-gray-800">
 								Submission Details
 							</h2>
-							<ul className="text-sm text-gray-600 space-y-0.5">
+							<ul className="text-sm text-gray-600 space-y-1">
 								<li>
 									<span className="font-medium facilium-color-indigo">
 										Plotted By:
@@ -1322,12 +1322,12 @@ const FacultyScheduleInterface = ({
 									{pendingScheduleDetails.dateSubmitted || "Loading..."}
 								</li>
 							</ul>
-							<div className="flex flex-wrap items-center gap-2 pt-1">
+							<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 pt-2">
 								<ConfirmationHandleDialog
 									trigger={
 										<Button
 											size="sm"
-											className="bg-blue-600 hover:bg-blue-700 text-white"
+											className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
 										>
 											<Check className="mr-1 h-4 w-4" /> Approve
 										</Button>
@@ -1342,7 +1342,7 @@ const FacultyScheduleInterface = ({
 										<Button
 											size="sm"
 											variant="destructive"
-											className="text-white"
+											className="text-white w-full sm:w-auto"
 										>
 											<X className="mr-1 h-4 w-4" /> Reject
 										</Button>
@@ -1354,7 +1354,7 @@ const FacultyScheduleInterface = ({
 								/>
 							</div>
 						</div>
-						<div className="schedule-action-controls facilium-bg-whiter p-4 rounded flex-1 min-w-0 w-full overflow-x-auto">
+						<div className="schedule-action-controls facilium-bg-whiter p-3 sm:p-4 rounded flex-1 min-w-0 w-full">
 							{/* status message when pending schedule (program-head only) intentionally omitted for dean */}
 							{!pathname.startsWith("/faculty") &&
 								classroomId &&
@@ -1377,9 +1377,9 @@ const FacultyScheduleInterface = ({
 					</div>
 				) : (
 					<div
-						className={`schedule-action-controls facilium-bg-whiter p-4 rounded w-full ${
+						className={`schedule-action-controls facilium-bg-whiter p-3 sm:p-4 rounded w-full ${
 							!pathname.startsWith("/program-head")
-								? "lg:col-span-2"
+								? "xl:col-span-2"
 								: "max-w-full"
 						}`}
 					>
@@ -1388,9 +1388,9 @@ const FacultyScheduleInterface = ({
 							!isApprovedScheduleExist &&
 							pathname.startsWith("/program-head") &&
 							classroomId && (
-								<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
-									<TriangleAlert />
-									<p>
+								<div className="w-full flex bg-red-300 p-2 sm:p-3 text-xs sm:text-sm justify-center items-center gap-2 facilium-color-indigo rounded-md mb-4">
+									<TriangleAlert className="flex-shrink-0" />
+									<p className="text-center">
 										{"This schedule is pending approval from the Campus Dean."}
 									</p>
 								</div>
