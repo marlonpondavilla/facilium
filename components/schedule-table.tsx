@@ -1,7 +1,13 @@
 "use client";
 
 import { ScheduleItem } from "@/types/SceduleInterface";
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	deleteDocumentById,
 	getSingleDocumentFromFirestore,
@@ -18,6 +24,9 @@ interface ScheduleTableProps {
 	scheduleItems: ScheduleItem[];
 	isPending: boolean;
 	isApproved: boolean;
+	enableExport?: boolean;
+	enablePrint?: boolean;
+	enableLegend?: boolean;
 }
 
 function formatHourNoSuffix(hour24: number) {
@@ -45,6 +54,9 @@ export default function ScheduleTable({
 	scheduleItems,
 	isPending,
 	isApproved,
+	enableExport = true,
+	enablePrint = true,
+	enableLegend = true,
 }: ScheduleTableProps) {
 	const skipMap: Record<string, boolean> = {};
 	const [classroomNames, setClassroomNames] = useState<Record<string, string>>(
@@ -54,6 +66,12 @@ export default function ScheduleTable({
 		{}
 	);
 	const [isLoading, setIsLoading] = useState(false);
+	const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+	const tableRef = useRef<HTMLTableElement | null>(null);
+
+	// Simple in-memory caches (reset per component lifecycle)
+	const profCache = useRef<Record<string, string>>({});
+	const classroomCache = useRef<Record<string, string>>({});
 
 	const searchParams = useSearchParams();
 	const classroomId = searchParams.get("classroomId");
@@ -66,19 +84,21 @@ export default function ScheduleTable({
 		[scheduleItems, classroomId]
 	);
 
+	const showEmptyBanner =
+		classroomId && filteredScheduleItems.length === 0 && !isLoading;
+
 	// Fetch classroom and professor name
 	useEffect(() => {
+		let cancelled = false;
 		const fetchProfessorAndClassroomNames = async () => {
 			setIsLoading(true);
-
 			try {
 				const uniqueProfIds = Array.from(
 					new Set(filteredScheduleItems.map((i) => i.professor))
-				);
-
+				).filter((id) => !profCache.current[id]);
 				const uniqueClassroomIds = Array.from(
 					new Set(filteredScheduleItems.map((i) => i.classroomId))
-				);
+				).filter((id) => !classroomCache.current[id]);
 
 				const profEntries = await Promise.all(
 					uniqueProfIds.map(async (id) => {
@@ -94,6 +114,7 @@ export default function ScheduleTable({
 						);
 						const fullName =
 							firstName && lastName ? `${firstName} ${lastName}` : "Unknown";
+						profCache.current[id] = fullName;
 						return [id, fullName];
 					})
 				);
@@ -105,21 +126,239 @@ export default function ScheduleTable({
 							"classrooms",
 							"classroomName"
 						);
-						return [id, name ?? "Unknown"];
+						const finalName = name ?? "Unknown";
+						classroomCache.current[id] = finalName;
+						return [id, finalName];
 					})
 				);
 
-				setProfessorNames(Object.fromEntries(profEntries));
-				setClassroomNames(Object.fromEntries(classroomEntries));
+				if (!cancelled) {
+					setProfessorNames((prev) => ({
+						...prev,
+						...profCache.current,
+						...Object.fromEntries(profEntries),
+					}));
+					setClassroomNames((prev) => ({
+						...prev,
+						...classroomCache.current,
+						...Object.fromEntries(classroomEntries),
+					}));
+				}
 			} catch (error) {
 				console.error("Error fetching data:", error);
 			} finally {
-				setIsLoading(false);
+				if (!cancelled) setIsLoading(false);
 			}
 		};
-
-		fetchProfessorAndClassroomNames();
+		if (filteredScheduleItems.length) fetchProfessorAndClassroomNames();
+		return () => {
+			cancelled = true;
+		};
 	}, [classroomId, filteredScheduleItems]);
+
+	const exportCsv = useCallback(() => {
+		if (!filteredScheduleItems.length) return;
+		const header = [
+			"Course Code",
+			"Section",
+			"Professor",
+			"Classroom",
+			"Day",
+			"Start",
+			"Duration",
+			"HalfHour",
+		];
+		const rows = filteredScheduleItems.map((i) => [
+			i.courseCode,
+			i.section,
+			professorNames[i.professor] || "",
+			classroomNames[i.classroomId] || "",
+			i.day,
+			i.start,
+			i.duration,
+			i.halfHour ?? 0,
+		]);
+		const csv = [header, ...rows]
+			.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+			.join("\n");
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `schedule-${classroomId}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}, [filteredScheduleItems, professorNames, classroomNames, classroomId]);
+
+	const handlePrint = useCallback(() => {
+		if (!tableRef.current) return;
+		const tableHtml = tableRef.current.outerHTML;
+		// Derive classroom display (first item's classroom or query)
+		const classroomDisplay =
+			classroomId && classroomNames[classroomId]
+				? classroomNames[classroomId]
+				: classroomId || "Classroom";
+		const timestamp = new Date().toLocaleString("en-PH", {
+			dateStyle: "medium",
+			timeStyle: "short",
+		});
+		const win = window.open("", "_blank", "width=1400,height=900");
+		if (!win) return;
+		win.document
+			.write(`<!DOCTYPE html><html><head><title>${classroomDisplay} Schedule</title>
+<meta charset='utf-8'/>
+<style>
+	/* Portrait orientation A4 */
+	@page { size: A4 portrait; margin: 10mm 8mm 10mm 8mm; }
+	:root {
+		--accent: #4f46e5;
+		--border: #cbd5e1;
+		--muted: #64748b;
+	}
+
+	body {
+		font-family: system-ui, Arial, sans-serif;
+		margin: 0;
+		padding: 0;
+		color: #0f172a;
+	}
+
+	.header {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		border-bottom: 1.5px solid var(--accent);
+		padding: 6px 0 4px;
+		margin-bottom: 8px;
+	}
+
+	.logo {
+		height: 46px;
+		width: auto;
+		object-fit: contain;
+	}
+
+	.branding h1 {
+		font-size: 16px;
+		margin: 0;
+		letter-spacing: 0.25px;
+	}
+
+	.branding h2 {
+		font-size: 11px;
+		margin: 1px 0 0;
+		font-weight: 600;
+		color: var(--muted);
+	}
+
+	.meta {
+		font-size: 9px;
+		margin-top: 2px;
+		color: #334155;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 9.2px;
+		table-layout: fixed;
+	}
+
+	thead th {
+	background: #fbcfe8; /* for screen */
+	font-weight: 700;
+	font-size: 9px;
+	color: #000000;
+	padding: 6px 4px;
+	vertical-align: middle;
+	border-bottom: 2px solid var(--accent);
+
+	/* Print-safe background workaround */
+	box-shadow: inset 0 0 0 1000px #fbcfe8;
+	-webkit-print-color-adjust: exact;
+	color-adjust: exact;
+}
+
+
+	th, td {
+		border: 1px solid var(--border);
+		padding: 6px 4px;
+		text-align: center;
+		vertical-align: middle;
+		word-wrap: break-word;
+		line-height: 1.4;
+	}
+
+	tbody td {
+		font-size: 8.6px;
+	}
+
+	tbody tr:nth-child(odd) {
+		background-color: #fafafa;
+	}
+
+	.badge {
+		display: inline-block;
+		padding: 1px 6px;
+		border: 1px solid var(--accent);
+		border-radius: 999px;
+		font-size: 9.2px;
+		font-weight: 600;
+		color: var(--accent);
+	}
+
+	.footer {
+		margin-top: 8px;
+		font-size: 8px;
+		color: var(--muted);
+		text-align: right;
+	}
+
+	@media print {
+		.no-print { display: none !important; }
+	}
+
+	#page-wrapper {
+		transform-origin: top left;
+	}
+</style>
+
+</head><body>
+	<div id='page-wrapper'>
+		<div class='header'>
+			<img class='logo' src='${window.location.origin}/bsu-meneses-logo.png' alt='Bulsu Meneses Logo' />
+			<div class='branding'>
+				<h1>Bulacan State University – Meneses Campus</h1>
+				<h2>Official Classroom Schedule</h2>
+				<div class='meta'>Room: <span class='badge'>${classroomDisplay}</span> &nbsp; | &nbsp; Printed: ${timestamp}</div>
+			</div>
+		</div>
+		${tableHtml}
+		<div class='footer'>Generated via Facilium</div>
+	</div>
+	<script>
+	(function(){
+		const wrapper = document.getElementById('page-wrapper');
+		if (!wrapper) return;
+
+		// Approximate printable height in px for A4 portrait at 96dpi minus margins
+		const maxHeight = Math.floor((11.69 - 0.8) * 96); // ~1050px
+		const current = wrapper.getBoundingClientRect().height;
+		if (current > maxHeight) {
+			const scale = maxHeight / current;
+			wrapper.style.transform = 'scale(' + scale.toFixed(3) + ')';
+		}
+	})();
+	</script>
+</body></html>`);
+
+		win.document.close();
+		// Ensure styles applied before print (small delay helps some browsers)
+		win.onload = () => {
+			win.focus();
+			win.print();
+		};
+	}, [classroomId, classroomNames]);
 
 	function getStartIndexFromDecimal(startDecimal: number): number {
 		return Math.round((startDecimal - 7) * 2);
@@ -149,17 +388,101 @@ export default function ScheduleTable({
 		}
 	};
 
+	const densityClasses =
+		density === "compact"
+			? {
+					cell: "px-2 py-1",
+					row: "h-9",
+					font: "text-xs",
+			  }
+			: {
+					cell: "px-3 py-2",
+					row: "h-12",
+					font: "text-sm",
+			  };
+
 	return (
 		<div className="overflow-x-auto border rounded-lg">
 			{/* please wait loader synchronous when classroom and professor fetch in use effect */}
 			{isLoading && <PleaseWait />}
 
-			<table className="min-w-full border-collapse table-fixed text-center text-sm">
+			{showEmptyBanner && (
+				<div className="p-4 text-sm bg-amber-50 border-b border-amber-200 text-amber-800 flex items-start gap-2">
+					<span className="font-medium">
+						No approved schedule for this classroom.
+					</span>
+					<span className="opacity-80">
+						Select another classroom from the list or wait for approval.
+					</span>
+				</div>
+			)}
+
+			<div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 border-b bg-gray-50">
+				<div className="flex items-center gap-2 text-xs">
+					<span className="font-semibold">View:</span>
+					<button
+						className={`rounded border px-2 py-0.5 ${
+							density === "compact" ? "bg-indigo-600 text-white" : "bg-white"
+						}`}
+						onClick={() => setDensity("compact")}
+						aria-pressed={density === "compact"}
+					>
+						Compact
+					</button>
+					<button
+						className={`rounded border px-2 py-0.5 ${
+							density === "comfortable"
+								? "bg-indigo-600 text-white"
+								: "bg-white"
+						}`}
+						onClick={() => setDensity("comfortable")}
+						aria-pressed={density === "comfortable"}
+					>
+						Comfort
+					</button>
+				</div>
+				<div className="flex items-center gap-2 text-xs">
+					<span className="font-semibold">Export:</span>
+					{enableExport && (
+						<button
+							onClick={exportCsv}
+							disabled={!filteredScheduleItems.length}
+							className="border rounded px-2 py-0.5 hover:bg-indigo-50 disabled:opacity-40"
+							aria-label="Export classroom schedule as CSV"
+						>
+							CSV
+						</button>
+					)}
+					{enablePrint && (
+						<button
+							onClick={handlePrint}
+							disabled={!filteredScheduleItems.length}
+							className="border rounded px-2 py-0.5 hover:bg-indigo-50 disabled:opacity-40"
+							aria-label="Print classroom schedule"
+						>
+							Print
+						</button>
+					)}
+				</div>
+			</div>
+			<table
+				ref={tableRef}
+				role="table"
+				aria-label="Classroom schedule"
+				className={`min-w-full border-collapse text-center ${densityClasses.font}`}
+			>
 				<thead>
-					<tr className="bg-pink-100 text-gray-800">
-						<th className="border p-2 w-20">Time</th>
+					<tr className="bg-pink-100 text-gray-800 sticky top-0 z-10">
+						<th scope="col" className={`border ${densityClasses.cell} w-16`}>
+							Time
+						</th>
 						{days.map((day) => (
-							<th key={day} className="border p-2">
+							<th
+								scope="col"
+								key={day}
+								className={`border ${densityClasses.cell}`}
+								aria-label={day}
+							>
 								{day}
 							</th>
 						))}
@@ -167,8 +490,11 @@ export default function ScheduleTable({
 				</thead>
 				<tbody>
 					{hours.map((hourLabel, rowIndex) => (
-						<tr key={rowIndex} className="h-12">
-							<td className="border p-2 font-semibold bg-gray-50">
+						<tr key={rowIndex} className={densityClasses.row} role="row">
+							<td
+								className={`border font-semibold bg-gray-50 ${densityClasses.cell}`}
+								role="rowheader"
+							>
 								{hourLabel}
 							</td>
 							{days.map((day) => {
@@ -205,7 +531,7 @@ export default function ScheduleTable({
 											key={cellKey}
 											rowSpan={rowSpan}
 											title={`${item.section}`}
-											className={`border p-2 font-medium transition-colors ${colorClass}`}
+											className={`border px-2 py-1 font-medium transition-colors ${colorClass}`}
 										>
 											{pathname.startsWith("/program-head") && !isApproved ? (
 												<ConfirmationHandleDialog
@@ -242,12 +568,36 @@ export default function ScheduleTable({
 									);
 								}
 
-								return <td key={cellKey} className="border p-2"></td>;
+								return (
+									<td
+										key={cellKey}
+										className={`border ${densityClasses.cell}`}
+										role="gridcell"
+									/>
+								);
 							})}
 						</tr>
 					))}
 				</tbody>
 			</table>
+			{enableLegend && filteredScheduleItems.length > 0 && (
+				<div className="p-3 border-t bg-gray-50 text-[10px] sm:text-xs flex flex-wrap gap-3">
+					{filteredScheduleItems.slice(0, 20).map((item, idx) => {
+						const colorClass = scheduleColors[idx % scheduleColors.length];
+						return (
+							<div key={item.id || idx} className="flex items-center gap-1">
+								<span
+									className={`inline-block w-3 h-3 rounded-sm ${colorClass}`}
+									aria-hidden="true"
+								></span>
+								<span className="whitespace-nowrap">
+									{item.courseCode} – {item.section}
+								</span>
+							</div>
+						);
+					})}
+				</div>
+			)}
 		</div>
 	);
 }

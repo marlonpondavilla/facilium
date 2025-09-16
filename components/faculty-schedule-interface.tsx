@@ -228,7 +228,6 @@ const FacultyScheduleInterface = ({
 	};
 
 	// Single subscription to form changes instead of large dependency array.
-	// This avoids excessive re-renders when only one field changes and keeps lint happy with minimal deps.
 	useEffect(() => {
 		const subscription = form.watch((_value, { name }) => {
 			if (!name) return;
@@ -254,7 +253,6 @@ const FacultyScheduleInterface = ({
 	}, [scheduleItems]);
 
 	// Reactive derived booleans: use form.watch so parent re-renders when values change.
-	// Previous implementation used getValues() which didn't trigger re-render after we removed the global watch side-effect.
 	const programSelected = !!form.watch("program");
 	const yearLevelSelected = !!form.watch("yearLevel");
 	const sectionSelected = !!form.watch("section");
@@ -513,7 +511,8 @@ const FacultyScheduleInterface = ({
 
 				if (result.success) {
 					toast.success("Your schedule is submitted to the Dean.");
-					setIsPendingScheduleExist(true); // immediate UI reflection
+					// immediate UI reflection
+					setIsPendingScheduleExist(true);
 					router.refresh();
 					if (classroomId) {
 						const params = new URLSearchParams();
@@ -529,42 +528,42 @@ const FacultyScheduleInterface = ({
 
 	// Approve handle for dean
 	const handleApproveSchedule = async () => {
+		if (!classroomId) return;
+
 		const pendingSchedules =
 			await getDocumentsWithNestedObject<PendingSchedule>(
 				"pendingScheduleData",
 				"submitted"
 			);
 
-		const pendingScheduleItems: ScheduleItem[] = pendingSchedules.flatMap(
-			(doc) => doc.scheduleItems
-		);
+		// Find the pending schedule for this classroom only
+		const target = pendingSchedules.find((p) => p.classroomId === classroomId);
 
-		for (const pendingSchedule of pendingSchedules) {
-			if (pendingSchedule.classroomId === classroomId) {
-				await withLoading(async () => {
-					try {
-						const result = await addDocumentToFirestore(
-							"approvedScheduleData",
-							{
-								id: pendingSchedule.id,
-								scheduleItems: pendingScheduleItems,
-								classroomId,
-								dean: auth?.user?.displayName,
-								approved: new Date().toISOString(),
-							}
-						);
-
-						if (result.success) {
-							toast.success("Schedule has been approved by you.");
-							setIsApprovedScheduleExist(true);
-							router.refresh();
-						}
-					} catch (e) {
-						console.error("Error on approving schedule", e);
-					}
-				});
-			}
+		if (!target) {
+			toast.error("No pending schedule found for this classroom.");
+			return;
 		}
+
+		await withLoading(async () => {
+			try {
+				// Only approve the items for this classroom
+				const result = await addDocumentToFirestore("approvedScheduleData", {
+					id: target.id,
+					scheduleItems: target.scheduleItems,
+					classroomId,
+					dean: auth?.user?.displayName,
+					approved: new Date().toISOString(),
+				});
+
+				if (result.success) {
+					toast.success("Schedule has been approved by you.");
+					setIsApprovedScheduleExist(true);
+					router.refresh();
+				}
+			} catch (e) {
+				console.error("Error on approving schedule", e);
+			}
+		});
 	};
 
 	// Reject handle for dean
@@ -1272,45 +1271,46 @@ const FacultyScheduleInterface = ({
 					</Form>
 				</div>
 
-				{/* Dean controls and approvals */}
+				{/* Dean + Schedule (side-by-side when dean route with pending schedule) */}
 				{pathname.startsWith("/dean") &&
-					!isApprovedScheduleExist &&
-					classroomId &&
-					hasSchedule &&
-					pendingScheduleDetails && (
-						<div className="bg-white p-6 rounded-lg shadow w-full self-start space-y-6">
-							{/* Header */}
-							<div>
-								<h2 className="text-lg font-semibold text-gray-800 mb-2">
-									Schedule Submission Details
-								</h2>
-								<p className="text-sm text-gray-600">
+				!isApprovedScheduleExist &&
+				classroomId &&
+				hasSchedule &&
+				pendingScheduleDetails ? (
+					<div className="flex flex-col lg:flex-row w-full lg:col-span-2 gap-6 items-start">
+						{/* Submission summary card styled similar width to scheduling form for visual parity */}
+						<div className="facilium-bg-whiter p-4 rounded-lg shadow w-1/4 lg:max-w-md shrink-0 space-y-4">
+							<h2 className="text-base font-semibold text-gray-800">
+								Submission Details
+							</h2>
+							<ul className="text-sm text-gray-600 space-y-0.5">
+								<li>
 									<span className="font-medium facilium-color-indigo">
 										Plotted By:
 									</span>{" "}
 									{pendingScheduleDetails.professorName || "Loading..."}
-								</p>
-								<p className="text-sm text-gray-600">
+								</li>
+								<li>
 									<span className="font-medium facilium-color-indigo">
 										Classroom:
 									</span>{" "}
 									{pendingScheduleDetails.classroomName || "Loading..."}
-								</p>
-								<p className="text-sm text-gray-600">
+								</li>
+								<li>
 									<span className="font-medium facilium-color-indigo">
-										Date submitted/updated:
+										Date:
 									</span>{" "}
 									{pendingScheduleDetails.dateSubmitted || "Loading..."}
-								</p>
-							</div>
-
-							{/* Actions */}
-							<div className="flex flex-wrap items-center gap-4">
+								</li>
+							</ul>
+							<div className="flex flex-wrap items-center gap-2 pt-1">
 								<ConfirmationHandleDialog
 									trigger={
-										<Button className="bg-blue-600 hover:bg-blue-700 text-white">
-											<Check className="mr-2 h-4 w-4" />
-											Approve
+										<Button
+											size="sm"
+											className="bg-blue-600 hover:bg-blue-700 text-white"
+										>
+											<Check className="mr-1 h-4 w-4" /> Approve
 										</Button>
 									}
 									title={`You are about to approve this schedule for ${pendingScheduleDetails.classroomName}.`}
@@ -1318,12 +1318,14 @@ const FacultyScheduleInterface = ({
 									label="approve"
 									onConfirm={handleApproveSchedule}
 								/>
-
 								<ConfirmationHandleDialog
 									trigger={
-										<Button variant="destructive" className="text-white">
-											<X className="mr-2 h-4 w-4" />
-											Reject
+										<Button
+											size="sm"
+											variant="destructive"
+											className="text-white"
+										>
+											<X className="mr-1 h-4 w-4" /> Reject
 										</Button>
 									}
 									title={`Are you sure you want to reject this schedule for ${pendingScheduleDetails.classroomName}?`}
@@ -1333,77 +1335,92 @@ const FacultyScheduleInterface = ({
 								/>
 							</div>
 						</div>
-					)}
-
-				{/* Schedule Table */}
-				<div
-					className={`schedule-action-controls facilium-bg-whiter p-4 rounded w-full ${
-						!pathname.startsWith("/program-head")
-							? "lg:col-span-2"
-							: "max-w-full"
-					}`}
-				>
-					{/* status message when pending schedule */}
-					{isPendingScheduleExist &&
-						!isApprovedScheduleExist &&
-						pathname.startsWith("/program-head") &&
-						classroomId && (
-							<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
-								<TriangleAlert />
-								<p>
-									{"This schedule is pending approval from the Campus Dean."}
-								</p>
-							</div>
-						)}
-
-					{/* rejected status */}
-					{!isPendingScheduleExist &&
-						!isApprovedScheduleExist &&
-						pathname.startsWith("/program-head") &&
-						classroomId && (
-							<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
-								<Info />
-								<p>
-									{
-										"This schedule has been reset or rejected. You can update it now."
-									}
-								</p>
-							</div>
-						)}
-
-					{/* warning message for faculty */}
-					{pathname.startsWith("/faculty") && (
-						<div className="flex w-full border justify-center gap-2 bg-blue-200 text-blue-500 items-center text-center text-xs tracking-wide mb-2 p-2">
-							<TriangleAlert color="black" className="w-6 h-auto" />
-							Read-Only Access: You can download and view all room schedules,
-							but only Program Chairs can add, edit, and delete schedules.
+						<div className="schedule-action-controls facilium-bg-whiter p-4 rounded flex-1 min-w-0 w-full overflow-x-auto">
+							{/* status message when pending schedule (program-head only) intentionally omitted for dean */}
+							{!pathname.startsWith("/faculty") &&
+								classroomId &&
+								isApprovedScheduleExist && (
+									<div className="flex w-full border justify-center gap-2 bg-blue-200 text-blue-500 items-center text-center text-xs tracking-wide mb-2 p-2">
+										You are viewing the approved schedule for this room.
+									</div>
+								)}
+							<ScheduleTable
+								scheduleItems={localScheduleItems}
+								isPending={isPendingScheduleExist}
+								isApproved={isApprovedScheduleExist}
+							/>
 						</div>
-					)}
+					</div>
+				) : (
+					<div
+						className={`schedule-action-controls facilium-bg-whiter p-4 rounded w-full ${
+							!pathname.startsWith("/program-head")
+								? "lg:col-span-2"
+								: "max-w-full"
+						}`}
+					>
+						{/* status message when pending schedule */}
+						{isPendingScheduleExist &&
+							!isApprovedScheduleExist &&
+							pathname.startsWith("/program-head") &&
+							classroomId && (
+								<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
+									<TriangleAlert />
+									<p>
+										{"This schedule is pending approval from the Campus Dean."}
+									</p>
+								</div>
+							)}
 
-					{/* approved status */}
-					{!pathname.startsWith("/faculty") &&
-						classroomId &&
-						isApprovedScheduleExist && (
+						{/* rejected status */}
+						{!isPendingScheduleExist &&
+							!isApprovedScheduleExist &&
+							pathname.startsWith("/program-head") &&
+							classroomId && (
+								<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
+									<Info />
+									<p>
+										{
+											"This schedule has been reset or rejected. You can update it now."
+										}
+									</p>
+								</div>
+							)}
+
+						{/* warning message for faculty */}
+						{pathname.startsWith("/faculty") && (
 							<div className="flex w-full border justify-center gap-2 bg-blue-200 text-blue-500 items-center text-center text-xs tracking-wide mb-2 p-2">
-								You are viewing the approved schedule for this room.
+								<TriangleAlert color="black" className="w-6 h-auto" />
+								Read-Only Access: You can download and view all room schedules,
+								but only Program Chairs can add, edit, and delete schedules.
 							</div>
 						)}
 
-					{!classroomId && data.length > 1 && (
-						<p
-							className={`text-base text-center py-2 text-pink-600 ${
-								!pathname.startsWith("/program-head") ? "hidden" : "block"
-							}`}
-						>
-							Select a classroom first to view plotted schedule.
-						</p>
-					)}
-					<ScheduleTable
-						scheduleItems={localScheduleItems}
-						isPending={isPendingScheduleExist}
-						isApproved={isApprovedScheduleExist}
-					/>
-				</div>
+						{/* approved status */}
+						{!pathname.startsWith("/faculty") &&
+							classroomId &&
+							isApprovedScheduleExist && (
+								<div className="flex w-full border justify-center gap-2 bg-blue-200 text-blue-500 items-center text-center text-xs tracking-wide mb-2 p-2">
+									You are viewing the approved schedule for this room.
+								</div>
+							)}
+
+						{!classroomId && data.length > 1 && (
+							<p
+								className={`text-base text-center py-2 text-pink-600 ${
+									!pathname.startsWith("/program-head") ? "hidden" : "block"
+								}`}
+							>
+								Select a classroom first to view plotted schedule.
+							</p>
+						)}
+						<ScheduleTable
+							scheduleItems={localScheduleItems}
+							isPending={isPendingScheduleExist}
+							isApproved={isApprovedScheduleExist}
+						/>
+					</div>
+				)}
 			</div>
 		</div>
 	);

@@ -8,6 +8,7 @@ import {
 	getScheduleData,
 } from "@/data/faculty-building";
 import { AcademicYear } from "@/types/academicYearType";
+import { ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -79,12 +80,14 @@ const Page = async ({ params }: PageProps) => {
 		"academic-years"
 	);
 
-	// console.log(academicYears);
-
 	// note: hindi naka sort by created field, just add the second argument(boolean) if needed.
 	const professors: Professors[] = await getDocumentsFromFirestore("userData");
 
-	const scheduleData = await getScheduleData("scheduleData");
+	const rawSchedule = await getScheduleData("scheduleData");
+	// getScheduleData may heuristically return ApprovedScheduleDoc[] only for approved collection, but add safeguard
+	const scheduleData: ScheduleItem[] = Array.isArray(rawSchedule)
+		? (rawSchedule as ScheduleItem[])
+		: [];
 	const classrooms: Classroom[] = await getClassrooms(id);
 	const buildingName = await getBuildingName(id);
 
