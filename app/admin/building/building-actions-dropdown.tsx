@@ -56,6 +56,16 @@ export function BuildingActionsDropdown({ building }: BuildingProps) {
 				}}
 				updateLabel="Rename"
 				updatePlaceholder="New Building Name"
+				deleteContext={{
+					itemType: "Building",
+					cascadeDescription: [
+						"All classrooms in this building",
+						"All current schedules using these classrooms",
+						"All pending schedules awaiting approval",
+						"All approved schedule records",
+					],
+					destructiveWarning: "This action cannot be undone.",
+				}}
 			/>
 		</>
 	);

@@ -74,6 +74,15 @@ const ProgramActionsDropdown = ({ program }: ProgramProps) => {
 				}}
 				updateLabel="Rename"
 				updatePlaceholder="New Program Code"
+				deleteContext={{
+					itemType: "Program",
+					cascadeDescription: [
+						"All sections within this program",
+						"All courses associated with this program",
+					],
+					destructiveWarning:
+						"This will permanently delete this entire program and ALL related academic data. This action cannot be undone.",
+				}}
 				extraField={{
 					extraUpdatePlaceholder: "New Program Name",
 					onExtraUpdate: async (v) => {

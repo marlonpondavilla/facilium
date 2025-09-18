@@ -41,7 +41,7 @@ const Page = async () => {
 							<CardDescription>
 								<div className="flex items-center gap-1 mt-1">
 									<Notebook width={15} height={15} />
-									<p>Classrooms: {building.classroom}</p>
+									<p>Classrooms: {building.classroom ?? 0}</p>
 								</div>
 							</CardDescription>
 						</CardHeader>
