@@ -35,49 +35,78 @@ const Page = async ({ params }: PageProps) => {
 		<div className="flex flex-col gap-8">
 			<AdminHeaderTitle title="Year-Level" />
 
-			<div className="flex items-center justify-between facilium-bg-whiter py-6 px-8">
-				<h1 className="text-2xl tracking-wide font-semibold text-gray-500">
-					{programName ?? "Unknown Program"}
-				</h1>
-				<AddYearLevel id={programId} />
+			{/* Program Header - Responsive */}
+			<div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+					<h1 className="text-xl sm:text-2xl tracking-wide font-semibold text-gray-700 truncate">
+						{programName ?? "Unknown Program"}
+					</h1>
+					<div className="flex-shrink-0">
+						<AddYearLevel id={programId} />
+					</div>
+				</div>
 			</div>
 
-			<div className="flex flex-col justify-center facilium-bg-whiter py-6 px-8 gap-4">
-				<div className="flex items-center justify-between facilium-bg-indigo py-6 px-8 border facilium-color-white rounded-t-2xl">
-					<h2 className="text-2xl tracking-wide font-semibold ">Year Level</h2>
-					<h3 className="text-2xl tracking-wide font-semibold ">Actions</h3>
+			{/* Year Levels Content - Responsive */}
+			<div className="bg-white rounded-lg shadow-sm overflow-hidden">
+				{/* Header */}
+				<div className="facilium-bg-indigo text-white px-4 sm:px-6 py-4">
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg sm:text-xl tracking-wide font-semibold">
+							Year Levels
+						</h2>
+						<h3 className="hidden sm:block text-lg sm:text-xl tracking-wide font-semibold">
+							Actions
+						</h3>
+					</div>
 				</div>
 
-				{yearLevels.filter((yearLevel) => yearLevel.programId === programId)
-					.length < 1 && (
-					<p className="text-center text-gray-500">
-						No data available for this year level.
-					</p>
-				)}
+				{/* Content */}
+				<div className="divide-y divide-gray-200">
+					{yearLevels.filter((yearLevel) => yearLevel.programId === programId)
+						.length < 1 && (
+						<div className="p-8 text-center">
+							<p className="text-gray-500">
+								No year levels available for this program.
+							</p>
+						</div>
+					)}
 
-				{/* year level data  */}
-				{yearLevels
-					.filter((yearLevel) => yearLevel.programId === programId)
-					.map((yearLevel) => {
-						return (
-							<div
-								className="flex items-center justify-between bg-muted py-6 px-8 border-2 text-gray-500"
-								key={yearLevel.id}
-							>
-								<h2 className="text-xl tracking-wide font-semibold ">
-									{yearLevel.yearLevel} Year
-								</h2>
+					{/* Year Level Items - Responsive */}
+					{yearLevels
+						.filter((yearLevel) => yearLevel.programId === programId)
+						.map((yearLevel) => {
+							return (
+								<div
+									className="p-4 sm:p-6 hover:bg-gray-50 transition-colors"
+									key={yearLevel.id}
+								>
+									{/* Mobile Layout */}
+									<div className="sm:hidden space-y-4">
+										<h3 className="text-lg font-semibold text-gray-800">
+											{yearLevel.yearLevel} Year
+										</h3>
+										<div className="flex flex-col sm:flex-row gap-3">
+											<ActionButtons yearLevelId={yearLevel.id} />
+											<DeleteYearLevel id={yearLevel.id} />
+										</div>
+									</div>
 
-								<div className="delete">
-									<DeleteYearLevel id={yearLevel.id} />
+									{/* Desktop Layout */}
+									<div className="hidden sm:flex sm:items-center sm:justify-between">
+										<h3 className="text-xl font-semibold text-gray-800">
+											{yearLevel.yearLevel} Year
+										</h3>
+
+										<div className="flex items-center gap-3">
+											<ActionButtons yearLevelId={yearLevel.id} />
+											<DeleteYearLevel id={yearLevel.id} />
+										</div>
+									</div>
 								</div>
-
-								<div className="actions">
-									<ActionButtons yearLevelId={yearLevel.id} />
-								</div>
-							</div>
-						);
-					})}
+							);
+						})}
+				</div>
 			</div>
 		</div>
 	);

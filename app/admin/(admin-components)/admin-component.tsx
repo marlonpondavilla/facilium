@@ -167,65 +167,142 @@ const AdminComponent = ({ academicYears }: AdminComponentProps) => {
 		<div className="flex flex-col gap-8">
 			<AdminHeaderTitle title="Dashboard" />
 
-			<div className="p-4 flex flex-col gap-4 w-full">
+			<div className="space-y-6">
 				{/* Add Academic Year Section */}
-				<div className="flex flex-col gap-2 bg-white p-4 rounded-xl">
-					<p className="font-semibold tracking-wide pb-3">Add Academic Year:</p>
-					<div className="flex justify-center gap-4 items-center">
-						<p>Start</p>
-						<Input
-							placeholder="Start (e.g., 2025)"
-							onChange={(e) => {
-								setError("");
-								const startYear = Number(e.target.value);
-
-								setAcademicYearData((prev) => ({
-									...prev,
-									startAcademicYear: startYear,
-									endAcademicYear: startYear + 1,
-								}));
-							}}
-							className={`border ${
-								error ? "border-red-500" : "border-black"
-							} w-1/4`}
-						/>
-						<Minus />
-						<p>End:</p>
-						<p className="bg-muted p-2">
-							{academicYearData.startAcademicYear > 1
-								? academicYearData.startAcademicYear + 1
-								: "---"}
-						</p>
-						<Button onClick={handleAddAcademicYear}>Add Now</Button>
-					</div>
-					{error && (
-						<p className="text-red-500 text-xs text-center py-2">{error}</p>
-					)}
-				</div>
-
-				{/* Academic Year and Term Selection */}
 				<Card>
 					<CardHeader>
-						<CardTitle>Select Academic Year:</CardTitle>
+						<CardTitle className="text-lg font-semibold text-gray-800">
+							Add Academic Year
+						</CardTitle>
 					</CardHeader>
-					<CardContent>
-						<div className="select-container flex flex-col gap-4">
-							<div className="select-wrapper flex justify-between">
-								<div className="select-label flex items-center gap-2">
-									<p>Current Academic Year:</p>
-									<p className="underline tracking-wide border bg-muted p-2">
-										{activeYearValue || "No active academic year"}
-									</p>
-								</div>
+					<CardContent className="space-y-4">
+						{/* Desktop and Mobile Responsive Layout */}
+						<div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-end">
+							{/* Start Year Input */}
+							<div className="lg:col-span-2">
+								<label className="block text-sm font-medium text-gray-700 mb-2">
+									Start Year
+								</label>
+								<Input
+									placeholder="e.g., 2025"
+									type="number"
+									onChange={(e) => {
+										setError("");
+										const startYear = Number(e.target.value);
 
-								<div className="select-item flex items-center gap-2">
-									<p className="text-red-400">Change Academic Year:</p>
+										setAcademicYearData((prev) => ({
+											...prev,
+											startAcademicYear: startYear,
+											endAcademicYear: startYear + 1,
+										}));
+									}}
+									className={`w-full ${
+										error ? "border-red-500 focus:border-red-500" : ""
+									}`}
+								/>
+							</div>
+
+							{/* Separator */}
+							<div className="hidden lg:flex lg:col-span-1 justify-center items-center">
+								<div className="flex items-center gap-2 text-gray-500">
+									<Minus className="w-4 h-4" />
+									<span className="text-sm">to</span>
+									<Minus className="w-4 h-4" />
+								</div>
+							</div>
+
+							{/* End Year Display */}
+							<div className="lg:col-span-1">
+								<label className="block text-sm font-medium text-gray-700 mb-2">
+									End Year
+								</label>
+								<div className="bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-center font-medium">
+									{academicYearData.startAcademicYear > 1
+										? academicYearData.startAcademicYear + 1
+										: "---"}
+								</div>
+							</div>
+
+							{/* Add Button */}
+							<div className="lg:col-span-1">
+								<Button
+									onClick={handleAddAcademicYear}
+									className="w-full"
+									disabled={academicYearData.startAcademicYear === 0}
+								>
+									Add Year
+								</Button>
+							</div>
+						</div>
+
+						{/* Mobile Layout Helper Text */}
+						<div className="lg:hidden flex items-center justify-center text-gray-500 text-sm">
+							<Minus className="w-4 h-4 mr-1" />
+							<span>Academic year spans from start year to next year</span>
+							<Minus className="w-4 h-4 ml-1" />
+						</div>
+
+						{error && (
+							<div className="bg-red-50 border border-red-200 rounded-md p-3">
+								<p className="text-red-600 text-sm text-center">{error}</p>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Academic Year and Term Management */}
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-lg font-semibold text-gray-800">
+							Academic Year & Term Management
+						</CardTitle>
+						<p className="text-sm text-gray-600">
+							Manage the current active academic year and term
+						</p>
+					</CardHeader>
+					<CardContent className="space-y-6">
+						{/* Current Settings Display */}
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+								<h4 className="font-medium text-blue-900 mb-2">
+									Current Academic Year
+								</h4>
+								<div className="bg-white border border-blue-300 rounded-md px-3 py-2">
+									<span className="text-blue-800 font-medium">
+										{activeYearValue || "No active academic year"}
+									</span>
+								</div>
+							</div>
+
+							<div className="bg-green-50 border border-green-200 rounded-lg p-4">
+								<h4 className="font-medium text-green-900 mb-2">
+									Current Academic Term
+								</h4>
+								<div className="bg-white border border-green-300 rounded-md px-3 py-2">
+									<span className="text-green-800 font-medium">
+										{selectedTerm || "No term selected"}
+									</span>
+								</div>
+							</div>
+						</div>
+
+						{/* Change Settings */}
+						<div className="border-t pt-6">
+							<h4 className="font-medium text-gray-900 mb-4">
+								Update Settings
+							</h4>
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								{/* Academic Year Selection */}
+								<div className="space-y-2">
+									<label className="block text-sm font-medium text-red-600">
+										Change Academic Year
+									</label>
 									<Select
 										value={selectedYearValue}
 										onValueChange={handleYearChange}
 									>
-										<SelectTrigger>
-											<SelectValue placeholder="Select year" />
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select academic year" />
 										</SelectTrigger>
 										<SelectContent>
 											<SelectGroup>
@@ -241,26 +318,20 @@ const AdminComponent = ({ academicYears }: AdminComponentProps) => {
 										</SelectContent>
 									</Select>
 								</div>
-							</div>
 
-							<div className="select-wrapper flex justify-between">
-								<div className="select-label flex items-center gap-2">
-									<p>Current Academic Term:</p>
-									<p className="underline tracking-wide border bg-muted p-2">
-										{selectedTerm}
-									</p>
-								</div>
-
-								<div className="select-item flex items-center gap-2">
-									<p className="text-red-400">Change Academic Term:</p>
+								{/* Academic Term Selection */}
+								<div className="space-y-2">
+									<label className="block text-sm font-medium text-red-600">
+										Change Academic Term
+									</label>
 									<Select value={selectedTerm} onValueChange={handleTermChange}>
-										<SelectTrigger>
-											<SelectValue placeholder="Select term" />
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select academic term" />
 										</SelectTrigger>
 										<SelectContent>
 											<SelectGroup>
-												<SelectItem value="1st">1st</SelectItem>
-												<SelectItem value="2nd">2nd</SelectItem>
+												<SelectItem value="1st">1st Semester</SelectItem>
+												<SelectItem value="2nd">2nd Semester</SelectItem>
 											</SelectGroup>
 										</SelectContent>
 									</Select>

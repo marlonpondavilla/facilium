@@ -17,16 +17,16 @@ const ActionButtons = ({ yearLevelId }: { yearLevelId: string }) => {
 	};
 
 	return (
-		<div className="flex gap-2">
+		<div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
 			<Button
 				variant={"outline"}
 				onClick={handleAddSection}
-				className="rounded-full cursor-pointer hover:bg-indigo-500 hover:text-white transition-all facilium-color-indigo border-indigo-500"
+				className="w-full sm:w-auto rounded-lg cursor-pointer hover:bg-indigo-500 hover:text-white transition-all text-indigo-600 border-indigo-500 text-sm sm:text-base"
 			>
 				Add Section
 			</Button>
 			<Button
-				className="facilium-bg-indigo cursor-pointer rounded-2xl"
+				className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 cursor-pointer rounded-lg text-sm sm:text-base"
 				onClick={handleAddCourses}
 			>
 				Add Courses
