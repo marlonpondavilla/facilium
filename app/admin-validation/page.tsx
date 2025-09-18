@@ -31,7 +31,6 @@ const AdminRedirectPage = () => {
 						}
 					}
 					router.push("/admin/dashboard");
-					console.log(customClaims.role);
 					return;
 				}
 			}

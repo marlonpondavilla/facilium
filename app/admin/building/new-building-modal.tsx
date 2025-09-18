@@ -15,8 +15,6 @@ import { HousePlus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { BuildingCreate } from "@/types/buildingType";
-// Replaced direct firestore calls with server action for add + revalidation
-// import { addDocumentToFirestore, checkIfDocumentExists } from "@/data/actions";
 import { addBuildingAction } from "./actions";
 import { useRouter } from "next/navigation";
 
@@ -42,7 +40,7 @@ const NewBuildingModal = () => {
 		setSubmitting(true);
 
 		const res = await addBuildingAction({
-			buildingCode: "", // deprecated: server action now derives slug
+			buildingCode: "",
 			buildingName: buildingData.buildingName,
 		});
 

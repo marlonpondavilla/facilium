@@ -2,8 +2,8 @@
 import {
 	addDocumentToFirestore,
 	checkIfDocumentExists,
-	deleteDocumentById,
 	updateDocumentById,
+	deleteBuildingWithCascade,
 } from "@/data/actions";
 import { toSlug } from "@/lib/slug";
 import { revalidatePath } from "next/cache";
@@ -52,11 +52,12 @@ export async function updateBuildingNameAction(id: string, newName: string) {
 }
 
 export async function deleteBuildingAction(id: string) {
-	await deleteDocumentById({
-		id,
-		collectionName: "buildings",
-		relatedFields: [{ collectionName: "classrooms", fieldName: "buildingId" }],
-	});
-	revalidatePath("/admin/building");
-	return { success: true } as const;
+	try {
+		await deleteBuildingWithCascade(id);
+		revalidatePath("/admin/building");
+		return { success: true } as const;
+	} catch (error) {
+		console.error("Error deleting building:", error);
+		return { success: false, error: "Failed to delete building" } as const;
+	}
 }

@@ -181,7 +181,9 @@ const CardActionsDropdown = ({
 							Are you sure you want to delete {itemName}?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							This action cannot be undone.
+							This will permanently delete the building and ALL related data
+							including classrooms, schedules, pending schedules, and approved
+							schedules. This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

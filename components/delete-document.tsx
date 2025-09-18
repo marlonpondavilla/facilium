@@ -13,8 +13,18 @@ import {
 	DialogClose,
 } from "./ui/dialog";
 import toast from "react-hot-toast";
-import { deleteDocumentById, incrementDocumentCountById } from "@/data/actions";
+import {
+	deleteDocumentById,
+	incrementDocumentCountById,
+	deleteDocumentsByFieldValue,
+} from "@/data/actions";
 import { useRouter } from "next/navigation";
+
+type BatchField = {
+	id: string;
+	collectionName: string;
+	fieldName: string;
+};
 
 type DeleteDocumentWithConfirmationProps = {
 	data: {
@@ -27,11 +37,12 @@ type DeleteDocumentWithConfirmationProps = {
 			fieldName: string;
 			amount: number;
 		};
+		batchFields?: BatchField[];
 	};
 };
 
 const DeleteDocumentWithConfirmation = ({
-	data: { id, collectionName, label, relatedFields },
+	data: { id, collectionName, label, relatedFields, batchFields },
 }: DeleteDocumentWithConfirmationProps) => {
 	const router = useRouter();
 
@@ -46,6 +57,26 @@ const DeleteDocumentWithConfirmation = ({
 					relatedFields.amount
 				);
 			}
+
+			// delete relevant data that will not be used when the parent id is deleted
+			if (batchFields && batchFields.length > 0) {
+				for (const batchField of batchFields) {
+					try {
+						await deleteDocumentsByFieldValue(
+							batchField.collectionName,
+							batchField.fieldName,
+							batchField.id
+						);
+						console.log("delete successfull check databsae");
+					} catch (batchError) {
+						console.error(
+							`Failed to delete batch field ${batchField.id}:`,
+							batchError
+						);
+					}
+				}
+			}
+
 			// dynamically delete document based on id
 			await deleteDocumentById({ id: id, collectionName: collectionName });
 			toast.success(`${label} deleted successfully!`);

@@ -40,7 +40,7 @@ const ClassroomTable = ({ classrooms }: ClassroomTableProps) => {
 									label: "classroom",
 								}}
 							/>
-							{/* the relatedfields will subtract 1 to the field (classroom) in building with the id inn the useParams */}
+							{/* the relatedfields will subtract 1 to the field (classroom) in building with the id in the useParams */}
 							<DeleteDocumentWithConfirmation
 								data={{
 									id: classroom.id,
@@ -52,6 +52,24 @@ const ClassroomTable = ({ classrooms }: ClassroomTableProps) => {
 										fieldName: "classroom",
 										amount: -1,
 									},
+									// will delete the related document with the classroom id to be deleted
+									batchFields: [
+										{
+											id: classroom.id,
+											collectionName: "scheduleData",
+											fieldName: "classroomId",
+										},
+										{
+											id: classroom.id,
+											collectionName: "pendingScheduleData",
+											fieldName: "classroomId",
+										},
+										{
+											id: classroom.id,
+											collectionName: "approvedScheduleData",
+											fieldName: "classroomId",
+										},
+									],
 								}}
 							/>
 						</TableCell>

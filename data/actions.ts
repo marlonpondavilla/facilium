@@ -305,52 +305,6 @@ export const checkIfDocumentExists = async <T = string | number>(
 	}
 };
 
-// export const checkIfScheduleConflictExists = async (
-// 	newSchedule: ScheduleItem
-// ): Promise<boolean> => {
-// 	try {
-// 		// Query all schedule entries on the same day (excluding the current one if editing)
-// 		const snapshot = await firestore
-// 			.collection("scheduleData")
-// 			.where("day", "==", newSchedule.day)
-// 			.get();
-
-// 		// Iterate through all items, check for time overlap and resource conflict
-// 		const conflictExists = snapshot.docs.some((doc) => {
-// 			const existing: ScheduleItem = {
-// 				id: doc.id,
-// 				...doc.data(),
-// 			} as ScheduleItem;
-
-// 			// If editing an existing schedule, ignore the same record
-// 			if (existing.id === newSchedule.id) return false;
-
-// 			// Check time overlap
-// 			const existingStart = existing.start;
-// 			const existingEnd = existing.start + existing.duration;
-// 			const newStart = newSchedule.start;
-// 			const newEnd = newSchedule.start + newSchedule.duration;
-
-// 			const timeOverlap = !(newEnd <= existingStart || newStart >= existingEnd);
-
-// 			if (!timeOverlap) return false;
-
-// 			// Check for conflicts on professor, classroom, or section
-// 			const professorConflict = existing.professor === newSchedule.professor;
-// 			const classroomConflict =
-// 				existing.classroomId === newSchedule.classroomId;
-// 			const sectionConflict = existing.section === newSchedule.section;
-
-// 			return professorConflict || classroomConflict || sectionConflict;
-// 		});
-
-// 		return conflictExists;
-// 	} catch (error) {
-// 		console.error("Error checking for schedule conflicts:", error);
-// 		return false;
-// 	}
-// };
-
 export const checkIfScheduleConflictExists = async (
 	newSchedule: ScheduleItem
 ): Promise<string | null> => {
@@ -388,7 +342,7 @@ export const checkIfScheduleConflictExists = async (
 				existing.classroomId === newSchedule.classroomId;
 			const sectionConflict = existing.section === newSchedule.section;
 
-			return professorConflict || classroomConflict || sectionConflict; // Return conflict if any match
+			return professorConflict || classroomConflict || sectionConflict;
 		});
 
 		// Return the ID of the conflicting document if a conflict exists, otherwise null
@@ -396,5 +350,118 @@ export const checkIfScheduleConflictExists = async (
 	} catch (error) {
 		console.error("Error checking for schedule conflicts:", error);
 		return null;
+	}
+};
+
+// Delete documents by field value match (similar to relatedFields but standalone)
+export const deleteDocumentsByFieldValue = async (
+	collectionName: string,
+	fieldName: string,
+	fieldValue: string
+): Promise<void> => {
+	const snapshot = await firestore
+		.collection(collectionName)
+		.where(fieldName, "==", fieldValue)
+		.get();
+
+	const batch = firestore.batch();
+	snapshot.forEach((doc) => batch.delete(doc.ref));
+	await batch.commit();
+};
+
+// Cascade deletion for building and all related data
+export const deleteBuildingWithCascade = async (
+	buildingId: string
+): Promise<void> => {
+	try {
+		// 1. Get all classroom IDs that belong to this building
+		const classroomsSnapshot = await firestore
+			.collection("classrooms")
+			.where("buildingId", "==", buildingId)
+			.get();
+
+		const classroomIds = classroomsSnapshot.docs.map((doc) => doc.id);
+
+		// 2. Delete all schedules that reference those classroom IDs
+		if (classroomIds.length > 0) {
+			const scheduleCollections = [
+				"scheduleData",
+				"pendingScheduleData",
+				"approvedScheduleData",
+			];
+
+			for (const collection of scheduleCollections) {
+				for (const classroomId of classroomIds) {
+					await deleteDocumentsByFieldValue(
+						collection,
+						"classroomId",
+						classroomId
+					);
+				}
+			}
+		}
+
+		// 3. Delete all classrooms that belong to this building
+		await deleteDocumentsByFieldValue("classrooms", "buildingId", buildingId);
+
+		// 4. Delete the building itself
+		await firestore.collection("buildings").doc(buildingId).delete();
+	} catch (error) {
+		console.error(`Error deleting building ${buildingId} with cascade:`, error);
+		throw error;
+	}
+};
+
+// Get classroom IDs for building batch deletion (helper for DeleteDocumentWithConfirmation)
+export const getBuildingBatchFields = async (
+	buildingId: string
+): Promise<
+	Array<{ id: string; collectionName: string; fieldName: string }>
+> => {
+	try {
+		// Get all classroom IDs that belong to this building
+		const classroomsSnapshot = await firestore
+			.collection("classrooms")
+			.where("buildingId", "==", buildingId)
+			.get();
+
+		const classroomIds = classroomsSnapshot.docs.map((doc) => doc.id);
+		const batchFields: Array<{
+			id: string;
+			collectionName: string;
+			fieldName: string;
+		}> = [];
+
+		// Add batch fields for all schedule collections that reference these classrooms
+		const scheduleCollections = [
+			"scheduleData",
+			"pendingScheduleData",
+			"approvedScheduleData",
+		];
+
+		for (const classroomId of classroomIds) {
+			for (const collection of scheduleCollections) {
+				batchFields.push({
+					id: classroomId,
+					collectionName: collection,
+					fieldName: "classroomId",
+				});
+			}
+		}
+
+		// Add batch field for classrooms themselves
+		batchFields.push({
+			id: buildingId,
+			collectionName: "classrooms",
+			fieldName: "buildingId",
+		});
+
+		return batchFields;
+	} catch (error) {
+		console.error(
+			`Error getting batch fields for building ${buildingId}:`,
+			error
+		);
+		return [];
 	}
 };
