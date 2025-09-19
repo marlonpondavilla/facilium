@@ -59,6 +59,15 @@ const LoginForm = () => {
 					form.setError("email", { type: "custom", message: "" });
 					form.setError("password", { type: "custom", message: "" });
 					await auth?.logout();
+				} else if (error.message?.toLowerCase().includes("disabled")) {
+					form.setError("root", {
+						type: "custom",
+						message:
+							"Your account is disabled. Please contact the administrator.",
+					});
+					form.setError("email", { type: "custom", message: "" });
+					form.setError("password", { type: "custom", message: "" });
+					await auth?.logout();
 				} else {
 					form.setError("root", {
 						type: "custom",

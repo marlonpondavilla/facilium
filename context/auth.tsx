@@ -83,6 +83,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 	}, []);
 
 	const login = async (email: string, password: string) => {
+		// Check status in Firestore first
+		try {
+			const res = await fetch("/api/auth/check-status", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email }),
+			});
+			const j = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				throw new Error(j.error || "Unable to check account status");
+			}
+			if (j.status === "Disabled") {
+				throw new Error(
+					"Your account is disabled. Please contact the administrator."
+				);
+			}
+		} catch (e) {
+			// Surface explicit disabled and known errors; otherwise continue to auth for standard errors
+			if (e instanceof Error && e.message.includes("disabled")) {
+				throw e;
+			}
+		}
+
 		const result = await signInWithEmailAndPassword(auth, email, password);
 
 		const user = result.user;
@@ -90,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 		// reject if not verified
 		if (!user.emailVerified) {
 			await signOut(auth); // Optional but keeps things clean
-			throw new Error("Please verify your email before logging in.");
+			throw new Error("Please verify your email first.");
 		}
 
 		// token handling
