@@ -4,7 +4,7 @@ import { getDocumentsWithNestedObject } from "@/data/actions";
 import {
 	Classroom,
 	getBuildingName,
-	getClassrooms,
+	getFilteredClassrooms,
 } from "@/data/faculty-building";
 import { PendingSchedule, ScheduleItem } from "@/types/SceduleInterface";
 import React from "react";
@@ -20,7 +20,7 @@ const Page = async ({ params }: PageProps) => {
 			"submitted"
 		);
 	const buildingName = await getBuildingName(id);
-	const clasrooms: Classroom[] = await getClassrooms(id);
+	const clasrooms: Classroom[] = await getFilteredClassrooms(id);
 	// Flatten the nested scheduleItems
 	const scheduleItems: ScheduleItem[] = pendingScheduleDocs.flatMap(
 		(doc) => doc.scheduleItems

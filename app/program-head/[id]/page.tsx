@@ -4,7 +4,7 @@ import { getDocumentsFromFirestore } from "@/data/actions";
 import {
 	Classroom,
 	getBuildingName,
-	getClassrooms,
+	getFilteredClassrooms,
 	getScheduleData,
 } from "@/data/faculty-building";
 import { AcademicYear } from "@/types/academicYearType";
@@ -88,7 +88,7 @@ const Page = async ({ params }: PageProps) => {
 	const scheduleData: ScheduleItem[] = Array.isArray(rawSchedule)
 		? (rawSchedule as ScheduleItem[])
 		: [];
-	const classrooms: Classroom[] = await getClassrooms(id);
+	const classrooms: Classroom[] = await getFilteredClassrooms(id);
 	const buildingName = await getBuildingName(id);
 
 	return (

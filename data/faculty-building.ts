@@ -2,6 +2,7 @@ import {
 	getDocumentsByFieldIds,
 	getDocumentsFromFirestore,
 	getSingleDocumentFromFirestore,
+	getCurrentUserData,
 } from "@/data/actions";
 import { colors } from "@/data/colors";
 import { ApprovedScheduleDoc, ScheduleItem } from "@/types/SceduleInterface";
@@ -50,6 +51,34 @@ export const getClassrooms = async (id: string) => {
 		"buildingId",
 		id
 	);
+};
+
+// Get classrooms filtered by user's department
+export const getClassroomsByDepartment = async (
+	buildingId: string,
+	userDepartment: string
+) => {
+	const allClassrooms = await getDocumentsByFieldIds<
+		Classroom & { departments: string[] }
+	>("classrooms", "buildingId", buildingId);
+
+	// Filter classrooms that include the user's department
+	return allClassrooms.filter(
+		(classroom) =>
+			classroom.departments && classroom.departments.includes(userDepartment)
+	);
+};
+
+// Get classrooms filtered by current logged-in user's department
+export const getFilteredClassrooms = async (buildingId: string) => {
+	const currentUser = await getCurrentUserData();
+
+	if (!currentUser || !currentUser.department) {
+		// If no user or no department, return empty array for security
+		return [];
+	}
+
+	return await getClassroomsByDepartment(buildingId, currentUser.department);
 };
 
 export const getBuildingName = async (id: string) => {

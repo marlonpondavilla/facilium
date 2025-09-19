@@ -465,3 +465,52 @@ export const getBuildingBatchFields = async (
 		return [];
 	}
 };
+
+// Get user data by UID (for getting current user's department)
+export const getUserDataByUid = async (uid: string) => {
+	try {
+		const snapshot = await firestore
+			.collection("userData")
+			.where("uid", "==", uid)
+			.limit(1)
+			.get();
+
+		if (snapshot.empty) {
+			return null;
+		}
+
+		const userDoc = snapshot.docs[0];
+		return {
+			id: userDoc.id,
+			...userDoc.data(),
+		} as any;
+	} catch (error) {
+		console.error(`Error getting user data for UID ${uid}:`, error);
+		return null;
+	}
+};
+
+// Get current user data from server-side cookies
+export const getCurrentUserData = async () => {
+	const { cookies } = await import("next/headers");
+	const token = (await cookies()).get("firebaseAuthToken")?.value;
+
+	if (!token) {
+		return null;
+	}
+
+	try {
+		const { decodeJwt } = await import("jose");
+		const decodedToken = decodeJwt(token);
+		const uid = decodedToken?.sub;
+
+		if (!uid) {
+			return null;
+		}
+
+		return await getUserDataByUid(uid as string);
+	} catch (error) {
+		console.error("Error getting current user data:", error);
+		return null;
+	}
+};

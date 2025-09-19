@@ -3,7 +3,7 @@ import FacultyScheduleInterface from "@/components/faculty-schedule-interface";
 import {
 	Classroom,
 	getBuildingName,
-	getClassrooms,
+	getFilteredClassrooms,
 } from "@/data/faculty-building";
 import React from "react";
 import { ApprovedScheduleDoc, ScheduleItem } from "@/types/SceduleInterface";
@@ -116,7 +116,7 @@ const Page = async ({ params }: PageProps) => {
 		});
 	}
 	const buildingName = await getBuildingName(id);
-	const clasrooms: Classroom[] = await getClassrooms(id);
+	const clasrooms: Classroom[] = await getFilteredClassrooms(id);
 
 	return (
 		<FacultyHeader>
