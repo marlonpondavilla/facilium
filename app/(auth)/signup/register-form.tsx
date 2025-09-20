@@ -18,7 +18,7 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
-import { departments } from "@/data/department";
+import { degreeAttainment, departments } from "@/data/department";
 import { useAuth } from "@/context/auth";
 
 export const RegisterForm = () => {
@@ -145,17 +145,19 @@ export const RegisterForm = () => {
 							name="degreeEarned"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Degree Earned</FormLabel>
+									<FormLabel>Degree Attainment</FormLabel>
 									<FormControl>
-										<Input
-											type="text"
-											placeholder="Degree Earned (e.g MSIT, MSCpE, or PhD)"
+										<select
 											{...field}
-											className="w-xs"
-											onChange={(e) =>
-												field.onChange(e.target.value.toUpperCase())
-											}
-										/>
+											className="w-xs border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
+										>
+											<option value="">Select Degree</option>
+											{degreeAttainment.map((degree, key) => (
+												<option value={degree} key={key}>
+													{degree}
+												</option>
+											))}
+										</select>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
