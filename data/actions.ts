@@ -1,6 +1,6 @@
 "use server";
 
-import { firestore } from "@/firebase/server";
+import { auth as adminAuth, firestore } from "@/firebase/server";
 import { ScheduleItem } from "@/types/SceduleInterface";
 import {
 	CollectionReference,
@@ -103,6 +103,25 @@ export const updateDocumentsByBatch = async (
 	});
 
 	await batch.commit();
+};
+
+// Update current user's name fields by document id
+export const updateUserNameById = async (
+	docId: string,
+	firstName: string,
+	lastName: string,
+	middleName?: string
+): Promise<void> => {
+	if (!docId) throw new Error("User document id is required");
+	const data: Record<string, any> = {
+		firstName: firstName?.trim(),
+		lastName: lastName?.trim(),
+	};
+	if (typeof middleName !== "undefined") {
+		data.middleName = middleName?.trim() || "";
+	}
+
+	await firestore.collection("userData").doc(docId).update(data);
 };
 
 export const addDocumentToFirestore = async (
@@ -512,5 +531,48 @@ export const getCurrentUserData = async () => {
 	} catch (error) {
 		console.error("Error getting current user data:", error);
 		return null;
+	}
+};
+
+// Update current user's name (Firestore userData + Firebase Auth displayName)
+export const updateCurrentUserName = async (params: {
+	firstName: string;
+	lastName: string;
+	middleName?: string;
+}) => {
+	const { firstName, lastName, middleName } = params || {};
+	if (!firstName || !lastName) {
+		return {
+			success: false,
+			error: "First and last name are required.",
+		} as const;
+	}
+
+	try {
+		const current = await getCurrentUserData();
+		if (!current?.id || !current?.uid) {
+			return { success: false, error: "Not authenticated." } as const;
+		}
+
+		// Update Firestore userData doc
+		await firestore
+			.collection("userData")
+			.doc(current.id)
+			.update({
+				firstName: firstName.trim(),
+				lastName: lastName.trim(),
+				middleName: (middleName ?? "").trim(),
+			});
+
+		// Update Firebase Auth displayName via Admin SDK
+		const displayName = `${firstName.trim()} ${lastName.trim()}`;
+		if (adminAuth) {
+			await adminAuth.updateUser(current.uid, { displayName });
+		}
+
+		return { success: true } as const;
+	} catch (e) {
+		console.error("updateCurrentUserName failed", e);
+		return { success: false, error: "Failed to update name." } as const;
 	}
 };

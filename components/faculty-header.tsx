@@ -59,10 +59,9 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 	return (
 		<div className="min-h-screen flex flex-col">
 			{/* Header */}
-
-			<div className="flex flex-wrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 bg-[linear-gradient(to_right,_#AC1754_55%,_#F5F5F5_97%)]">
+			<div className="flex flex-nowrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 bg-[linear-gradient(to_right,_#AC1754_55%,_#F5F5F5_97%)]">
 				<Link href={"/dashboard"}>
-					<div className="left-section flex items-center gap-4">
+					<div className="left-section flex items-center gap-4 min-w-0 flex-1">
 						<Image
 							src={"/bsu-meneses-logo.png"}
 							width={100}
@@ -73,13 +72,13 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 						<div
 							className={`logo-name ${alegreyaSC.className} font-bold facilium-color-white`}
 						>
-							<h1 className="text-lg sm:text-xl">Bulacan State University</h1>
+							<h1 className="text-md sm:text-xl">Bulacan State University</h1>
 							<h2 className="text-sm sm:text-base">Meneses Campus</h2>
 						</div>
 					</div>
 				</Link>
 
-				<div className="right-section flex gap-2 items-center">
+				<div className="right-section flex gap-2 items-center shrink-0">
 					{/* Hide on small screens */}
 					<div className="faculty-info hidden md:flex items-end flex-col">
 						<h3 className="text-base">{auth?.user?.displayName}</h3>
@@ -94,8 +93,7 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 				</div>
 			</div>
 
-			{/* Main content */}
-			<div className="faculty-content flex justify-center items-center my-8 flex-grow px-4 sm:px-6 md:px-10">
+			<div className="faculty-content flex justify-center items-start py-8 flex-grow px-4 sm:px-6 md:px-10">
 				{children}
 			</div>
 

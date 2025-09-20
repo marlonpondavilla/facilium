@@ -1,11 +1,14 @@
 import FacultyHeader from "@/components/faculty-header";
-import LogoutAuthButton from "@/components/logout";
 import React from "react";
+import { getCurrentUserData } from "@/data/actions";
+import FacultyProfile from "@/components/faculty-profile";
 
-const Page = () => {
+const Page = async () => {
+	const user = await getCurrentUserData();
+
 	return (
 		<FacultyHeader>
-			<LogoutAuthButton />
+			<FacultyProfile user={user} />
 		</FacultyHeader>
 	);
 };
