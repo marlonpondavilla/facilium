@@ -3,7 +3,7 @@ import { z } from "zod";
 export const scheduleSchema = z.object({
 	program: z.string().min(2, "Please select a program"),
 	yearLevel: z.string().min(2, "Please select a year level"),
-	section: z.string().min(2, "Please select a sectiion"),
+	section: z.string().min(2, "Please select a section"),
 	courseCode: z.string().min(2, "Please select a course code"),
 	professor: z.string().min(2, "Please select a professor"),
 	day: z.string().min(2, "Please select a day"),

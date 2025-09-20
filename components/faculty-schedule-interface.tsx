@@ -265,7 +265,16 @@ const FacultyScheduleInterface = ({
 	const professorSelected = !!form.watch("professor");
 	const daySelected = !!form.watch("day");
 	const startSelected = !!form.watch("start");
-	const durationSelected = !!form.watch("duration");
+	// Numeric duration in hours; we use this to enforce the 5hr max when toggling +30mins
+	const durationHours = Number(form.watch("duration") ?? 0);
+	const disableHalfHour = !durationHours || durationHours >= 5;
+
+	// If duration reaches 5hrs, ensure +30mins gets unchecked to keep state valid
+	useEffect(() => {
+		if (durationHours >= 5 && form.getValues("halfHour")) {
+			form.setValue("halfHour", 0, { shouldValidate: true });
+		}
+	}, [durationHours, form]);
 
 	// Pop up state and effect
 	useEffect(() => {
@@ -486,8 +495,6 @@ const FacultyScheduleInterface = ({
 				form.reset();
 				setError("");
 				navigateToClassroomOnly();
-				// A new schedule means 'hasSchedule' becomes true locally (status flag already derived elsewhere)
-				// If you want immediate banner removal of 'no schedule', close it here
 				setOpenNoSchedule(false);
 			} else {
 				setLocalScheduleItems((prev) =>
@@ -570,6 +577,8 @@ const FacultyScheduleInterface = ({
 					scheduleItems: target.scheduleItems,
 					classroomId,
 					dean: auth?.user?.displayName,
+					deanUid: auth?.user?.uid,
+					deanEmail: auth?.user?.email,
 					approved: new Date().toISOString(),
 					submittedBy: pendingScheduleDetails.professorName,
 				});
@@ -1211,7 +1220,7 @@ const FacultyScheduleInterface = ({
 														<FormControl>
 															<Checkbox
 																checked={!!field.value}
-																disabled={!durationSelected}
+																disabled={disableHalfHour}
 																className="border-gray-500"
 																onCheckedChange={(checked) =>
 																	field.onChange(checked ? 30 : 0)
@@ -1332,10 +1341,16 @@ const FacultyScheduleInterface = ({
 											<Check className="mr-1 h-4 w-4" /> Approve
 										</Button>
 									}
-									title={`You are about to approve this schedule for ${pendingScheduleDetails.classroomName}.`}
-									description="This will reflect to all faculty members."
+									title={`Final approval for ${pendingScheduleDetails.classroomName}`}
+									description="Approving will publish this schedule to all faculty. To confirm this action, please type your email."
 									label="approve"
 									onConfirm={handleApproveSchedule}
+									requireEmail
+									expectedEmail={auth?.user?.email || ""}
+									emailPlaceholder={
+										auth?.user?.email || "your.email@domain.com"
+									}
+									confirmButtonText="Yes, approve"
 								/>
 								<ConfirmationHandleDialog
 									trigger={

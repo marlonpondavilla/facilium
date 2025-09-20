@@ -15,13 +15,6 @@ export function validateScheduleTimeRange(
 		return { isValid: false, error: "Start time and duration are required." };
 	}
 
-	if (startHour === 12) {
-		return {
-			isValid: false,
-			error: "Start time cannot be at 12pm (Lunchbreak)",
-		};
-	}
-
 	if (startHour === 20 || startHour === 20.5) {
 		return {
 			isValid: false,
