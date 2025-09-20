@@ -73,8 +73,20 @@ export const getClassroomsByDepartment = async (
 export const getFilteredClassrooms = async (buildingId: string) => {
 	const currentUser = await getCurrentUserData();
 
-	if (!currentUser || !currentUser.department) {
-		// If no user or no department, return empty array for security
+	if (!currentUser) {
+		return [];
+	}
+
+	// Allow Deans to view all classrooms in any building, regardless of department
+	const designation = String(currentUser.designation || "")
+		.trim()
+		.toLowerCase();
+	if (designation === "dean") {
+		return await getClassrooms(buildingId);
+	}
+
+	// For non-deans, require department and filter accordingly
+	if (!currentUser.department) {
 		return [];
 	}
 
