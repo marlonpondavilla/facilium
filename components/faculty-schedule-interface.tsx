@@ -215,10 +215,14 @@ const FacultyScheduleInterface = ({
 
 	const updateQueryParamAndForm = <T extends FieldPath<ScheduleFormValues>>(
 		key: string,
-		value: FieldPathValue<ScheduleFormValues, T>
+		value: FieldPathValue<ScheduleFormValues, T>,
+		options?: { clearParams?: string[] }
 	) => {
 		const params = new URLSearchParams(window.location.search);
 		params.set(key, String(value));
+		if (options?.clearParams?.length) {
+			for (const k of options.clearParams) params.delete(k);
+		}
 		router.push(`${pathname}?${params.toString()}`, { scroll: false });
 	};
 
@@ -813,9 +817,25 @@ const FacultyScheduleInterface = ({
 															if (!selectedProgram) return;
 															updateQueryParamAndForm(
 																"programId",
-																selectedProgram.id
+																selectedProgram.id,
+																{
+																	clearParams: [
+																		"yearLevelId",
+																		"sectionId",
+																		"professorId",
+																	],
+																}
 															);
 															form.setValue("program", value);
+															// reset dependent fields in form
+															form.setValue("yearLevel", "");
+															form.setValue("section", "");
+															form.setValue("courseCode", "");
+															form.setValue("professor", "");
+															form.setValue("day", "");
+															form.setValue("start", 0);
+															form.setValue("duration", 0);
+															form.setValue("halfHour", 0);
 														}}
 														{...field}
 														defaultValue={field.value}
@@ -868,10 +888,19 @@ const FacultyScheduleInterface = ({
 
 															updateQueryParamAndForm(
 																"yearLevelId",
-																selectedYear.id
+																selectedYear.id,
+																{ clearParams: ["sectionId", "professorId"] }
 															);
 
 															form.setValue("yearLevel", value);
+															// reset dependent fields in form
+															form.setValue("section", "");
+															form.setValue("courseCode", "");
+															form.setValue("professor", "");
+															form.setValue("day", "");
+															form.setValue("start", 0);
+															form.setValue("duration", 0);
+															form.setValue("halfHour", 0);
 														}}
 														defaultValue={field.value}
 														{...field}
@@ -929,10 +958,18 @@ const FacultyScheduleInterface = ({
 
 															updateQueryParamAndForm(
 																"sectionId",
-																selectedSection.id
+																selectedSection.id,
+																{ clearParams: ["professorId"] }
 															);
 
 															form.setValue("section", value);
+															// reset dependent fields in form
+															form.setValue("courseCode", "");
+															form.setValue("professor", "");
+															form.setValue("day", "");
+															form.setValue("start", 0);
+															form.setValue("duration", 0);
+															form.setValue("halfHour", 0);
 														}}
 														defaultValue={field.value}
 														{...field}
@@ -1416,13 +1453,9 @@ const FacultyScheduleInterface = ({
 							!isApprovedScheduleExist &&
 							pathname.startsWith("/program-head") &&
 							classroomId && (
-								<div className="w-full flex bg-red-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
+								<div className="w-full flex bg-blue-300 p-2 text-xs justify-center items-center gap-2 facilium-color-indigo">
 									<Info />
-									<p>
-										{
-											"This schedule has been reset or rejected. You can update it now."
-										}
-									</p>
+									<p>{"You can add, update, or delete now."}</p>
 								</div>
 							)}
 
