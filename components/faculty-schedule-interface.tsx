@@ -1175,7 +1175,10 @@ const FacultyScheduleInterface = ({
 																	{Array.from({ length: 28 }, (_, i) => {
 																		const hour = 7 + Math.floor(i / 2);
 																		const minute = i % 2 === 0 ? "00" : "30";
-																		const label = `${hour}:${minute}`;
+																		// Display in 12-hour format without leading zero
+																		const hour12 =
+																			hour % 12 === 0 ? 12 : hour % 12;
+																		const label = `${hour12}:${minute}`;
 																		// Value: encode as a number with `.5` for half hour, e.g. 7, 7.5, 8, 8.5 etc.
 																		const value =
 																			hour + (minute === "30" ? 0.5 : 0);

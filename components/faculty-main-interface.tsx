@@ -40,6 +40,10 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 		router.push(`${pathname}/${id}`);
 	};
 
+	const handleViewScheduleClick = () => {
+		router.push(`${pathname}/view-schedule`);
+	};
+
 	return (
 		<div className="border flex flex-col justify-center gap-4 w-full sm:w-5xl md:px-4 sm:px-0">
 			{/* Banner Section */}
@@ -99,10 +103,15 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 			<div className="building-actions facilium-bg-whiter flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 rounded-2xl p-4">
 				{/* View Schedule Action */}
 				<div className="view-schedule group border border-gray-300 rounded-xl p-6 w-full sm:w-auto bg-white hover:bg-gray-100 hover:shadow-md transition duration-300 cursor-pointer">
-					<div className="view-schedule-action flex flex-col justify-center items-center gap-3">
+					<div
+						onClick={handleViewScheduleClick}
+						className="view-schedule-action flex flex-col justify-center items-center gap-3"
+					>
 						<Eye className="w-10 h-10 transition-colors duration-300" />
 						<p className="font-semibold text-xl text-gray-800 group-hover:text-indigo-800">
-							View My Schedule
+							{pathname.startsWith("/dean")
+								? "View Schedules"
+								: "View my Schedule"}
 						</p>
 					</div>
 				</div>
