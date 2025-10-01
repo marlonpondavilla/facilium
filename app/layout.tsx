@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth";
 import { Toaster } from "react-hot-toast";
+import { Analytics } from "@vercel/analytics/next";
 
 const poppins = Poppins({
 	subsets: ["latin"],
@@ -29,6 +30,7 @@ export default function RootLayout({
 				<AuthProvider>
 					{children}
 					<Toaster />
+					<Analytics />
 				</AuthProvider>
 			</body>
 		</html>
