@@ -4,7 +4,15 @@ import { currentDate } from "@/lib/date";
 import { Building, Calendar, Eye } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+	getDocumentsFromFirestore,
+	getSingleDocumentFromFirestore,
+	getFirstUserByDesignation,
+} from "@/data/actions";
+import type { ApprovedScheduleDoc } from "@/types/SceduleInterface";
+import type { ScheduleItem } from "@/types/SceduleInterface";
+import type { AcademicYear } from "@/types/academicYearType";
 import {
 	Select,
 	SelectContent,
@@ -27,6 +35,14 @@ type FacultyMainInterfaceProps = {
 
 const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 	const [isLoading, setIsLoading] = useState(false);
+	// Export classroom schedule states
+	const [classrooms, setClassrooms] = useState<{ id: string; name: string }[]>(
+		[]
+	);
+	const [selectedClassroom, setSelectedClassroom] = useState<string>("");
+	const [isExporting, setIsExporting] = useState(false);
+	const [activeAYLabel, setActiveAYLabel] = useState<string>("");
+	const [deanName, setDeanName] = useState<string>("");
 
 	const router = useRouter();
 	const pathname = usePathname();
@@ -43,6 +59,293 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 	const handleViewScheduleClick = () => {
 		router.push(`${pathname}/view-schedule`);
 	};
+
+	// Document type for classroom collection
+	interface ClassroomDoc {
+		id: string;
+		classroomName?: string;
+	}
+
+	// Load classrooms that have approved schedules only
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const approved = await getDocumentsFromFirestore<ApprovedScheduleDoc>(
+					"approvedScheduleData"
+				);
+				const approvedClassroomIds = new Set(
+					(approved || []).map((d) => d.classroomId).filter(Boolean)
+				);
+				if (approvedClassroomIds.size === 0) {
+					if (!cancelled) setClassrooms([]);
+					return;
+				}
+				// Fetch classrooms and filter to approved ones
+				const rooms = await getDocumentsFromFirestore<ClassroomDoc>(
+					"classrooms"
+				);
+				if (!cancelled) {
+					setClassrooms(
+						(rooms || [])
+							.filter((r) => r.classroomName && approvedClassroomIds.has(r.id))
+							.map((r) => ({ id: r.id, name: r.classroomName as string }))
+							.sort((a, b) => a.name.localeCompare(b.name))
+					);
+				}
+			} catch (e) {
+				console.error("Failed to load classrooms", e);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	// Load active academic year for labeling
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const years = await getDocumentsFromFirestore<AcademicYear>(
+					"academic-years"
+				);
+				const active = years.find((y) => y.isActive);
+				if (active && !cancelled) {
+					setActiveAYLabel(
+						`Academic Year ${active.startAcademicYear}-${active.endAcademicYear}, ${active.term} Term`
+					);
+				}
+			} catch (e) {
+				console.error("Failed AY load", e);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	// Fetch dean name for signature
+	useEffect(() => {
+		(async () => {
+			try {
+				const dean = await getFirstUserByDesignation("Dean");
+				if (dean)
+					setDeanName(`${dean.firstName ?? ""} ${dean.lastName ?? ""}`.trim());
+			} catch (e) {
+				console.error("Dean fetch failed", e);
+			}
+		})();
+	}, []);
+
+	const generateClassroomPdf = useCallback(
+		async (classroomId: string, targetWin?: Window | null) => {
+			// Pull approved schedule items for the classroom
+			const docs = await getDocumentsFromFirestore<ApprovedScheduleDoc>(
+				"approvedScheduleData"
+			);
+			const items: ScheduleItem[] = [];
+			let submittedByName: string | undefined;
+			for (const doc of docs) {
+				if (doc.classroomId === classroomId) {
+					for (const it of doc.scheduleItems || []) {
+						items.push({ ...it, classroomId: doc.classroomId });
+					}
+					// Capture the submittedBy (Program Head) name if present
+					if (!submittedByName && doc.submittedBy) {
+						submittedByName = doc.submittedBy;
+					}
+				}
+			}
+			if (!items.length)
+				throw new Error("No approved schedule for this classroom");
+			// Get classroom name
+			const classroomName =
+				(await getSingleDocumentFromFirestore(
+					classroomId,
+					"classrooms",
+					"classroomName"
+				)) || classroomId;
+			// Resolve professor names
+			const uniqueProfessors = Array.from(
+				new Set(items.map((i) => i.professor))
+			);
+			const professorNames: Record<string, string> = {};
+			await Promise.all(
+				uniqueProfessors.map(async (pid) => {
+					const first = await getSingleDocumentFromFirestore(
+						pid,
+						"userData",
+						"firstName"
+					);
+					const last = await getSingleDocumentFromFirestore(
+						pid,
+						"userData",
+						"lastName"
+					);
+					professorNames[pid] =
+						[first, last].filter(Boolean).join(" ") || "Unknown";
+				})
+			);
+			// Grid building like schedule-table (7 to 20)
+			const days = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
+			function getStartIndex(start: number) {
+				return Math.round((start - 7) * 2);
+			}
+			function getRowSpan(dur: number, halfHour?: number) {
+				return dur * 2 + (halfHour === 30 ? 1 : 0);
+			}
+			const skipMap: Record<string, boolean> = {};
+			const slotsCount = (20 - 7) * 2 + 1; // same logic
+			const hours: string[] = Array.from({ length: slotsCount }, (_, i) => {
+				const baseMinutes = i * 30;
+				const startHour24 = 7 + Math.floor(baseMinutes / 60);
+				const startMin = baseMinutes % 60 === 0 ? "00" : "30";
+				const endMinutes = baseMinutes + 30;
+				const endHour24 = 7 + Math.floor(endMinutes / 60);
+				const endMin = endMinutes % 60 === 0 ? "00" : "30";
+				const formatHour = (h: number) => {
+					const h12 = h % 12 === 0 ? 12 : h % 12;
+					return h12.toString();
+				};
+				return `${formatHour(startHour24)}:${startMin} - ${formatHour(
+					endHour24
+				)}:${endMin}`;
+			});
+			// Build table body
+			const bodyRows = hours
+				.map((label, rowIdx) => {
+					const cells: string[] = [];
+					cells.push(`<td class='time'>${label}</td>`);
+					days.forEach((day) => {
+						const cellKey = `${day}-${rowIdx}`;
+						if (skipMap[cellKey]) return;
+						const item = items.find(
+							(it) => it.day === day && getStartIndex(it.start) === rowIdx
+						);
+						if (item) {
+							const rowSpan = getRowSpan(item.duration, item.halfHour);
+							for (let r = 1; r < rowSpan; r++)
+								skipMap[`${day}-${rowIdx + r}`] = true;
+							const prof = professorNames[item.professor] || "";
+							const content = `${item.courseCode}<br/>${item.section}<br/>${prof}<br/>(${classroomName})`;
+							cells.push(
+								`<td class='entry' rowspan='${rowSpan}'>${content}</td>`
+							);
+						} else {
+							cells.push(`<td></td>`);
+						}
+					});
+					return `<tr>${cells.join("")}</tr>`;
+				})
+				.join("");
+			const timestamp = new Date().toLocaleString("en-PH", {
+				dateStyle: "medium",
+				timeStyle: "short",
+			});
+			const preparedByDisplay = submittedByName
+				? `${submittedByName}`
+				: "_________";
+			const html = `<!DOCTYPE html><html><head><title>${classroomName} Schedule</title><meta charset='utf-8' />
+<style>
+@page { size:A4 portrait; margin:10mm 8mm 10mm 8mm; }
+:root { --accent:#4f46e5; --border:#cbd5e1; --muted:#64748b; }
+body { font-family:system-ui, Arial, sans-serif; margin:0; padding:0; color:#0f172a; }
+.header { display:flex; align-items:center; gap:12px; border-bottom:1.5px solid var(--accent); padding:6px 0 4px; margin-bottom:8px; }
+.logo { height:46px; width:auto; object-fit:contain; }
+.branding h1 { font-size:16px; margin:0; letter-spacing:0.25px; }
+.branding h2 { font-size:11px; margin:1px 0 0; font-weight:600; color:var(--muted); }
+.meta { font-size:9px; margin-top:2px; color:#334155; }
+table { width:100%; border-collapse:collapse; font-size:9.2px; table-layout:fixed; }
+thead th { background:#fbcfe8; font-weight:700; font-size:9px; color:#000; padding:6px 4px; vertical-align:middle; border-bottom:2px solid var(--accent); box-shadow: inset 0 0 0 1000px #fbcfe8; -webkit-print-color-adjust: exact; }
+th, td { border:1px solid var(--border); padding:6px 4px; text-align:center; vertical-align:middle; word-wrap:break-word; line-height:1.35; }
+tbody td { font-size:8.4px; }
+tbody tr:nth-child(odd) { background:#fafafa; }
+.badge { display:inline-block; padding:1px 6px; border:1px solid var(--accent); border-radius:999px; font-size:9.2px; font-weight:600; color:var(--accent); }
+.footer { margin-top:8px; font-size:8px; color:var(--muted); text-align:right; }
+.time { font-weight:600; background:#f8fafc; }
+.entry { font-weight:500; }
+.signatures { margin-top:20px; font-size:10px; display:flex; justify-content:space-between; }
+.signatures div { min-width:45%; }
+#page-wrapper { transform-origin: top left; }
+@media print { .no-print { display:none!important; } }
+</style></head><body>
+<div id='page-wrapper'>
+<div class='header'>
+<img class='logo' src='${
+				window.location.origin
+			}/bsu-meneses-logo.png' alt='Bulsu Meneses Logo' />
+<div class='branding'>
+<h1>Bulacan State University – Meneses Campus</h1>
+<h2>Official Classroom Schedule</h2>
+<div class='meta'>Room: <span class='badge'>${classroomName}</span>${
+				activeAYLabel ? ` &nbsp; | &nbsp; ${activeAYLabel}` : ""
+			} &nbsp; | &nbsp; Printed: ${timestamp}</div>
+</div>
+</div>
+<table><thead><tr><th>Time</th>${days
+				.map((d) => `<th>${d}</th>`)
+				.join("")}</tr></thead><tbody>${bodyRows}</tbody></table>
+<div class='signatures'>
+<div>Prepared by: ${preparedByDisplay}</div>
+<div>Approved by: ${deanName || "Campus Dean"}${
+				deanName ? ", Campus Dean" : ""
+			}</div>
+</div>
+<div class='footer'>Generated via Facilium</div>
+</div>
+<script>(function(){
+ function scale(){ const w=document.getElementById('page-wrapper'); if(!w) return; const maxH=Math.floor((11.69-0.8)*96); const cur=w.getBoundingClientRect().height; if(cur>maxH){ const s=maxH/cur; w.style.transform='scale('+s.toFixed(3)+')'; }}
+ function doPrint(){ scale(); setTimeout(()=>window.print(),60);} const imgs=[...document.images]; if(!imgs.length){doPrint();return;} let done=0; imgs.forEach(img=>{ if(img.complete){ if(++done===imgs.length) doPrint(); } else { img.addEventListener('load',()=>{ if(++done===imgs.length) doPrint();}); img.addEventListener('error',()=>{ if(++done===imgs.length) doPrint();}); }});
+})();</script>
+			</body></html>`;
+			const w =
+				targetWin || window.open("", "_blank", "width=1000,height=1200");
+			if (!w) throw new Error("Popup blocked");
+			w.document.open();
+			w.document.write(html);
+			w.document.close();
+		},
+		[activeAYLabel, deanName]
+	);
+
+	const handleDownload = useCallback(async () => {
+		if (!selectedClassroom) return;
+		// Open popup synchronously so browser allows it
+		const popup = window.open("", "_blank", "width=1000,height=1200");
+		if (!popup) {
+			alert("Please allow popups to generate the classroom schedule PDF.");
+			return;
+		}
+		popup.document.write(
+			`<!DOCTYPE html><html><head><title>Generating…</title><meta charset='utf-8' /></head><body style="font-family:system-ui,Arial,sans-serif;padding:16px"><p style="font-size:14px;">Generating classroom schedule PDF… Please wait.</p></body></html>`
+		);
+		popup.document.close();
+		setIsExporting(true);
+		try {
+			await generateClassroomPdf(selectedClassroom, popup);
+		} catch (e: unknown) {
+			console.error(e);
+			if (!popup.closed) {
+				popup.document.open();
+				popup.document.write(
+					`<!DOCTYPE html><html><head><title>Error</title><meta charset='utf-8' /></head><body style="font-family:system-ui,Arial,sans-serif;padding:16px;color:#b91c1c"><h1 style="font-size:16px;margin-top:0;">Failed to generate schedule</h1><pre style="white-space:pre-wrap;font-size:12px;">${
+						(e && typeof e === "object" && "message" in e
+							? (e as { message?: string }).message
+							: "Unknown error") || ""
+					}</pre><p>Please try again.</p></body></html>`
+				);
+				popup.document.close();
+			}
+			const msg =
+				e && typeof e === "object" && "message" in e
+					? (e as { message?: string }).message
+					: undefined;
+			alert(msg || "Failed to export");
+		} finally {
+			setIsExporting(false);
+		}
+	}, [selectedClassroom, generateClassroomPdf]);
 
 	return (
 		<div className="border flex flex-col justify-center gap-4 w-full sm:w-5xl md:px-4 sm:px-0">
@@ -116,25 +419,43 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 					</div>
 				</div>
 
-				{/* Download Schedule Section */}
-				<div className="download-schedule flex flex-col gap-2 w-full sm:w-auto">
-					<h2 className="font-semibold text-gray-500 text-center tracking-wide">
-						Download schedule for specific class.
+				{/* Download Classroom Schedule Section */}
+				<div className="download-schedule flex flex-col gap-3 w-full sm:w-auto">
+					<h2 className="font-semibold text-gray-600 text-center tracking-wide">
+						Download classroom schedule
 					</h2>
-					<Select>
-						<SelectTrigger className="w-full border border-black">
-							<SelectValue placeholder="Select class" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectGroup>
-								<SelectLabel>Class</SelectLabel>
-								<SelectItem value={"complab1"}>Complab1</SelectItem>
-							</SelectGroup>
-						</SelectContent>
-					</Select>
-					<Button className="facilium-bg-indigo">
-						Download Schedule for This Class
-					</Button>
+					<div className="flex flex-col gap-2">
+						<Select
+							onValueChange={(v) => setSelectedClassroom(v)}
+							value={selectedClassroom}
+						>
+							<SelectTrigger className="w-full border border-black bg-white">
+								<SelectValue placeholder="Select classroom" />
+							</SelectTrigger>
+							<SelectContent className="max-h-72 overflow-y-auto">
+								<SelectGroup>
+									<SelectLabel>Classrooms</SelectLabel>
+									{classrooms.map((c) => (
+										<SelectItem key={c.id} value={c.id}>
+											{c.name}
+										</SelectItem>
+									))}
+								</SelectGroup>
+							</SelectContent>
+						</Select>
+						<Button
+							disabled={!selectedClassroom || isExporting}
+							onClick={handleDownload}
+							className="facilium-bg-indigo disabled:opacity-50"
+						>
+							{isExporting ? "Generating…" : "Download PDF"}
+						</Button>
+						{activeAYLabel && (
+							<p className="text-[11px] text-center text-gray-500">
+								{activeAYLabel}
+							</p>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>
