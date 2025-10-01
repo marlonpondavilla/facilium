@@ -334,7 +334,7 @@ export default function FacultyViewSchedule() {
 					.join(",")
 			);
 		});
-		const csv = `\uFEFF${lines.join("\r\n")}`; // BOM for Excel UTF-8 friendliness
+		const csv = `\uFEFF${lines.join("\r\n")}`;
 		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
@@ -349,13 +349,12 @@ export default function FacultyViewSchedule() {
 	// PDF print/export for dean only - styled like classroom schedule but professor-focused
 	const exportPdf = React.useCallback(() => {
 		if (!isDean || !schedule.length) return;
-		// Build a time-grid similar to classroom schedule (7:00 - 8:30 default) dynamic range from data
 		const starts = schedule.map((s) => s.start);
 		const ends = schedule.map((s) =>
 			computeEnd(s.start, s.duration, s.halfHour)
 		);
-		const minStart = Math.min(7, ...starts); // ensure at least 7
-		const maxEnd = Math.max(20, ...ends); // ensure at most 20 baseline
+		const minStart = Math.min(7, ...starts);
+		const maxEnd = Math.max(20, ...ends);
 		// generate half-hour slots labels
 		const slots: number[] = [];
 		for (
@@ -398,7 +397,7 @@ export default function FacultyViewSchedule() {
 			bodyRowsHtml += `<td class='time'>${timeLabelRange(slot)}</td>`;
 			days.forEach((d) => {
 				const cellKey = `${d}-${slot}`;
-				if (placed[cellKey]) return; // skip due to rowspan
+				if (placed[cellKey]) return;
 				const itemKey = `${d}-${slot}`;
 				const item = itemsByDayStart[itemKey];
 				if (item) {
