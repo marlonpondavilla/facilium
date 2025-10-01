@@ -12,7 +12,9 @@ import {
 	deleteDocumentById,
 	getSingleDocumentFromFirestore,
 	getFirstUserByDesignation,
+	getDocumentsFromFirestore,
 } from "@/data/actions";
+import type { AcademicYear } from "@/types/academicYearType";
 import { formatProfessorName } from "@/lib/utils";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { scheduleColors } from "@/data/colors";
@@ -85,6 +87,7 @@ export default function ScheduleTable({
 
 	// State for signatures
 	const [deanName, setDeanName] = useState<string>("");
+	const [activeAYLabel, setActiveAYLabel] = useState<string>("");
 
 	// Filter after reading classroomId (memoized for stable reference)
 	const filteredScheduleItems = useMemo(
@@ -109,6 +112,30 @@ export default function ScheduleTable({
 		};
 		fetchSignatures();
 	}, [user]);
+
+	// Fetch active academic year label for header consistency
+	useEffect(() => {
+		let cancelled = false;
+		const loadAY = async () => {
+			try {
+				const years = await getDocumentsFromFirestore<AcademicYear>(
+					"academic-years"
+				);
+				const active = years.find((y) => y.isActive);
+				if (active && !cancelled) {
+					setActiveAYLabel(
+						`Academic Year ${active.startAcademicYear}-${active.endAcademicYear}, ${active.term} Term`
+					);
+				}
+			} catch (e) {
+				console.error("Error fetching academic year", e);
+			}
+		};
+		loadAY();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	// Fetch classroom and professor name
 	useEffect(() => {
@@ -362,13 +389,17 @@ export default function ScheduleTable({
 			<div class='branding'>
 				<h1>Bulacan State University – Meneses Campus</h1>
 				<h2>Official Classroom Schedule</h2>
-				<div class='meta'>Room: <span class='badge'>${classroomDisplay}</span> &nbsp; | &nbsp; Printed: ${timestamp}</div>
+				<div class='meta'>Room: <span class='badge'>${classroomDisplay}</span>${
+			activeAYLabel ? ` &nbsp; | &nbsp; ${activeAYLabel}` : ""
+		} &nbsp; | &nbsp; Printed: ${timestamp}</div>
 			</div>
 		</div>
 		${tableHtml}
 		<div class='signatures' style='margin-top: 20px; display: flex; justify-content: space-between; font-size: 10px;'>
 			<div>Prepared by: ${plottedBy || "Unknown"}</div>
-			<div>Approved by: ${deanName || "Dean"}</div>
+			<div>Approved by: ${deanName || "Campus Dean"}${
+			deanName ? ", Campus Dean" : ""
+		}</div>
 		</div>
 		<div class='footer'>Generated via Facilium</div>
 	</div>

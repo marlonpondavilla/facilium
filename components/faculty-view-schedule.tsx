@@ -7,6 +7,7 @@ import {
 	getDocumentsFromFirestore,
 	getDocumentsByFieldIds,
 	getSingleDocumentFromFirestore,
+	getFirstUserByDesignation,
 } from "@/data/actions";
 import type { User } from "@/types/userInterface";
 import type { ScheduleItem } from "@/types/SceduleInterface";
@@ -76,6 +77,26 @@ export default function FacultyViewSchedule() {
 
 	// Active academic year/term label for non-dean header
 	const [activeAYLabel, setActiveAYLabel] = React.useState<string>("");
+	// Dean name for signature (only fetched when dean prints but lightweight so fine always)
+	const [deanName, setDeanName] = React.useState<string>("");
+
+	React.useEffect(() => {
+		let cancelled = false;
+		const fetchDean = async () => {
+			try {
+				const dean = await getFirstUserByDesignation("Dean");
+				if (dean && !cancelled) {
+					setDeanName(`${dean.firstName ?? ""} ${dean.lastName ?? ""}`.trim());
+				}
+			} catch (e) {
+				console.error("Failed to fetch dean for signature", e);
+			}
+		};
+		fetchDean();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	React.useEffect(() => {
 		let cancelled = false;
@@ -274,6 +295,218 @@ export default function FacultyViewSchedule() {
 		return user ? `${user.displayName || "My"} Schedule` : "My Schedule";
 	}, [isDean, professors, professorId, user]);
 
+	// CSV export of currently displayed schedule
+	const exportCsv = React.useCallback(() => {
+		if (!schedule.length) return;
+		// Derive a clean file slug from the professor name
+		const rawName =
+			selectedProfName || (isDean ? "faculty-schedule" : "my-schedule");
+		const fileSlug =
+			rawName
+				.toLowerCase()
+				.replace(/schedule$/i, "")
+				.replace(/[^a-z0-9]+/gi, "-")
+				.replace(/^-+|-+$/g, "") || "schedule";
+		const today = new Date();
+		const yyyymmdd = `${today.getFullYear()}${String(
+			today.getMonth() + 1
+		).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+		const header = ["Day", "Start", "End", "Course", "Section", "Classroom"];
+		const lines: string[] = [];
+		lines.push(header.join(","));
+		schedule.forEach((s) => {
+			const end = computeEnd(s.start, s.duration, s.halfHour);
+			const row = [
+				s.day,
+				toTimeLabel(s.start),
+				toTimeLabel(end),
+				s.courseCode,
+				s.section,
+				s.classroomName || "-",
+			];
+			lines.push(
+				row
+					.map((field) => {
+						if (field == null) return "";
+						const f = String(field);
+						return /[",\n]/.test(f) ? `"${f.replace(/"/g, '""')}"` : f;
+					})
+					.join(",")
+			);
+		});
+		const csv = `\uFEFF${lines.join("\r\n")}`; // BOM for Excel UTF-8 friendliness
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `schedule-${fileSlug || "current"}-${yyyymmdd}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		URL.revokeObjectURL(url);
+	}, [schedule, selectedProfName, isDean]);
+
+	// PDF print/export for dean only - styled like classroom schedule but professor-focused
+	const exportPdf = React.useCallback(() => {
+		if (!isDean || !schedule.length) return;
+		// Build a time-grid similar to classroom schedule (7:00 - 8:30 default) dynamic range from data
+		const starts = schedule.map((s) => s.start);
+		const ends = schedule.map((s) =>
+			computeEnd(s.start, s.duration, s.halfHour)
+		);
+		const minStart = Math.min(7, ...starts); // ensure at least 7
+		const maxEnd = Math.max(20, ...ends); // ensure at most 20 baseline
+		// generate half-hour slots labels
+		const slots: number[] = [];
+		for (
+			let t = Math.floor(minStart * 2) / 2;
+			t <= Math.ceil(maxEnd * 2) / 2;
+			t += 0.5
+		) {
+			slots.push(t);
+		}
+		function timeLabelRange(t: number) {
+			const next = t + 0.5;
+			return `${toTimeLabel(t)} - ${toTimeLabel(next)}`;
+		}
+		// Days order
+		const days = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
+		// Pre-index schedule items by day & start for quick lookup
+		interface CellItem {
+			rowSpan: number;
+			html: string;
+			day: string;
+			start: number;
+		}
+		const placed: Record<string, boolean> = {};
+		const itemsByDayStart: Record<string, CellItem> = {};
+		schedule.forEach((s) => {
+			const end = computeEnd(s.start, s.duration, s.halfHour);
+			const rowSpan = (end - s.start) * 2; // 0.5 hr steps
+			const key = `${s.day}-${s.start}`;
+			itemsByDayStart[key] = {
+				rowSpan,
+				html: `${s.courseCode}<br/>${s.section}<br/>${s.classroomName || "-"}`,
+				day: s.day,
+				start: s.start,
+			};
+		});
+		let bodyRowsHtml = "";
+		slots.forEach((slot) => {
+			bodyRowsHtml += `<tr>`;
+			// time column
+			bodyRowsHtml += `<td class='time'>${timeLabelRange(slot)}</td>`;
+			days.forEach((d) => {
+				const cellKey = `${d}-${slot}`;
+				if (placed[cellKey]) return; // skip due to rowspan
+				const itemKey = `${d}-${slot}`;
+				const item = itemsByDayStart[itemKey];
+				if (item) {
+					// mark covered slots
+					for (let t = slot + 0.5; t < slot + item.rowSpan / 2; t += 0.5) {
+						placed[`${d}-${t}`] = true;
+					}
+					bodyRowsHtml += `<td class='entry' rowspan='${item.rowSpan}'>${item.html}</td>`;
+				} else {
+					bodyRowsHtml += `<td></td>`;
+				}
+			});
+			bodyRowsHtml += `</tr>`;
+		});
+		// Clean professor name
+		const profDisplay = (selectedProfName || "Selected Professor")
+			.replace(/\s*Schedule$/i, "")
+			.trim();
+		const timestamp = new Date().toLocaleString("en-PH", {
+			dateStyle: "medium",
+			timeStyle: "short",
+		});
+		const ayLine = activeAYLabel ? `${activeAYLabel}` : "";
+		const html = `<!DOCTYPE html><html><head><title>${profDisplay} Schedule</title><meta charset='utf-8'/>
+		<style>
+		@page { size: A4 portrait; margin: 10mm 8mm 10mm 8mm; }
+		:root { --accent: #4f46e5; --border: #cbd5e1; --muted: #64748b; }
+		body { font-family: system-ui, Arial, sans-serif; margin:0; padding:0; color:#0f172a; }
+		.header { display:flex; align-items:center; gap:12px; border-bottom:1.5px solid var(--accent); padding:6px 0 4px; margin-bottom:8px; }
+		.logo { height:46px; width:auto; object-fit:contain; }
+		.branding h1 { font-size:16px; margin:0; letter-spacing:0.25px; }
+		.branding h2 { font-size:11px; margin:1px 0 0; font-weight:600; color: var(--muted); }
+		.meta { font-size:9px; margin-top:2px; color:#334155; }
+		table { width:100%; border-collapse:collapse; font-size:9.2px; table-layout:fixed; }
+		thead th { background:#fbcfe8; font-weight:700; font-size:9px; color:#000; padding:6px 4px; vertical-align:middle; border-bottom:2px solid var(--accent); box-shadow: inset 0 0 0 1000px #fbcfe8; -webkit-print-color-adjust: exact; color-adjust: exact; }
+		th, td { border:1px solid var(--border); padding:6px 4px; text-align:center; vertical-align:middle; word-wrap:break-word; line-height:1.35; }
+		tbody td { font-size:8.4px; }
+		tbody tr:nth-child(odd) { background-color:#fafafa; }
+		.badge { display:inline-block; padding:1px 6px; border:1px solid var(--accent); border-radius:999px; font-size:9.2px; font-weight:600; color:var(--accent); }
+		.footer { margin-top:8px; font-size:8px; color:var(--muted); text-align:right; }
+		.time { font-weight:600; background:#f8fafc; }
+		.entry { font-weight:500; }
+		.signatures { margin-top:20px; font-size:10px; display:flex; justify-content:flex-end; }
+		.signatures div { min-width:45%; text-align:right; }
+		#page-wrapper { transform-origin: top left; }
+		@media print { .no-print { display:none!important; } }
+		</style></head><body>
+		<div id='page-wrapper'>
+			<div class='header'>
+				<img class='logo' src='${
+					window.location.origin
+				}/bsu-meneses-logo.png' alt='Bulsu Meneses Logo' />
+				<div class='branding'>
+					<h1>Bulacan State University – Meneses Campus</h1>
+					<h2>Official Professor Schedule</h2>
+					<div class='meta'>Professor: <span class='badge'>${profDisplay}</span>${
+			ayLine ? ` &nbsp; | &nbsp; ${ayLine}` : ""
+		} &nbsp; | &nbsp; Printed: ${timestamp}</div>
+				</div>
+			</div>
+			<table>
+				<thead><tr><th>Time</th>${days
+					.map((d) => `<th>${d}</th>`)
+					.join("")}</tr></thead>
+				<tbody>${bodyRowsHtml}</tbody>
+			</table>
+			<div class='signatures'>
+				<div>Approved by: ${deanName || "Campus Dean"}${
+			deanName ? ", Campus Dean" : ""
+		}</div>
+			</div>
+			<div class='footer'>Generated via Facilium</div>
+		</div>
+		<script>(function(){
+			function scalePage(){
+				const wrapper = document.getElementById('page-wrapper');
+				if(!wrapper) return;
+				const maxHeight = Math.floor((11.69 - 0.8) * 96); // approx printable height
+				const current = wrapper.getBoundingClientRect().height;
+				if (current > maxHeight){
+					const scale = maxHeight / current;
+					wrapper.style.transform = 'scale(' + scale.toFixed(3) + ')';
+				}
+			}
+			function doPrint(){
+				scalePage();
+				setTimeout(()=>window.print(), 60); // slight delay to let rendering settle
+			}
+			// wait for all images (logo) to load so it appears in print
+			const imgs = Array.from(document.images || []);
+			if (imgs.length === 0){ doPrint(); return; }
+			let done = 0;
+			imgs.forEach(img => {
+				if (img.complete){
+					if (++done === imgs.length) doPrint();
+				} else {
+					img.addEventListener('load', () => { if (++done === imgs.length) doPrint(); });
+					img.addEventListener('error', () => { if (++done === imgs.length) doPrint(); });
+				}
+			});
+		})();</script>
+		</body></html>`;
+		const w = window.open("", "_blank", "width=900,height=1000");
+		if (!w) return;
+		w.document.write(html);
+		w.document.close();
+	}, [isDean, schedule, selectedProfName, activeAYLabel, deanName]);
+
 	return (
 		<div className="w-full max-w-6xl mx-auto p-4 sm:p-6 space-y-4">
 			<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -352,7 +585,7 @@ export default function FacultyViewSchedule() {
 
 			{/* Schedule table for selected professor */}
 			<div className="facilium-bg-whiter rounded p-3 sm:p-4">
-				<div className="flex items-center justify-between mb-3">
+				<div className="flex items-center justify-between mb-3 gap-3">
 					<div className="font-medium">
 						{effectiveProfessorId
 							? isDean
@@ -362,6 +595,28 @@ export default function FacultyViewSchedule() {
 							? "Select a professor to view schedule"
 							: "Sign in to view your schedule"}
 					</div>
+					{effectiveProfessorId && !loadingSchedule && schedule.length > 0 && (
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={exportCsv}
+								className="whitespace-nowrap"
+							>
+								CSV
+							</Button>
+							{isDean && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={exportPdf}
+									className="whitespace-nowrap"
+								>
+									PDF
+								</Button>
+							)}
+						</div>
+					)}
 				</div>
 				{effectiveProfessorId ? (
 					loadingSchedule ? (
