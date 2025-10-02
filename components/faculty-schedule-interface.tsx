@@ -463,7 +463,7 @@ const FacultyScheduleInterface = ({
 		// We compute the aggregate of existing plotted segments for that professor+course
 		// excluding the item currently being edited (if any), then add the new segment.
 		// ------------------------------------------------------------------
-		const MAX_SUBJECT_HOURS = 5; // hours
+		const MAX_SUBJECT_HOURS = 5;
 		const newSegmentHours =
 			(scheduleData.duration || 0) + (scheduleData.halfHour ? 0.5 : 0);
 		const existingSubjectHours = localScheduleItems
@@ -471,7 +471,7 @@ const FacultyScheduleInterface = ({
 				(i) =>
 					i.professor === scheduleData.professor &&
 					i.courseCode === scheduleData.courseCode &&
-					(!editingItem || i.id !== editingItem.id) // exclude current editing copy
+					(!editingItem || i.id !== editingItem.id)
 			)
 			.reduce(
 				(acc, cur) => acc + (cur.duration || 0) + (cur.halfHour ? 0.5 : 0),
@@ -1392,6 +1392,8 @@ const FacultyScheduleInterface = ({
 										description="You cannot make changes in this schedule until the Dean change the status of your plotted schedule."
 										label="submit"
 										onConfirm={handleSubmitScheduleToDean}
+										requirePassword
+										passwordPlaceholder="Confirm with your password"
 									/>
 								)}
 
@@ -1458,14 +1460,11 @@ const FacultyScheduleInterface = ({
 										</Button>
 									}
 									title={`Final approval for ${pendingScheduleDetails.classroomName}`}
-									description="Approving will publish this schedule to all faculty. To confirm this action, please type your email."
+									description="Approving will publish this schedule to all faculty. Please confirm with your password to proceed."
 									label="approve"
 									onConfirm={handleApproveSchedule}
-									requireEmail
-									expectedEmail={auth?.user?.email || ""}
-									emailPlaceholder={
-										auth?.user?.email || "your.email@domain.com"
-									}
+									requirePassword
+									passwordPlaceholder="Enter your password"
 									confirmButtonText="Yes, approve"
 								/>
 								<ConfirmationHandleDialog
@@ -1479,9 +1478,11 @@ const FacultyScheduleInterface = ({
 										</Button>
 									}
 									title={`Are you sure you want to reject this schedule for ${pendingScheduleDetails.classroomName}?`}
-									description="This action cannot be undone."
+									description="This action cannot be undone. Confirm with your password to proceed."
 									label="reject"
 									onConfirm={handleRejectSchedule}
+									requirePassword
+									passwordPlaceholder="Enter your password"
 								/>
 							</div>
 						</div>

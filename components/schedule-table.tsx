@@ -622,7 +622,7 @@ export default function ScheduleTable({
 																		e.stopPropagation();
 																		onEditItem(item);
 																	}}
-																	className="bg-indigo-600 text-white rounded px-1 py-0.5 text-[10px] shadow hover:bg-indigo-700"
+																	className="bg-indigo-600 text-white rounded-md px-2 py-1 text-xs shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
 																>
 																	Edit
 																</button>
@@ -631,19 +631,22 @@ export default function ScheduleTable({
 																trigger={
 																	<button
 																		onClick={(e) => e.stopPropagation()}
-																		className="bg-red-600 text-white rounded px-1 py-0.5 text-[10px] shadow hover:bg-red-700"
+																		className="bg-red-600 text-white rounded-md px-2 py-1 text-xs shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
 																	>
 																		Delete
 																	</button>
 																}
 																title={`You are about to delete schedule for ${item.section}`}
-																description="This action cannot be undone."
+																description="This action cannot be undone. Please confirm with your password to proceed."
 																label="delete"
 																onConfirm={() =>
 																	handleDeleteSpecificSchedule(
 																		item.id ?? "no id"
 																	)
 																}
+																requirePassword
+																passwordPlaceholder="Enter your password"
+																contentClassName="sm:max-w-lg"
 															/>
 														</div>
 													</div>

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import { Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -45,10 +46,15 @@ const DeleteDocumentWithConfirmation = ({
 	data: { id, collectionName, label, relatedFields, batchFields },
 }: DeleteDocumentWithConfirmationProps) => {
 	const router = useRouter();
+	const [open, setOpen] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [error, setError] = useState<string>("");
 
 	const handleDelete = async () => {
+		setError("");
+		setIsDeleting(true);
 		try {
-			// if decrement is true subtract 1 to the field
+			// Adjust related counters (supports negative values for decrement)
 			if (relatedFields) {
 				await incrementDocumentCountById(
 					relatedFields.id,
@@ -58,43 +64,57 @@ const DeleteDocumentWithConfirmation = ({
 				);
 			}
 
-			// delete relevant data that will not be used when the parent id is deleted
+			// Delete dependent documents in parallel
 			if (batchFields && batchFields.length > 0) {
-				for (const batchField of batchFields) {
-					try {
-						await deleteDocumentsByFieldValue(
-							batchField.collectionName,
-							batchField.fieldName,
-							batchField.id
-						);
-						console.log("delete successfull check databsae");
-					} catch (batchError) {
-						console.error(
-							`Failed to delete batch field ${batchField.id}:`,
-							batchError
-						);
-					}
-				}
+				await Promise.all(
+					batchFields.map(async (bf) => {
+						try {
+							await deleteDocumentsByFieldValue(
+								bf.collectionName,
+								bf.fieldName,
+								bf.id
+							);
+						} catch (batchError) {
+							console.error(
+								`Failed to delete related docs for ${bf.id}`,
+								batchError
+							);
+						}
+					})
+				);
 			}
 
-			// dynamically delete document based on id
-			await deleteDocumentById({ id: id, collectionName: collectionName });
+			await deleteDocumentById({ id, collectionName });
 			toast.success(`${label} deleted successfully!`);
+			setOpen(false);
 			router.refresh();
 		} catch (e: unknown) {
-			const error = e as { message?: string };
-			console.error(error.message);
+			const err = e as { message?: string };
+			const message = err?.message || "Failed to delete. Please try again.";
+			setError(message);
+			toast.error(message);
+		} finally {
+			setIsDeleting(false);
 		}
 	};
 
 	return (
-		<Dialog>
+		<Dialog open={open} onOpenChange={(o) => !isDeleting && setOpen(o)}>
 			<DialogTrigger asChild>
-				<Button size={"sm"} variant={"destructive"} className="cursor-pointer">
+				<Button
+					size={"sm"}
+					variant={"destructive"}
+					className="cursor-pointer"
+					onClick={() => setOpen(true)}
+				>
 					<Trash2 />
 				</Button>
 			</DialogTrigger>
-			<DialogContent>
+			<DialogContent
+				onEscapeKeyDown={(e) => {
+					if (isDeleting) e.preventDefault();
+				}}
+			>
 				<DialogHeader>
 					<DialogTitle>
 						<div className="flex items-center gap-2">
@@ -104,19 +124,25 @@ const DeleteDocumentWithConfirmation = ({
 					</DialogTitle>
 					<DialogDescription>This action cannot be undone.</DialogDescription>
 				</DialogHeader>
+				{error && (
+					<p className="text-xs text-red-600 font-medium" role="alert">
+						{error}
+					</p>
+				)}
 				<DialogFooter>
-					<DialogClose asChild>
-						<Button variant={"outline"}>Cancel</Button>
-					</DialogClose>
-					<DialogClose asChild>
-						<Button
-							onClick={handleDelete}
-							variant={"default"}
-							className="bg-red-500 text-white hover:bg-red-400"
-						>
-							Confirm
+					<DialogClose asChild disabled={isDeleting}>
+						<Button variant={"outline"} disabled={isDeleting}>
+							Cancel
 						</Button>
 					</DialogClose>
+					<Button
+						onClick={handleDelete}
+						variant={"default"}
+						disabled={isDeleting}
+						className="bg-red-500 text-white hover:bg-red-400 disabled:opacity-60 disabled:cursor-not-allowed"
+					>
+						{isDeleting ? "Deleting..." : "Confirm"}
+					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
