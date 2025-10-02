@@ -32,6 +32,7 @@ interface ScheduleTableProps {
 	enablePrint?: boolean;
 	enableLegend?: boolean;
 	plottedBy?: string;
+	onEditItem?: (item: ScheduleItem) => void;
 }
 
 function formatHourNoSuffix(hour24: number) {
@@ -63,6 +64,7 @@ export default function ScheduleTable({
 	enablePrint = true,
 	enableLegend = true,
 	plottedBy,
+	onEditItem,
 }: ScheduleTableProps) {
 	const skipMap: Record<string, boolean> = {};
 	const [classroomNames, setClassroomNames] = useState<Record<string, string>>(
@@ -602,25 +604,49 @@ export default function ScheduleTable({
 												className={`border px-2 py-1 font-medium transition-colors ${colorClass}`}
 											>
 												{pathname.startsWith("/program-head") && !isApproved ? (
-													<ConfirmationHandleDialog
-														trigger={
-															<div className="hover:opacity-50 cursor-pointer transition-colors">
-																{item.courseCode}
-																<br />
-																{item.section}
-																<br />
-																{formatProfessorName(professorName)}
-																<br />
-																{`(${classroomName})`}
-															</div>
-														}
-														title={`You are about to delete schedule for ${item.section}`}
-														description="This action cannot be undone."
-														label="delete"
-														onConfirm={() =>
-															handleDeleteSpecificSchedule(item.id ?? "no id")
-														}
-													/>
+													<div className="relative group">
+														<div className="hover:opacity-50 cursor-pointer transition-colors text-[11px] leading-tight">
+															{item.courseCode}
+															<br />
+															{item.section}
+															<br />
+															{formatProfessorName(professorName)}
+															<br />
+															{`(${classroomName})`}
+														</div>
+														{/* action pill */}
+														<div className="absolute hidden group-hover:flex flex-col gap-1 top-1 right-1 z-20">
+															{onEditItem && (
+																<button
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		onEditItem(item);
+																	}}
+																	className="bg-indigo-600 text-white rounded px-1 py-0.5 text-[10px] shadow hover:bg-indigo-700"
+																>
+																	Edit
+																</button>
+															)}
+															<ConfirmationHandleDialog
+																trigger={
+																	<button
+																		onClick={(e) => e.stopPropagation()}
+																		className="bg-red-600 text-white rounded px-1 py-0.5 text-[10px] shadow hover:bg-red-700"
+																	>
+																		Delete
+																	</button>
+																}
+																title={`You are about to delete schedule for ${item.section}`}
+																description="This action cannot be undone."
+																label="delete"
+																onConfirm={() =>
+																	handleDeleteSpecificSchedule(
+																		item.id ?? "no id"
+																	)
+																}
+															/>
+														</div>
+													</div>
 												) : (
 													<>
 														{item.courseCode}

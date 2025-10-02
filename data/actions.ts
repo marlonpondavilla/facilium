@@ -137,6 +137,21 @@ export const addDocumentToFirestore = async (
 	}
 };
 
+// Update an existing schedule document with partial fields
+export const updateScheduleDocument = async (
+	id: string,
+	data: Partial<ScheduleItem>
+): Promise<{ success: true } | { success: false; error: unknown }> => {
+	try {
+		if (!id) throw new Error("Schedule document id is required");
+		await firestore.collection("scheduleData").doc(id).update(data as any);
+		return { success: true };
+	} catch (e) {
+		console.error("Error updating schedule document", e);
+		return { success: false, error: e };
+	}
+};
+
 export const getDocumentsFromFirestore = async <T>(
 	collectionName: string,
 	sort?: boolean

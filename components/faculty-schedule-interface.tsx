@@ -50,6 +50,7 @@ import {
 	getDocumentsFromFirestore,
 	getDocumentsWithNestedObject,
 	getSingleDocumentFromFirestore,
+	updateScheduleDocument,
 } from "@/data/actions";
 import Loading from "./loading";
 import Link from "next/link";
@@ -144,6 +145,9 @@ const FacultyScheduleInterface = ({
 		() => scheduleItems
 	);
 
+	// Editing state for updating existing schedule entries
+	const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+
 	// Keep localScheduleItems in sync with prop updates (post-refresh reconciliation)
 	useEffect(() => {
 		setLocalScheduleItems(scheduleItems);
@@ -157,6 +161,9 @@ const FacultyScheduleInterface = ({
 	const [isApprovedScheduleExist, setIsApprovedScheduleExist] = useState(false);
 	const [approvedSubmittedBy, setApprovedSubmittedBy] = useState<string>("");
 	const [error, setError] = useState("");
+	// Dialog for weekly subject hour cap exceeded
+	const [openSubjectCapDialog, setOpenSubjectCapDialog] = useState(false);
+	const [subjectCapMessage, setSubjectCapMessage] = useState("");
 	const [pendingScheduleDetails, setPendingScheduleDetails] =
 		useState<PendingScheduleDetails>({
 			classroomName: "",
@@ -178,6 +185,8 @@ const FacultyScheduleInterface = ({
 	const scheduleLength = scheduleItems.filter(
 		(schedule) => schedule.classroomId === classroomId
 	).length;
+
+	// (removed deprecated beginEditItem / cancelEdit in favor of handleEditFromTable)
 
 	const days = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
 	const activeYear = academicYears?.find((year) => year.isActive);
@@ -441,10 +450,48 @@ const FacultyScheduleInterface = ({
 			return;
 		}
 
-		const scheduleData = {
+		const scheduleData: ScheduleItem = {
 			...values,
 			classroomId,
+			id: editingItem?.id,
 		};
+
+		// ------------------------------------------------------------------
+		// Edge Case: Limit total weekly hours for the SAME professor + course
+		// Business rule: A single subject (courseCode) taught by the same professor
+		// across the entire week must not exceed a TOTAL of 5 hours (including +30 mins).
+		// We compute the aggregate of existing plotted segments for that professor+course
+		// excluding the item currently being edited (if any), then add the new segment.
+		// ------------------------------------------------------------------
+		const MAX_SUBJECT_HOURS = 5; // hours
+		const newSegmentHours =
+			(scheduleData.duration || 0) + (scheduleData.halfHour ? 0.5 : 0);
+		const existingSubjectHours = localScheduleItems
+			.filter(
+				(i) =>
+					i.professor === scheduleData.professor &&
+					i.courseCode === scheduleData.courseCode &&
+					(!editingItem || i.id !== editingItem.id) // exclude current editing copy
+			)
+			.reduce(
+				(acc, cur) => acc + (cur.duration || 0) + (cur.halfHour ? 0.5 : 0),
+				0
+			);
+		const projectedTotal = existingSubjectHours + newSegmentHours;
+		if (projectedTotal > MAX_SUBJECT_HOURS) {
+			setSubjectCapMessage(
+				`Weekly maximum load reached (max ${MAX_SUBJECT_HOURS}h). Already plotted: ${existingSubjectHours
+					.toFixed(1)
+					.replace(
+						/\.0$/,
+						""
+					)}h. Adding this block would push it to ${projectedTotal
+					.toFixed(1)
+					.replace(/\.0$/, "")}h.`
+			);
+			setOpenSubjectCapDialog(true);
+			return;
+		}
 
 		const navigateToClassroomOnly = () => {
 			if (!classroomId) return;
@@ -476,39 +523,60 @@ const FacultyScheduleInterface = ({
 			return;
 		}
 
-		const optimisticId = `optimistic-${Date.now()}`;
-		setLocalScheduleItems((prev) => [
-			...prev,
-			{
-				...scheduleData,
-				id: optimisticId,
-				status: false,
-				created: new Date().toISOString(),
-			},
-		]);
-
-		await withLoading(async () => {
-			const result = await addDocumentToFirestore("scheduleData", {
-				...scheduleData,
-				status: false,
-				created: new Date().toISOString(),
-			});
-
-			if (result.success) {
-				toast.success("New schedule added!");
-				form.reset();
-				setError("");
-				navigateToClassroomOnly();
-				setOpenNoSchedule(false);
-			} else {
-				setLocalScheduleItems((prev) =>
-					prev.filter((i) => i.id !== optimisticId)
+		if (editingItem?.id) {
+			await withLoading(async () => {
+				const result = await updateScheduleDocument(
+					editingItem.id!,
+					scheduleData
 				);
-				toast.error("Failed to add schedule.");
-			}
-
-			router.refresh();
-		});
+				if (result.success) {
+					setLocalScheduleItems((prev) =>
+						prev.map((it) =>
+							it.id === editingItem.id ? { ...it, ...scheduleData } : it
+						)
+					);
+					toast.success("Schedule updated!");
+					setEditingItem(null);
+					form.reset();
+					setError("");
+					navigateToClassroomOnly();
+				} else {
+					toast.error("Failed to update schedule.");
+				}
+				router.refresh();
+			});
+		} else {
+			const optimisticId = `optimistic-${Date.now()}`;
+			setLocalScheduleItems((prev) => [
+				...prev,
+				{
+					...scheduleData,
+					id: optimisticId,
+					status: false,
+					created: new Date().toISOString(),
+				},
+			]);
+			await withLoading(async () => {
+				const result = await addDocumentToFirestore("scheduleData", {
+					...scheduleData,
+					status: false,
+					created: new Date().toISOString(),
+				});
+				if (result.success) {
+					toast.success("New schedule added!");
+					form.reset();
+					setError("");
+					navigateToClassroomOnly();
+					setOpenNoSchedule(false);
+				} else {
+					setLocalScheduleItems((prev) =>
+						prev.filter((i) => i.id !== optimisticId)
+					);
+					toast.error("Failed to add schedule.");
+				}
+				router.refresh();
+			});
+		}
 	};
 
 	// Submit schedule to dean function
@@ -769,6 +837,14 @@ const FacultyScheduleInterface = ({
 				setOpen={setOpenPendingScheduleExist}
 				title="Please wait until the Dean approve or reject this schedule."
 				description="You can make changes again once the status of this schedule is updated."
+			/>
+
+			{/* Dialog for weekly subject hour cap exceedance */}
+			<WarningPopUp
+				open={openSubjectCapDialog}
+				setOpen={setOpenSubjectCapDialog}
+				title="Subject Weekly Hour Limit"
+				description={subjectCapMessage || "Weekly hour limit exceeded."}
 			/>
 
 			{/* Schedule Form & Table Container */}
