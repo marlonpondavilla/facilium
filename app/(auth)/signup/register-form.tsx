@@ -53,6 +53,7 @@ export const RegisterForm = () => {
 			firstName: "",
 			middleName: "",
 			lastName: "",
+			employeeNumber: "",
 			degreeEarned: "",
 			department: "",
 			email: "",
@@ -94,8 +95,8 @@ export const RegisterForm = () => {
 	const goNext = async () => {
 		// Validate fields relevant to the current step before advancing
 		let fields: (keyof z.infer<typeof signupSchema>)[] = [];
-		if (currentStep === 0) fields = ["firstName", "lastName"]; // middle optional
-		if (currentStep === 1) fields = ["degreeEarned", "department"]; // both required
+		if (currentStep === 0) fields = ["firstName", "lastName"];
+		if (currentStep === 1) fields = ["degreeEarned", "department"];
 		if (currentStep === 2) fields = ["email", "password", "confirmPassword"];
 
 		if (fields.length) {
@@ -143,7 +144,7 @@ export const RegisterForm = () => {
 	const values = form.getValues();
 
 	return (
-		<div className="w-full flex flex-col gap-8 max-w-md mx-auto px-3 sm:px-4 py-4">
+		<div className="w-full flex flex-col gap-8 max-w-md mx-auto px-3 sm:px-4">
 			{/* Step indicators */}
 			<div className="flex items-center gap-3 text-[11px] justify-center flex-wrap">
 				{steps.map((label, i) => {
@@ -185,6 +186,24 @@ export const RegisterForm = () => {
 					>
 						{currentStep === 0 && (
 							<div className="space-y-8">
+								<FormField
+									name="employeeNumber"
+									control={form.control}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Employee Number</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="20190812"
+													inputMode="numeric"
+													maxLength={12}
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 								{/* Personal info stacked for breathable spacing */}
 								<div className="flex flex-col gap-6">
 									<FormField
@@ -414,6 +433,12 @@ export const RegisterForm = () => {
 							<div className="space-y-6 text-sm">
 								<h2 className="font-semibold text-base">Review Information</h2>
 								<div className="grid gap-3 md:grid-cols-2 bg-neutral-50 p-4 rounded border text-xs">
+									<div>
+										<span className="font-medium">Employee No.:</span>{" "}
+										{values.employeeNumber || (
+											<span className="text-neutral-400">—</span>
+										)}
+									</div>
 									<div>
 										<span className="font-medium">First Name:</span>{" "}
 										{values.firstName || (

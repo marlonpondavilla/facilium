@@ -26,6 +26,10 @@ export const signupSchema = z
 				nameRegex,
 				"Last Name must not contain numbers or special characters"
 			),
+		employeeNumber: z
+			.string()
+			.regex(/^\d{8,12}$/, "Employee number must be at least 12 digits")
+			.trim(),
 		degreeEarned: z.string().min(2, "This field is required."),
 		email: z.string().email(),
 		department: z.string(),

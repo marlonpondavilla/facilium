@@ -67,10 +67,17 @@ export default function FacultyViewSchedule() {
 
 	const professorId = searchParams.get("professorId") || "";
 	const isDean = pathname.startsWith("/dean");
+	const isProgramHead = pathname.startsWith("/program-head");
+	const isFaculty = pathname.startsWith("/faculty");
+	// Roles that can browse: Dean (all), Program Head (own dept). Faculty cannot browse others.
+	const canBrowseOthers = isDean || isProgramHead;
+	// Dept-limited browsing: only Program Head (not Dean)
+	const isDeptLimited = isProgramHead && !isDean;
 
 	const [professors, setProfessors] = React.useState<User[]>([]);
 	const [loadingProfessors, setLoadingProfessors] = React.useState(true);
-	const [profFilter, setProfFilter] = React.useState("");
+	const [profFilter, setProfFilter] = React.useState(""); // text search (program head only)
+	const [deptFilter, setDeptFilter] = React.useState<string>("ALL"); // dean-only department filter
 
 	const [schedule, setSchedule] = React.useState<EnrichedSchedule[]>([]);
 	const [loadingSchedule, setLoadingSchedule] = React.useState(false);
@@ -120,12 +127,11 @@ export default function FacultyViewSchedule() {
 		};
 	}, []);
 
-	// Load professors list (Enabled and not Admin). Only needed for Dean view.
+	// Load professors list:
 	React.useEffect(() => {
 		let cancelled = false;
 		const load = async () => {
-			// If not Dean, skip fetching full professors list
-			if (!isDean) {
+			if (!canBrowseOthers) {
 				setProfessors([]);
 				setLoadingProfessors(false);
 				return;
@@ -133,9 +139,23 @@ export default function FacultyViewSchedule() {
 			setLoadingProfessors(true);
 			try {
 				const all = await getDocumentsFromFirestore<User>("userData");
-				const filtered = (all || []).filter(
+				let filtered = (all || []).filter(
 					(u) => u.status === "Enabled" && u.designation !== "Admin"
 				);
+				if (isDeptLimited && user) {
+					const self = (all || []).find((u) => u.email === user.email);
+					const dept = self?.department;
+					if (dept) {
+						// Program Head: show all in same department (including Dean if present)
+						filtered = filtered.filter((u) => u.department === dept);
+					}
+				}
+				// For clarity ensure unique by id (in case of duplicates)
+				const uniqMap: Record<string, User> = {};
+				filtered.forEach((u) => {
+					uniqMap[u.id] = u;
+				});
+				filtered = Object.values(uniqMap);
 				if (!cancelled) setProfessors(filtered);
 			} catch (e) {
 				console.error("Failed to load professors", e);
@@ -148,10 +168,20 @@ export default function FacultyViewSchedule() {
 		return () => {
 			cancelled = true;
 		};
-	}, [isDean]);
+	}, [canBrowseOthers, isDeptLimited, user?.email, isProgramHead, isDean]);
 
-	// Determine effective professor to view: Dean uses query param; others use logged-in user only
-	const effectiveProfessorId = isDean ? professorId : user?.uid || "";
+	// Determine effective professor to view: Dean & Program Head can use query param; others use own uid
+	const effectiveProfessorId = canBrowseOthers ? professorId : user?.uid || "";
+
+	// If a regular faculty (not dean or program head) somehow has a professorId param in URL, strip it
+	React.useEffect(() => {
+		if (!canBrowseOthers && professorId) {
+			// remove professorId from URL silently
+			const params = new URLSearchParams(searchParams.toString());
+			params.delete("professorId");
+			router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+		}
+	}, [canBrowseOthers, professorId, pathname, router, searchParams]);
 
 	// Load schedule when effective professor changes (from approvedScheduleData)
 	React.useEffect(() => {
@@ -165,8 +195,8 @@ export default function FacultyViewSchedule() {
 			try {
 				// Resolve provided professor identifier (which may be a uid) to the user document id
 				let resolvedProfessorDocId = effectiveProfessorId;
-				// If dean has the list, try matching by id or uid
-				if (isDean && professors.length > 0) {
+				// If browsing role has the list, try matching by id or uid
+				if (canBrowseOthers && professors.length > 0) {
 					const found = (professors as ProfessorRecord[]).find(
 						(p) =>
 							p.id === effectiveProfessorId || p.uid === effectiveProfessorId
@@ -248,7 +278,7 @@ export default function FacultyViewSchedule() {
 		return () => {
 			cancelled = true;
 		};
-	}, [effectiveProfessorId, isDean, professors, user?.uid]);
+	}, [effectiveProfessorId, canBrowseOthers, professors, user?.uid]);
 
 	const pushProfessor = React.useCallback(
 		(id: string) => {
@@ -270,19 +300,41 @@ export default function FacultyViewSchedule() {
 	}, [user?.uid, pushProfessor]);
 
 	const filteredProfessors = React.useMemo(() => {
-		const q = profFilter.trim().toLowerCase();
-		if (!q) return professors;
-		return professors.filter((p) => {
-			const name = `${p.firstName ?? ""} ${p.middleName ?? ""} ${
-				p.lastName ?? ""
-			}`.toLowerCase();
-			return name.includes(q) || p.email?.toLowerCase().includes(q) || false;
+		let base = professors;
+		// Dean department filter first
+		if (isDean && deptFilter !== "ALL") {
+			base = base.filter((p) => p.department === deptFilter);
+		}
+		// Program Head search filter
+		if (isProgramHead) {
+			const q = profFilter.trim().toLowerCase();
+			if (q) {
+				base = base.filter((p) => {
+					const name = `${p.firstName ?? ""} ${p.middleName ?? ""} ${
+						p.lastName ?? ""
+					}`.toLowerCase();
+					return (
+						name.includes(q) || p.email?.toLowerCase().includes(q) || false
+					);
+				});
+			}
+		}
+		return base;
+	}, [professors, isDean, deptFilter, isProgramHead, profFilter]);
+
+	// Unique departments for dean's department filter dropdown
+	const uniqueDepartments = React.useMemo(() => {
+		if (!isDean) return [] as string[];
+		const set = new Set<string>();
+		professors.forEach((p) => {
+			if (p.department) set.add(p.department);
 		});
-	}, [profFilter, professors]);
+		return Array.from(set).sort();
+	}, [isDean, professors]);
 
 	// Resolve selected professor name for header
 	const selectedProfName = React.useMemo(() => {
-		if (isDean) {
+		if (canBrowseOthers) {
 			const prof = (professors as ProfessorRecord[]).find(
 				(p) => p.id === professorId || p.uid === professorId
 			);
@@ -293,7 +345,7 @@ export default function FacultyViewSchedule() {
 		}
 		// For non-dean, it's the logged-in user's schedule
 		return user ? `${user.displayName || "My"} Schedule` : "My Schedule";
-	}, [isDean, professors, professorId, user]);
+	}, [canBrowseOthers, professors, professorId, user]);
 
 	// CSV export of currently displayed schedule
 	const exportCsv = React.useCallback(() => {
@@ -348,7 +400,7 @@ export default function FacultyViewSchedule() {
 
 	// PDF print/export for dean only - styled like classroom schedule but professor-focused
 	const exportPdf = React.useCallback(() => {
-		if (!isDean || !schedule.length) return;
+		if (!isDean || !schedule.length) return; // still dean-only
 		const starts = schedule.map((s) => s.start);
 		const ends = schedule.map((s) =>
 			computeEnd(s.start, s.duration, s.halfHour)
@@ -512,7 +564,11 @@ export default function FacultyViewSchedule() {
 				<div>
 					<h1 className="text-xl sm:text-2xl font-semibold facilium-color-indigo">
 						{isDean
-							? "Faculty Schedules"
+							? "All Faculty Schedules"
+							: isProgramHead
+							? "Department Faculty Schedules"
+							: isFaculty && canBrowseOthers
+							? "My Department Schedules"
 							: activeAYLabel
 							? `Your schedule for ${activeAYLabel}`
 							: "Your schedule for the current semester"}
@@ -522,7 +578,7 @@ export default function FacultyViewSchedule() {
 					) : null}
 				</div>
 				<div className="flex gap-2">
-					{isDean ? (
+					{canBrowseOthers ? (
 						<>
 							<Button
 								className="facilium-bg-indigo text-white"
@@ -541,17 +597,34 @@ export default function FacultyViewSchedule() {
 				</div>
 			</div>
 
-			{/* Professors list */}
-			{isDean && (
-				<div className="facilium-bg-whiter rounded p-3 sm:p-4 space-y-3">
+			{/* Professors list (Dean: all, Program Head & Faculty: own dept) */}
+			{canBrowseOthers && (
+				<div className="bg-muted rounded p-3 sm:p-4 space-y-3">
 					<div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
 						<div className="font-medium">Professors</div>
-						<input
-							value={profFilter}
-							onChange={(e) => setProfFilter(e.target.value)}
-							className="border border-gray-300 rounded px-3 py-2 text-sm w-full sm:w-64"
-							placeholder="Search by name or email"
-						/>
+						{/* Dean: department dropdown; Program Head: text search */}
+						{isDean ? (
+							<select
+								value={deptFilter}
+								onChange={(e) => setDeptFilter(e.target.value)}
+								className="border rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+							>
+								<option value="ALL">All Departments</option>
+								{uniqueDepartments.map((d) => (
+									<option key={d} value={d}>
+										{d}
+									</option>
+								))}
+							</select>
+						) : isProgramHead ? (
+							<input
+								type="text"
+								value={profFilter}
+								onChange={(e) => setProfFilter(e.target.value)}
+								placeholder="Search name or email..."
+								className="border rounded px-2 py-1 text-sm w-full sm:w-60 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+							/>
+						) : null}
 					</div>
 					{loadingProfessors ? (
 						<p className="text-sm text-gray-500">Loading professors…</p>
@@ -587,12 +660,12 @@ export default function FacultyViewSchedule() {
 				<div className="flex items-center justify-between mb-3 gap-3">
 					<div className="font-medium">
 						{effectiveProfessorId
-							? isDean
+							? canBrowseOthers
 								? `Schedule for ${selectedProfName || "Selected Professor"}`
 								: selectedProfName
 							: isDean
 							? "Select a professor to view schedule"
-							: "Sign in to view your schedule"}
+							: "Select a professor to view schedule"}
 					</div>
 					{effectiveProfessorId && !loadingSchedule && schedule.length > 0 && (
 						<div className="flex gap-2">

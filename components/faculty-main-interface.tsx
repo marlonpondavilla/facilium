@@ -378,7 +378,7 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 					<div className="buildings-control-title flex items-center gap-2">
 						<Building />
 						<h1 className="font-semibold tracking-wide text-sm sm:text-xl">
-							Meneses Campus Buildings
+							Meneses Campus Facilities
 						</h1>
 					</div>
 
