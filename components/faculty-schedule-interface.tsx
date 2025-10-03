@@ -1196,15 +1196,15 @@ const FacultyScheduleInterface = ({
 																		if (professor.designation === "Admin") {
 																			return false;
 																		}
-																		// If not on program-head route, show all non-admin professors
-																		if (!isProgramHeadRoute) return true;
+																		// If not on program-head route OR no known dept, show all non-admin professors
+																		if (!isProgramHeadRoute || !normalizedDept)
+																			return true;
 																		// Only include professors with the same department as current program head
-																		const profDept = (professor as any)
-																			.department
-																			? String((professor as any).department)
-																					.trim()
-																					.toLowerCase()
-																			: "";
+																		const profDept = (
+																			professor.department || ""
+																		)
+																			.trim()
+																			.toLowerCase();
 																		return profDept === normalizedDept;
 																	})
 																	.map((professor) => (
