@@ -20,6 +20,7 @@ const Page = async ({ searchParams }: PageInterface) => {
 	const currentPage = parseInt(params.page || "1", 10);
 	const cursor = params.cursor;
 	const search = params.search?.trim() || "";
+	const department = params.department?.trim() || "all";
 
 	// will grab the data in URL params for cursors
 	const previousCursors = params.previousCursors
@@ -32,11 +33,16 @@ const Page = async ({ searchParams }: PageInterface) => {
 			startAfterDocId: cursor,
 			search,
 		},
+		department,
 	});
 
 	return (
 		<AdminSideBar>
-			<UsersComponent userCount={totalUsers} search={search}>
+			<UsersComponent
+				userCount={totalUsers}
+				search={search}
+				department={department}
+			>
 				<Table className="mt-4">
 					<TableHeader className="facilium-bg-indigo">
 						<TableRow>

@@ -278,7 +278,7 @@ export default function FacultyViewSchedule() {
 		return () => {
 			cancelled = true;
 		};
-	}, [effectiveProfessorId, canBrowseOthers, professors, user?.uid]);
+	}, [effectiveProfessorId, canBrowseOthers, professors, user?.uid, user]);
 
 	const pushProfessor = React.useCallback(
 		(id: string) => {

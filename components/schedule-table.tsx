@@ -427,7 +427,14 @@ export default function ScheduleTable({
 			win.focus();
 			win.print();
 		};
-	}, [classroomId, classroomNames, plottedBy, deanName, isApproved]);
+	}, [
+		classroomId,
+		classroomNames,
+		plottedBy,
+		deanName,
+		isApproved,
+		activeAYLabel,
+	]);
 
 	function getStartIndexFromDecimal(startDecimal: number): number {
 		return Math.round((startDecimal - 7) * 2);

@@ -55,6 +55,46 @@ export const deleteDocumentById = async ({
 	}
 };
 
+// Fully delete a user: removes their auth account (by uid) and the Firestore user document.
+// Accepts either the firestore document id (docId) and uid. If uid is unknown we try to look it up first.
+export const deleteUserCompletely = async (
+	userDocId: string,
+	options?: { userCollectionName?: string }
+): Promise<{ success: true } | { success: false; error: unknown }> => {
+	const userCollection = options?.userCollectionName || "userData";
+	try {
+		if (!userDocId) throw new Error("User document id is required");
+
+		// Fetch doc to obtain uid
+		const docRef = firestore.collection(userCollection).doc(userDocId);
+		const snap = await docRef.get();
+		if (!snap.exists) {
+			// Nothing to delete in firestore; treat as success (idempotent)
+			return { success: true };
+		}
+		const data = snap.data() as { uid?: string } | undefined;
+		const uid = data?.uid;
+
+		// Delete Firestore user document first to remove surface data
+		await docRef.delete();
+
+		if (uid && adminAuth) {
+			try {
+				await adminAuth.deleteUser(uid);
+			} catch (authErr) {
+				// If auth delete fails we log it but surface a controlled failure so UI can react.
+				console.error("Failed to delete auth user", authErr);
+				throw authErr;
+			}
+		}
+
+		return { success: true };
+	} catch (e) {
+		console.error("deleteUserCompletely error", e);
+		return { success: false, error: e };
+	}
+};
+
 export const assignDesignationByUid = async ({
 	uid,
 	collectionName = "userData",
@@ -144,7 +184,10 @@ export const updateScheduleDocument = async (
 ): Promise<{ success: true } | { success: false; error: unknown }> => {
 	try {
 		if (!id) throw new Error("Schedule document id is required");
-		await firestore.collection("scheduleData").doc(id).update(data as any);
+		await firestore
+			.collection("scheduleData")
+			.doc(id)
+			.update(data as any);
 		return { success: true };
 	} catch (e) {
 		console.error("Error updating schedule document", e);

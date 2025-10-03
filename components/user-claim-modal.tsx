@@ -1,21 +1,11 @@
 "use client";
 
 import React from "react";
-import {
-	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
 import { SquarePen } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateDocumentById } from "@/data/actions";
 import { useRouter } from "next/navigation";
+import ConfirmationHandleDialog from "./confirmation-handle-dialog";
 
 type UserClaimProps = {
 	data: {
@@ -42,44 +32,35 @@ const UserClaimModal = ({ data }: UserClaimProps) => {
 		} catch (e: unknown) {
 			const error = e as { message?: string };
 			toast.error(`Failed to update: ${error.message}`);
+			throw error; // propagate to keep dialog open if desired
 		}
 	};
 
+	const nextRole = data.designation === "Faculty" ? "Program Head" : "Faculty";
+
 	return (
-		<Dialog>
-			<DialogTrigger disabled={data.status === "Disabled"}>
-				<SquarePen
-					size={20}
-					className="cursor-pointer facilium-color-indigo hover:text-indigo-500 text-center"
-				/>
-			</DialogTrigger>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Change user Designation?</DialogTitle>
-					<DialogDescription>
-						You are about to modify this user Designation
-					</DialogDescription>
-				</DialogHeader>
-				<DialogFooter>
-					<DialogClose asChild>
-						<Button size={"sm"} variant={"outline"} className="cursor-pointer">
-							No
-						</Button>
-					</DialogClose>
-					<DialogClose asChild>
-						<Button
-							size={"sm"}
-							variant={"destructive"}
-							className="cursor-pointer"
-							onClick={handleCustomClaimChange}
-						>
-							Yes, change to{" "}
-							{data.designation === "Faculty" ? "Program Head" : "Faculty"}
-						</Button>
-					</DialogClose>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+		<ConfirmationHandleDialog
+			trigger={
+				<button
+					type="button"
+					disabled={data.status === "Disabled"}
+					className="disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center p-1 rounded hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+				>
+					<SquarePen
+						size={18}
+						className="facilium-color-indigo hover:text-indigo-500"
+					/>
+				</button>
+			}
+			title="Change user designation"
+			description={`You are about to change this user's designation to ${nextRole}. Confirm with your password to proceed.`}
+			label="update"
+			onConfirm={handleCustomClaimChange}
+			requirePassword
+			passwordPlaceholder="Enter your password"
+			confirmButtonText={`Yes, change to ${nextRole}`}
+			contentClassName="sm:max-w-md"
+		/>
 	);
 };
 

@@ -22,6 +22,7 @@ const Page = async ({ searchParams }: PageInterface) => {
 	const currentPage = parseInt(params.page || "1", 10);
 	const cursor = params.cursor;
 	const search = params.search?.trim() || "";
+	const department = params.department?.trim() || "all";
 
 	const previousCursors = params.previousCursors
 		? JSON.parse(params.previousCursors)
@@ -33,11 +34,12 @@ const Page = async ({ searchParams }: PageInterface) => {
 			startAfterDocId: cursor,
 			search,
 		},
+		department,
 	});
 
 	return (
 		<AdminSideBar>
-			<DesignationComponent search={search}>
+			<DesignationComponent search={search} department={department}>
 				<div className="card-component grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 					{data.map((user) => (
 						<Card
@@ -83,13 +85,15 @@ const Page = async ({ searchParams }: PageInterface) => {
 												</Badge>
 											)}
 
-											<UserClaimModal
-												data={{
-													id: user.id,
-													designation: user.designation,
-													status: user.status,
-												}}
-											/>
+											{!["Dean", "Admin"].includes(user.designation) && (
+												<UserClaimModal
+													data={{
+														id: user.id,
+														designation: user.designation,
+														status: user.status,
+													}}
+												/>
+											)}
 										</div>
 									</CardDescription>
 								</div>

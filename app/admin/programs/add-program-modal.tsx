@@ -18,11 +18,13 @@ import { addProgramAction } from "./actions";
 import { PlusIcon, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
+import { departments } from "@/data/department";
 import toast from "react-hot-toast";
 
 type ProgramDataProps = {
 	programCode: string;
 	programName: string;
+	department: string;
 };
 
 const AddProgramModal = () => {
@@ -34,40 +36,44 @@ const AddProgramModal = () => {
 	const [programData, setProgramData] = useState<ProgramDataProps>({
 		programCode: "",
 		programName: "",
+		department: "",
 	});
 
 	const handleAddProgram = async () => {
-		if (!programData.programCode || !programData.programName) {
+		if (
+			!programData.programCode ||
+			!programData.programName ||
+			!programData.department
+		) {
 			setError(true);
-			setOpen(true);
 			return;
 		}
-
 		setSubmitting(true);
-
-		// Call server action (handles duplicate detection & revalidation)
-		const res = await addProgramAction({
-			programCode: programData.programCode,
-			programName: programData.programName,
-		});
-
-		if (!res.success) {
-			if (res.error?.includes("exists")) {
-				setExistError(true);
-			} else {
-				toast.error(res.error || "Failed to add program");
+		try {
+			const res = await addProgramAction({
+				programCode: programData.programCode,
+				programName: programData.programName,
+				department: programData.department,
+			});
+			if (!res.success) {
+				if (res.error?.includes("exists")) {
+					setExistError(true);
+				} else {
+					toast.error(res.error || "Failed to add program");
+				}
+				return;
 			}
+			toast.success("Program added");
+			// reset form while staying on the same route
+			setProgramData({ programCode: "", programName: "", department: "" });
+			setError(false);
+			setExistError(false);
+			setOpen(false); // close dialog explicitly
+			// Ensure the current /admin/programs route data revalidates but do not navigate elsewhere
+			router.refresh();
+		} finally {
 			setSubmitting(false);
-			return;
 		}
-
-		toast.success("New Program Added Successfully");
-		setSubmitting(false);
-		setError(false);
-		setOpen(false);
-		// router.refresh() is usually not necessary because revalidatePath in server action
-		// is enough, but keep as a fallback for immediate UI consistency.
-		router.refresh();
 	};
 
 	return (
@@ -80,6 +86,7 @@ const AddProgramModal = () => {
 					setProgramData({
 						programCode: "",
 						programName: "",
+						department: "",
 					});
 				}
 			}}
@@ -136,6 +143,28 @@ const AddProgramModal = () => {
 					}}
 					className={`${error ? "border border-red-500" : ""}`}
 				/>
+				<Label htmlFor="department">Department</Label>
+				<select
+					id="department"
+					value={programData.department}
+					onChange={(e) => {
+						setProgramData((prev) => ({ ...prev, department: e.target.value }));
+						setError(false);
+						setExistError(false);
+					}}
+					className={`border ${
+						error && !programData.department
+							? "border-red-500"
+							: "border-gray-300"
+					} rounded py-2 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+				>
+					<option value="">Select Department</option>
+					{departments.map((d) => (
+						<option key={d} value={d}>
+							{d}
+						</option>
+					))}
+				</select>
 				<DialogFooter>
 					<Button
 						variant="default"

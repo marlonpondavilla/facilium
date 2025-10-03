@@ -10,10 +10,12 @@ import { revalidatePath } from "next/cache";
 export async function addProgramAction(data: {
 	programCode: string;
 	programName: string;
+	department: string;
 }) {
 	const programCode = data.programCode.trim();
 	const programName = data.programName.trim();
-	if (!programCode || !programName) {
+	const department = data.department.trim();
+	if (!programCode || !programName || !department) {
 		return { success: false, error: "All fields are required" } as const;
 	}
 
@@ -29,6 +31,7 @@ export async function addProgramAction(data: {
 	const result = await addDocumentToFirestore("programs", {
 		programCode,
 		programName,
+		department,
 		created: new Date().toISOString(),
 	});
 

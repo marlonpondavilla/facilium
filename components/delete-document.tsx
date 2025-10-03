@@ -18,6 +18,7 @@ import {
 	deleteDocumentById,
 	incrementDocumentCountById,
 	deleteDocumentsByFieldValue,
+	deleteUserCompletely,
 } from "@/data/actions";
 import { useRouter } from "next/navigation";
 
@@ -84,8 +85,17 @@ const DeleteDocumentWithConfirmation = ({
 				);
 			}
 
-			await deleteDocumentById({ id, collectionName });
-			toast.success(`${label} deleted successfully!`);
+			if (label.toLowerCase() === "user" && collectionName === "userData") {
+				const res = await deleteUserCompletely(id);
+				if (res.success) {
+					toast.success("User account deleted successfully!");
+				} else {
+					throw res.error || new Error("Failed to delete user account");
+				}
+			} else {
+				await deleteDocumentById({ id, collectionName });
+				toast.success(`${label} deleted successfully!`);
+			}
 			setOpen(false);
 			router.refresh();
 		} catch (e: unknown) {
