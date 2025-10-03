@@ -1,6 +1,6 @@
 import FacultyHeader from "@/components/faculty-header";
 import FacultyScheduleInterface from "@/components/faculty-schedule-interface";
-import { getDocumentsFromFirestore } from "@/data/actions";
+import { getCurrentUserData, getDocumentsFromFirestore } from "@/data/actions";
 import {
 	Classroom,
 	getBuildingName,
@@ -16,6 +16,7 @@ type PageProps = { params: Promise<{ id: string }> };
 type Programs = {
 	id: string;
 	programCode: string;
+	department?: string;
 };
 
 type YearLevels = {
@@ -49,6 +50,7 @@ type Professors = {
 	designation: string;
 	firstName: string;
 	lastName: string;
+	department?: string;
 };
 
 const Page = async ({ params }: PageProps) => {
@@ -91,6 +93,10 @@ const Page = async ({ params }: PageProps) => {
 	const classrooms: Classroom[] = await getFilteredClassrooms(id);
 	const buildingName = await getBuildingName(id);
 
+	// Get the currently logged-in program head's department from userData
+	const currentUser = await getCurrentUserData();
+	const programHeadDept = (currentUser?.department || "").toString();
+
 	return (
 		<FacultyHeader>
 			<FacultyScheduleInterface
@@ -104,6 +110,7 @@ const Page = async ({ params }: PageProps) => {
 				academicYears={academicYears}
 				professors={professors}
 				scheduleItems={scheduleData}
+				programHeadDept={programHeadDept}
 			/>
 		</FacultyHeader>
 	);

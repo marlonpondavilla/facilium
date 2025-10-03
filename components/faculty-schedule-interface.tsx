@@ -69,7 +69,10 @@ type FacultyScheduleInterfaceProps = {
 	programs?: {
 		id: string;
 		programCode: string;
+		department?: string;
 	}[];
+	// Explicit department of the currently logged-in Program Head, passed from server page
+	programHeadDept?: string;
 	yearLevels?: {
 		id: string;
 		programId: string;
@@ -98,6 +101,7 @@ type FacultyScheduleInterfaceProps = {
 		designation: string;
 		firstName: string;
 		lastName: string;
+		department?: string;
 	}[];
 	scheduleItems: ScheduleItem[];
 };
@@ -131,6 +135,7 @@ const FacultyScheduleInterface = ({
 	buildingName,
 	data,
 	programs,
+	programHeadDept,
 	yearLevels,
 	sections,
 	courses,
@@ -185,6 +190,10 @@ const FacultyScheduleInterface = ({
 	const scheduleLength = scheduleItems.filter(
 		(schedule) => schedule.classroomId === classroomId
 	).length;
+
+	// Derive route and department for filtering programs in the dropdown (program-head route only)
+	const isProgramHeadRoute = pathname.startsWith("/program-head");
+	const normalizedDept = (programHeadDept || "").trim().toLowerCase();
 
 	// (removed deprecated beginEditItem / cancelEdit in favor of handleEditFromTable)
 
@@ -288,6 +297,8 @@ const FacultyScheduleInterface = ({
 			form.setValue("halfHour", 0, { shouldValidate: true });
 		}
 	}, [durationHours, form]);
+
+	// NOTE: Program filtering by department now handled at the feeder (wrapper/page) level.
 
 	// Pop up state and effect
 	useEffect(() => {
@@ -924,14 +935,30 @@ const FacultyScheduleInterface = ({
 														</FormControl>
 														<SelectContent>
 															<SelectGroup>
-																{programs?.map((program) => (
-																	<SelectItem
-																		key={program.id}
-																		value={program.programCode}
-																	>
-																		{program.programCode}
+																{programs?.length ? (
+																	programs
+																		.filter((program) => {
+																			if (!isProgramHeadRoute) return true;
+																			if (!program.department) return false;
+																			return (
+																				program.department
+																					.trim()
+																					.toLowerCase() === normalizedDept
+																			);
+																		})
+																		.map((program) => (
+																			<SelectItem
+																				key={program.id}
+																				value={program.programCode}
+																			>
+																				{program.programCode}
+																			</SelectItem>
+																		))
+																) : (
+																	<SelectItem disabled value="no-programs">
+																		No programs available
 																	</SelectItem>
-																))}
+																)}
 															</SelectGroup>
 														</SelectContent>
 													</Select>
@@ -1164,10 +1191,22 @@ const FacultyScheduleInterface = ({
 														<SelectContent>
 															<SelectGroup>
 																{professors
-																	?.filter(
-																		(professor) =>
-																			professor.designation !== "Admin"
-																	)
+																	?.filter((professor) => {
+																		// Exclude Admins
+																		if (professor.designation === "Admin") {
+																			return false;
+																		}
+																		// If not on program-head route, show all non-admin professors
+																		if (!isProgramHeadRoute) return true;
+																		// Only include professors with the same department as current program head
+																		const profDept = (professor as any)
+																			.department
+																			? String((professor as any).department)
+																					.trim()
+																					.toLowerCase()
+																			: "";
+																		return profDept === normalizedDept;
+																	})
 																	.map((professor) => (
 																		<SelectItem
 																			key={professor.id}
