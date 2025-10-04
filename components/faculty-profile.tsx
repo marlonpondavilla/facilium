@@ -13,8 +13,13 @@ import {
 	updatePassword,
 	signOut,
 } from "firebase/auth";
-import { auth } from "@/firebase/client";
-import { updateCurrentUserName } from "@/data/actions";
+import { auth, storage } from "@/firebase/client";
+import { updateCurrentUserName, updateCurrentUserPhoto } from "@/data/actions";
+import {
+	ref as storageRef,
+	uploadBytes,
+	getDownloadURL,
+} from "firebase/storage";
 
 import {
 	Card,
@@ -25,7 +30,7 @@ import {
 } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import {
 	Form,
@@ -37,10 +42,21 @@ import {
 } from "./ui/form";
 import { PasswordInput } from "./ui/password-input";
 import LogoutAuthButton from "./logout";
+import ConfirmationHandleDialog from "./confirmation-handle-dialog";
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "./ui/alert-dialog";
+import { Edit, ImageUp } from "lucide-react";
 
 type UserProfile = {
 	id: string;
-	uid: string;
+	employeeNumber: string;
 	email?: string;
 	firstName: string;
 	middleName?: string;
@@ -48,6 +64,7 @@ type UserProfile = {
 	degreeEarned?: string;
 	designation?: string;
 	department?: string;
+	photoURL?: string;
 	created?: Date | string | { toDate: () => Date } | null;
 };
 
@@ -93,6 +110,284 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 	const [isPending, startTransition] = useTransition();
 	const [isPwPending, startPwTransition] = useTransition();
 	const [isPwEditing, setIsPwEditing] = React.useState(false);
+
+	// Avatar state
+	const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+	const [photoPreview, setPhotoPreview] = React.useState<string | null>(
+		(user?.photoURL ?? "").trim() || null
+	);
+	const [cropOpen, setCropOpen] = React.useState(false);
+	const [isUploading, setIsUploading] = React.useState(false);
+	// image natural size
+	const [imgSize, setImgSize] = React.useState<{ w: number; h: number } | null>(
+		null
+	);
+	const [imgReady, setImgReady] = React.useState(false);
+	// keep track of current object URL to revoke it later
+	const previewUrlRef = React.useRef<string | null>(null);
+
+	const MAX_FILE_MB = 2;
+	const allowedTypes = new Set<string>([
+		"image/jpeg",
+		"image/png",
+		"image/webp",
+		"image/gif",
+		"image/avif",
+	]);
+	const allowedExt = new Set<string>([
+		"jpg",
+		"jpeg",
+		"png",
+		"webp",
+		"gif",
+		"avif",
+	]);
+	// viewport constants
+	const VIEW = 280; // px circle viewport
+	const OUTPUT = 512; // px output circle diameter
+	// position/scale
+	const [pos, setPos] = React.useState<{ x: number; y: number }>({
+		x: 0,
+		y: 0,
+	});
+	const [scale, setScale] = React.useState<number>(1);
+	const [minScale, setMinScale] = React.useState<number>(1);
+	const imgRef = React.useRef<HTMLImageElement | null>(null);
+	const dragStart = React.useRef<{ x: number; y: number } | null>(null);
+
+	const handlePickFile = () => fileInputRef.current?.click();
+
+	const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		const type = (file.type || "").toLowerCase();
+		const name = (file.name || "").toLowerCase();
+		const ext = name.includes(".")
+			? name.substring(name.lastIndexOf(".") + 1)
+			: "";
+		// Basic MIME/image check first
+		if (!type.startsWith("image/")) {
+			toast.error("Unsupported file. Please select an image (JPG, PNG, WEBP).");
+			return;
+		}
+		// Stricter allowlist (handle HEIC and other uncommon formats)
+		if (!allowedTypes.has(type) && !allowedExt.has(ext)) {
+			if (ext === "heic" || type.includes("heic") || type.includes("heif")) {
+				toast.error(
+					"HEIC images aren’t supported by this browser. Please convert to JPG/PNG/WEBP."
+				);
+			} else {
+				toast.error(
+					"This image format isn’t supported. Please use JPG, PNG, WEBP, GIF or AVIF."
+				);
+			}
+			return;
+		}
+		if (file.size > MAX_FILE_MB * 1024 * 1024) {
+			toast.error(`Image is too large. Max ${MAX_FILE_MB}MB.`);
+			return;
+		}
+		// Revoke previous preview URL if exists to avoid memory leaks
+		if (previewUrlRef.current) {
+			try {
+				URL.revokeObjectURL(previewUrlRef.current);
+			} catch {}
+		}
+		const localUrl = URL.createObjectURL(file);
+		previewUrlRef.current = localUrl;
+		setPhotoPreview(localUrl);
+		setImgReady(false);
+		// Open crop dialog; scale/position will be initialized on image load
+		setCropOpen(true);
+	};
+
+	// Clamp position so the image always covers the circular viewport bounds
+	const clampPos = React.useCallback(
+		(nx: number, ny: number, sc: number) => {
+			if (!imgSize) return { x: nx, y: ny };
+			const w = imgSize.w * sc;
+			const h = imgSize.h * sc;
+			// Keep image covering the entire circle bounding box (square VIEW x VIEW)
+			const minX = Math.min(0, VIEW - w);
+			const maxX = 0;
+			const minY = Math.min(0, VIEW - h);
+			const maxY = 0;
+			return {
+				x: Math.max(minX, Math.min(nx, maxX)),
+				y: Math.max(minY, Math.min(ny, maxY)),
+			};
+		},
+		[imgSize]
+	);
+
+	const onImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+		const el = e.currentTarget;
+		const w = el.naturalWidth || el.width;
+		const h = el.naturalHeight || el.height;
+		if (!w || !h) return;
+		setImgSize({ w, h });
+		// Fit-cover initial scale to cover the circle box
+		const cover = Math.max(VIEW / w, VIEW / h);
+		setMinScale(cover);
+		setScale(cover);
+		const centered = {
+			x: (VIEW - w * cover) / 2,
+			y: (VIEW - h * cover) / 2,
+		};
+		setPos(centered);
+		setImgReady(true);
+	};
+
+	const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
+		if (!imgSize) return;
+		e.preventDefault();
+		const delta = e.deltaY > 0 ? -0.1 : 0.1;
+		const nextScale = Math.max(minScale, Math.min(4, scale + delta));
+		// Adjust pos to zoom relative to center
+		const centerX = VIEW / 2;
+		const centerY = VIEW / 2;
+		const imgCX = (centerX - pos.x) / scale;
+		const imgCY = (centerY - pos.y) / scale;
+		const nx = centerX - imgCX * nextScale;
+		const ny = centerY - imgCY * nextScale;
+		const fixed = clampPos(nx, ny, nextScale);
+		setScale(nextScale);
+		setPos(fixed);
+	};
+
+	const onMouseDown: React.MouseEventHandler<HTMLDivElement> = (e) => {
+		dragStart.current = { x: e.clientX, y: e.clientY };
+	};
+	const onMouseMove: React.MouseEventHandler<HTMLDivElement> = (e) => {
+		if (!dragStart.current) return;
+		const dx = e.clientX - dragStart.current.x;
+		const dy = e.clientY - dragStart.current.y;
+		dragStart.current = { x: e.clientX, y: e.clientY };
+		const next = clampPos(pos.x + dx, pos.y + dy, scale);
+		setPos(next);
+	};
+	const onMouseUpOrLeave: React.MouseEventHandler<HTMLDivElement> = () => {
+		dragStart.current = null;
+	};
+
+	// Touch drag support
+	const touchStart = React.useRef<{ x: number; y: number } | null>(null);
+	const onTouchStart: React.TouchEventHandler<HTMLDivElement> = (e) => {
+		if (e.touches.length !== 1) return;
+		const t = e.touches[0];
+		touchStart.current = { x: t.clientX, y: t.clientY };
+	};
+	const onTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
+		if (!touchStart.current || e.touches.length !== 1) return;
+		const t = e.touches[0];
+		const dx = t.clientX - touchStart.current.x;
+		const dy = t.clientY - touchStart.current.y;
+		touchStart.current = { x: t.clientX, y: t.clientY };
+		const next = clampPos(pos.x + dx, pos.y + dy, scale);
+		setPos(next);
+	};
+	const onTouchEnd: React.TouchEventHandler<HTMLDivElement> = () => {
+		touchStart.current = null;
+	};
+
+	const resetCrop = () => {
+		setPhotoPreview(null);
+		setImgReady(false);
+		if (previewUrlRef.current) {
+			try {
+				URL.revokeObjectURL(previewUrlRef.current);
+			} catch {}
+			previewUrlRef.current = null;
+		}
+		if (fileInputRef.current) {
+			fileInputRef.current.value = "";
+		}
+	};
+
+	const onImgError: React.ReactEventHandler<HTMLImageElement> = () => {
+		toast.error("Failed to load this image. Please use JPG, PNG, or WEBP.");
+		setCropOpen(false);
+		resetCrop();
+	};
+
+	// Create a circular PNG blob from current viewport
+	const makeCroppedBlob = async (): Promise<Blob | null> => {
+		if (!imgRef.current || !imgSize) return null;
+		const canvas = document.createElement("canvas");
+		canvas.width = OUTPUT;
+		canvas.height = OUTPUT;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return null;
+		// Compute source rect in image pixels corresponding to viewport
+		const sx = -pos.x / scale;
+		const sy = -pos.y / scale;
+		const sw = VIEW / scale;
+		const sh = VIEW / scale;
+		// Clip to circle
+		ctx.clearRect(0, 0, OUTPUT, OUTPUT);
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(OUTPUT / 2, OUTPUT / 2, OUTPUT / 2, 0, Math.PI * 2);
+		ctx.closePath();
+		ctx.clip();
+		// Draw scaled to canvas
+		ctx.drawImage(imgRef.current, sx, sy, sw, sh, 0, 0, OUTPUT, OUTPUT);
+		ctx.restore();
+		return await new Promise<Blob | null>((resolve) =>
+			canvas.toBlob((b) => resolve(b), "image/png")
+		);
+	};
+
+	// Upload flow invoked after password confirmation
+	const performUpload = async (): Promise<boolean> => {
+		const file = fileInputRef.current?.files?.[0];
+		if (!file) {
+			toast.error("No image selected.");
+			return false;
+		}
+		const uid = authCtx?.user?.uid;
+		if (!uid) {
+			toast.error("Not authenticated.");
+			return false;
+		}
+		try {
+			setIsUploading(true);
+			const path = `avatars/${uid}.png`;
+			const ref = storageRef(storage, path);
+			const blob = await makeCroppedBlob();
+			if (!blob) return false;
+			await uploadBytes(ref, blob, { contentType: "image/png" });
+			const url = await getDownloadURL(ref);
+			const res = await updateCurrentUserPhoto({ photoURL: url });
+			if (!res?.success) {
+				toast.error(res?.error || "Failed to update profile photo.");
+				return false;
+			}
+			toast.success("Profile photo updated.");
+			setPhotoPreview(null);
+			setCropOpen(false);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+			router.refresh();
+			return true;
+		} catch (e: unknown) {
+			console.error("Avatar upload failed", e);
+			let code = "";
+			if (e && typeof e === "object" && "code" in e) {
+				const c = (e as Record<string, unknown>).code;
+				if (typeof c === "string") code = c;
+			}
+			if (typeof code === "string" && code.includes("storage/unauthorized")) {
+				toast.error(
+					"Upload blocked by Storage Rules. See notes below for how to allow avatars/{uid}.png."
+				);
+			} else {
+				toast.error("Upload failed.");
+			}
+			return false;
+		} finally {
+			setIsUploading(false);
+		}
+	};
 
 	// Name form
 	const nameSchema = z.object({
@@ -263,22 +558,30 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 	const name = fullName(user);
 	const designation = (user.designation || "").trim() || "Faculty";
 	const department = (user.department || "").trim() || "—";
+	const currentPhotoURL = (user?.photoURL ?? "").trim() || undefined;
 
 	return (
 		<div className="w-full max-w-5xl mx-auto space-y-4">
 			<Card className="w-full">
 				<CardHeader className="flex flex-row items-center gap-4">
-					<Avatar className="size-14">
+					<Avatar className="size-18">
+						{currentPhotoURL && (
+							<AvatarImage
+								className="object-cover"
+								src={currentPhotoURL}
+								alt={name}
+							/>
+						)}
 						<AvatarFallback>
 							{initials(user.firstName, user.lastName)}
 						</AvatarFallback>
 					</Avatar>
 					<div className="flex-1 min-w-0">
 						<CardTitle className="text-xl truncate">{name}</CardTitle>
-						<CardDescription className="text-xs">{`uid: ${user.uid}`}</CardDescription>
+						<CardDescription className="text-xs pb-2">{`Employee Number: ${user.employeeNumber}`}</CardDescription>
 						<div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
 							<Badge variant="outline">{designation}</Badge>
-							<Badge>{department}</Badge>
+							<Badge className="facilium-bg-indigo">{department}</Badge>
 						</div>
 					</div>
 					<div className="hidden sm:flex items-center gap-2">
@@ -292,6 +595,18 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 							disabled={isEditing}
 						>
 							Edit Name
+							<Edit />
+						</Button>
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="image/*"
+							className="hidden"
+							onChange={handleFileChange}
+						/>
+						<Button size="sm" variant="outline" disabled={isUploading}>
+							Change Photo
+							<ImageUp />
 						</Button>
 						<LogoutAuthButton />
 					</div>
@@ -358,13 +673,46 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 									>
 										Cancel
 									</Button>
-									<Button
-										type="submit"
-										disabled={isPending}
-										className="w-full sm:w-auto"
-									>
-										{isPending ? "Saving..." : "Save"}
-									</Button>
+									<ConfirmationHandleDialog
+										trigger={
+											<Button
+												type="button"
+												disabled={isPending}
+												className="w-full sm:w-auto"
+											>
+												{isPending ? "Saving..." : "Save"}
+											</Button>
+										}
+										title="Confirm name change"
+										description="Please confirm with your password to update your name."
+										label="save"
+										requirePassword
+										passwordPlaceholder="Enter your password"
+										confirmButtonText="Yes, save"
+										onConfirm={async () => {
+											// Validate the form first
+											const isValid = await form.trigger();
+											if (!isValid) {
+												toast.error("Please fix the form errors.");
+												return false;
+											}
+											const values = form.getValues();
+											try {
+												const res = await updateCurrentUserName(values);
+												if (res?.success) {
+													toast.success("Your name was updated.");
+													setIsEditing(false);
+													router.refresh();
+													return true;
+												}
+												toast.error(res?.error || "Failed to update name.");
+												return false;
+											} catch {
+												toast.error("Failed to update name.");
+												return false;
+											}
+										}}
+									/>
 								</div>
 							</form>
 						</Form>
@@ -392,7 +740,7 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 						</p>
 					</div>
 					<div>
-						<p className="text-gray-500">Degree</p>
+						<p className="text-gray-500">Degree Attainment</p>
 						<p className="font-medium">{user.degreeEarned || "—"}</p>
 					</div>
 					<div>
@@ -417,6 +765,93 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 				)}
 				<LogoutAuthButton />
 			</div>
+
+			{/* Crop dialog popup */}
+			<AlertDialog
+				open={cropOpen}
+				onOpenChange={(o) => {
+					setCropOpen(o);
+					if (!o) {
+						resetCrop();
+					}
+				}}
+			>
+				<AlertDialogContent className="max-w-md">
+					<AlertDialogHeader>
+						<AlertDialogTitle>Adjust your profile picture</AlertDialogTitle>
+						<AlertDialogDescription>
+							Use mouse wheel to adjust and zoom your photo.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<div className="flex flex-col items-center gap-3">
+						<div
+							onMouseDown={onMouseDown}
+							onMouseMove={onMouseMove}
+							onMouseUp={onMouseUpOrLeave}
+							onMouseLeave={onMouseUpOrLeave}
+							onWheel={onWheel}
+							onTouchStart={onTouchStart}
+							onTouchMove={onTouchMove}
+							onTouchEnd={onTouchEnd}
+							className="relative select-none"
+							style={{ width: VIEW, height: VIEW, touchAction: "none" }}
+						>
+							<div className="relative rounded-full overflow-hidden w-full h-full bg-black/5 cursor-grab active:cursor-grabbing">
+								{photoPreview ? (
+									// eslint-disable-next-line @next/next/no-img-element
+									<img
+										ref={imgRef}
+										src={photoPreview}
+										alt="Preview"
+										onLoad={onImgLoad}
+										onError={onImgError}
+										draggable={false}
+										style={{
+											position: "absolute",
+											left: pos.x,
+											top: pos.y,
+											transform: `scale(${scale})`,
+											transformOrigin: "top left",
+											userSelect: "none",
+											pointerEvents: "none",
+											opacity: imgReady ? 1 : 0,
+											maxWidth: "none",
+											maxHeight: "none",
+										}}
+									/>
+								) : null}
+							</div>
+						</div>
+						<div className="text-xs text-muted-foreground">
+							A password confirmation will require you after this.
+						</div>
+					</div>
+					<AlertDialogFooter>
+						<AlertDialogCancel
+							onClick={() => {
+								setCropOpen(false);
+								resetCrop();
+							}}
+						>
+							Cancel
+						</AlertDialogCancel>
+						<ConfirmationHandleDialog
+							trigger={
+								<Button disabled={isUploading}>
+									{isUploading ? "Uploading..." : "Upload"}
+								</Button>
+							}
+							title="Confirm upload"
+							description="Please confirm with your password to upload your new profile photo."
+							label="upload"
+							requirePassword
+							passwordPlaceholder="Enter your password"
+							confirmButtonText="Yes, upload"
+							onConfirm={performUpload}
+						/>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			<Card className="w-full">
 				<CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

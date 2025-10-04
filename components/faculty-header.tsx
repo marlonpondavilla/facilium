@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 import { Button } from "./ui/button";
 import { useRequireAuth } from "@/lib/use-require-auth";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const alegreyaSC = Alegreya_SC({
 	subsets: ["latin"],
@@ -19,6 +20,7 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 	const pathname = usePathname();
 	const auth = useAuth();
 	const userDisplayName = auth?.user?.displayName ?? "--";
+	const photoURL = (auth?.user?.photoURL || "").trim() || undefined;
 
 	// Centralized guard
 	useRequireAuth();
@@ -84,12 +86,32 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 						<h3 className="text-base">{auth?.user?.displayName}</h3>
 						<h4 className="text-xs text-gray-500">{auth?.user?.email}</h4>
 					</div>
-					<Button
-						onClick={handleProfileClick}
-						className="border text-center text-2xl h-full px-3 facilium-bg-indigo facilium-color-white cursor-pointer hover:opacity-70 transition-all rounded"
-					>
-						{profileName}
-					</Button>
+					{photoURL ? (
+						<button
+							onClick={handleProfileClick}
+							className="rounded-full p-0 focus:outline-none"
+							aria-label="Open profile"
+							title="Open profile"
+						>
+							<Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-1 ring-gray-200 cursor-pointer">
+								<AvatarImage
+									src={photoURL}
+									alt={userDisplayName}
+									className="object-cover"
+								/>
+								<AvatarFallback className="text-base">
+									{profileName}
+								</AvatarFallback>
+							</Avatar>
+						</button>
+					) : (
+						<Button
+							onClick={handleProfileClick}
+							className="border text-center text-2xl h-full px-3 facilium-bg-indigo facilium-color-white cursor-pointer hover:opacity-70 transition-all rounded"
+						>
+							{profileName}
+						</Button>
+					)}
 				</div>
 			</div>
 

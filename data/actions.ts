@@ -634,3 +634,33 @@ export const updateCurrentUserName = async (params: {
 		return { success: false, error: "Failed to update name." } as const;
 	}
 };
+
+// Update current user's photoURL (Firestore userData + Firebase Auth photoURL)
+export const updateCurrentUserPhoto = async (params: { photoURL: string }) => {
+	const { photoURL } = params || ({} as any);
+	if (!photoURL || typeof photoURL !== "string") {
+		return { success: false, error: "photoURL is required" } as const;
+	}
+	try {
+		const current = await getCurrentUserData();
+		if (!current?.id || !current?.uid) {
+			return { success: false, error: "Not authenticated." } as const;
+		}
+
+		// Update Firestore userData doc
+		await firestore.collection("userData").doc(current.id).update({ photoURL });
+
+		// Update Firebase Auth photoURL via Admin SDK
+		if (adminAuth) {
+			await adminAuth.updateUser(current.uid, { photoURL });
+		}
+
+		return { success: true } as const;
+	} catch (e) {
+		console.error("updateCurrentUserPhoto failed", e);
+		return {
+			success: false,
+			error: "Failed to update profile photo.",
+		} as const;
+	}
+};

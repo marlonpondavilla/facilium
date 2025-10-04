@@ -15,7 +15,7 @@ const LogoutAuthButton = () => {
 			size={"default"}
 			variant={"destructive"}
 			disabled={!!loggingOut}
-			className="flex items-center gap-2"
+			className="flex items-center gap-2 rounded-full"
 		>
 			{loggingOut && (
 				<Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
