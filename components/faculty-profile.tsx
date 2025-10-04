@@ -155,8 +155,6 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 	const imgRef = React.useRef<HTMLImageElement | null>(null);
 	const dragStart = React.useRef<{ x: number; y: number } | null>(null);
 
-	const handlePickFile = () => fileInputRef.current?.click();
-
 	const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
 		const file = e.target.files?.[0];
 		if (!file) return;
@@ -367,6 +365,12 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 			setPhotoPreview(null);
 			setCropOpen(false);
 			if (fileInputRef.current) fileInputRef.current.value = "";
+			if (previewUrlRef.current) {
+				try {
+					URL.revokeObjectURL(previewUrlRef.current);
+				} catch {}
+				previewUrlRef.current = null;
+			}
 			router.refresh();
 			return true;
 		} catch (e: unknown) {
@@ -598,15 +602,21 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 							<Edit />
 						</Button>
 						<input
+							id="avatar-file"
 							ref={fileInputRef}
 							type="file"
 							accept="image/*"
-							className="hidden"
+							className="sr-only"
 							onChange={handleFileChange}
 						/>
-						<Button size="sm" variant="outline" disabled={isUploading}>
-							Change Photo
-							<ImageUp />
+						<Button asChild size="sm" variant="outline" disabled={isUploading}>
+							<label
+								htmlFor="avatar-file"
+								className="cursor-pointer flex items-center gap-1"
+							>
+								<span>Change Photo</span>
+								<ImageUp className="h-4 w-4" />
+							</label>
 						</Button>
 						<LogoutAuthButton />
 					</div>
@@ -763,6 +773,18 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 						Edit Name
 					</Button>
 				)}
+				<label htmlFor="avatar-file" className="sr-only">
+					Change Photo
+				</label>
+				<Button asChild size="sm" variant="outline" disabled={isUploading}>
+					<label
+						htmlFor="avatar-file"
+						className="cursor-pointer flex items-center gap-1"
+					>
+						<ImageUp className="h-4 w-4" />
+						<span>Change Photo</span>
+					</label>
+				</Button>
 				<LogoutAuthButton />
 			</div>
 
