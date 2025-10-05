@@ -664,3 +664,32 @@ export const updateCurrentUserPhoto = async (params: { photoURL: string }) => {
 		} as const;
 	}
 };
+
+// Update current user's degree attainment (Firestore userData)
+export const updateCurrentUserDegree = async (params: {
+	degreeEarned: string;
+}) => {
+	const { degreeEarned } = params || ({} as any);
+	if (!degreeEarned || typeof degreeEarned !== "string") {
+		return { success: false, error: "degreeEarned is required" } as const;
+	}
+	try {
+		const current = await getCurrentUserData();
+		if (!current?.id) {
+			return { success: false, error: "Not authenticated." } as const;
+		}
+
+		await firestore
+			.collection("userData")
+			.doc(current.id)
+			.update({ degreeEarned });
+
+		return { success: true } as const;
+	} catch (e) {
+		console.error("updateCurrentUserDegree failed", e);
+		return {
+			success: false,
+			error: "Failed to update degree attainment.",
+		} as const;
+	}
+};

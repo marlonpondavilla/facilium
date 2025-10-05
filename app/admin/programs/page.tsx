@@ -31,7 +31,7 @@ const Page = async () => {
 						className="hover:shadow-lg transition-shadow duration-200 h-full flex flex-col"
 					>
 						<CardHeader className="flex-1 text-center space-y-3 pb-4">
-							<CardTitle className="text-xl sm:text-2xl tracking-wide font-bold text-indigo-600 break-words">
+							<CardTitle className="text-xl sm:text-2xl tracking-wide font-bold facilium-color-indigo break-words">
 								{program.programCode.toUpperCase()}
 							</CardTitle>
 							<CardDescription className="text-sm sm:text-base tracking-wide text-gray-600 leading-relaxed break-words px-2">
