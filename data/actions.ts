@@ -665,6 +665,53 @@ export const updateCurrentUserPhoto = async (params: { photoURL: string }) => {
 	}
 };
 
+// Get count of approved schedules for a given classroom id
+export const getApprovedScheduleCountByClassroomId = async (
+	classroomId: string
+): Promise<number> => {
+	if (!classroomId) return 0;
+	try {
+		const snapshot = await firestore
+			.collection("approvedScheduleData")
+			.where("classroomId", "==", classroomId)
+			.count()
+			.get();
+		return snapshot.data().count ?? 0;
+	} catch (e) {
+		console.error(
+			"Error counting approved schedules for classroom",
+			classroomId,
+			e
+		);
+		return 0;
+	}
+};
+
+// Batch: get counts for multiple classroom ids
+export const getApprovedScheduleCounts = async (
+	classroomIds: string[]
+): Promise<Record<string, number>> => {
+	const ids = Array.from(new Set((classroomIds || []).filter(Boolean)));
+	const results: Record<string, number> = {};
+	if (ids.length === 0) return results;
+	try {
+		await Promise.all(
+			ids.map(async (id) => {
+				const snapshot = await firestore
+					.collection("approvedScheduleData")
+					.where("classroomId", "==", id)
+					.count()
+					.get();
+				results[id] = snapshot.data().count ?? 0;
+			})
+		);
+		return results;
+	} catch (e) {
+		console.error("Error counting approved schedules for classrooms", e);
+		return results;
+	}
+};
+
 // Update current user's degree attainment (Firestore userData)
 export const updateCurrentUserDegree = async (params: {
 	degreeEarned: string;

@@ -9,75 +9,71 @@ import EnableDisableAction from "@/components/enable-disable-action";
 
 type ClassroomTableProps = {
 	classrooms: ClassroomType[];
+	counts?: Record<string, number>;
 };
 
-const ClassroomTable = ({ classrooms }: ClassroomTableProps) => {
+const ClassroomTable = ({ classrooms, counts = {} }: ClassroomTableProps) => {
 	const { id } = useParams();
 	return (
 		<>
-			{classrooms
-				.filter((classroom) => classroom.buildingId === id)
-				.map((classroom) => (
-					<TableRow key={classroom.id}>
-						<TableCell>{classroom.classroomName}</TableCell>
-						<TableCell>{classroom.scheduledSubjects ?? 0}</TableCell>
-						<TableCell
-							className={`${
-								classroom.status === "Enabled"
-									? "text-green-500"
-									: "text-red-500"
-							}`}
-						>
-							{classroom.status}
-						</TableCell>
-						<TableCell className="flex gap-2 items-center">
-							{/* disable the classroom */}
-							<EnableDisableAction
-								data={{
-									id: classroom.id,
-									status: classroom.status,
-									collectionName: "classrooms",
-									label: "classroom",
-								}}
-							/>
-							{/* the relatedfields will subtract 1 to the field (classroom) in building with the id in the useParams */}
-							<DeleteDocumentWithConfirmation
-								data={{
-									id: classroom.id,
-									collectionName: "classrooms",
-									label: "classroom",
-									relatedFields: {
-										id: String(id),
-										collectionName: "buildings",
-										fieldName: "classroom",
-										amount: -1,
+			{classrooms.map((classroom) => (
+				<TableRow key={classroom.id}>
+					<TableCell>{classroom.classroomName}</TableCell>
+					<TableCell>{counts[classroom.id] ?? 0}</TableCell>
+					<TableCell
+						className={`${
+							classroom.status === "Enabled" ? "text-green-500" : "text-red-500"
+						}`}
+					>
+						{classroom.status}
+					</TableCell>
+					<TableCell className="flex gap-2 items-center">
+						{/* disable the classroom */}
+						<EnableDisableAction
+							data={{
+								id: classroom.id,
+								status: classroom.status,
+								collectionName: "classrooms",
+								label: "classroom",
+							}}
+						/>
+						{/* the relatedfields will subtract 1 to the field (classroom) in building with the id in the useParams */}
+						<DeleteDocumentWithConfirmation
+							data={{
+								id: classroom.id,
+								collectionName: "classrooms",
+								label: "classroom",
+								relatedFields: {
+									id: String(id),
+									collectionName: "buildings",
+									fieldName: "classroom",
+									amount: -1,
+								},
+								// will delete the related document with the classroom id to be deleted
+								batchFields: [
+									{
+										id: classroom.id,
+										collectionName: "scheduleData",
+										fieldName: "classroomId",
 									},
-									// will delete the related document with the classroom id to be deleted
-									batchFields: [
-										{
-											id: classroom.id,
-											collectionName: "scheduleData",
-											fieldName: "classroomId",
-										},
-										{
-											id: classroom.id,
-											collectionName: "pendingScheduleData",
-											fieldName: "classroomId",
-										},
-										{
-											id: classroom.id,
-											collectionName: "approvedScheduleData",
-											fieldName: "classroomId",
-										},
-									],
-								}}
-							/>
-						</TableCell>
-					</TableRow>
-				))}
+									{
+										id: classroom.id,
+										collectionName: "pendingScheduleData",
+										fieldName: "classroomId",
+									},
+									{
+										id: classroom.id,
+										collectionName: "approvedScheduleData",
+										fieldName: "classroomId",
+									},
+								],
+							}}
+						/>
+					</TableCell>
+				</TableRow>
+			))}
 
-			{classrooms.filter((classroom) => classroom.buildingId === id).length ===
-				0 && (
+			{classrooms.length === 0 && (
 				<TableRow>
 					<TableCell colSpan={4} className="text-center text-gray-500 py-4">
 						No classrooms found for this building

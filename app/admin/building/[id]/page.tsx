@@ -8,13 +8,25 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { getDocumentsFromFirestore } from "@/data/actions";
+import {
+	getApprovedScheduleCounts,
+	getDocumentsFromFirestore,
+} from "@/data/actions";
 import { ClassroomType } from "@/types/classroomType";
 import ClassroomTable from "./classroom-table";
 
-const Page = async () => {
+export default async function Page({
+	params,
+}: {
+	params: Promise<{ id: string }>;
+}) {
+	const { id } = await params;
 	const classrooms = await getDocumentsFromFirestore<ClassroomType>(
 		"classrooms"
+	);
+	const buildingRooms = classrooms.filter((c) => c.buildingId === id);
+	const counts = await getApprovedScheduleCounts(
+		buildingRooms.map((c) => c.id)
 	);
 	return (
 		<div>
@@ -29,20 +41,18 @@ const Page = async () => {
 						</TableRow>
 					</TableHeader>
 					<TableBody className="facilium-bg-whiter">
-						{classrooms.length < 1 ? (
+						{buildingRooms.length < 1 ? (
 							<TableRow>
 								<TableCell colSpan={4} className="text-center py-6">
 									No data found
 								</TableCell>
 							</TableRow>
 						) : (
-							<ClassroomTable classrooms={classrooms} />
+							<ClassroomTable classrooms={buildingRooms} counts={counts} />
 						)}
 					</TableBody>
 				</Table>
 			</ClassroomComponent>
 		</div>
 	);
-};
-
-export default Page;
+}
