@@ -291,6 +291,19 @@ const FacultyScheduleInterface = ({
 	const durationHours = Number(form.watch("duration") ?? 0);
 	const disableHalfHour = !durationHours || durationHours >= 5;
 
+	// Enable Add only when form is fully filled (halfHour is optional).
+	const canAddSchedule = Boolean(
+		classroomId &&
+			programSelected &&
+			yearLevelSelected &&
+			sectionSelected &&
+			courseCodeSelected &&
+			professorSelected &&
+			daySelected &&
+			startSelected &&
+			durationHours > 0
+	);
+
 	// If duration reaches 5hrs, ensure +30mins gets unchecked to keep state valid
 	useEffect(() => {
 		if (durationHours >= 5 && form.getValues("halfHour")) {
@@ -878,7 +891,10 @@ const FacultyScheduleInterface = ({
 					</div>
 					<Form {...form}>
 						<form
-							onSubmit={form.handleSubmit(handleScheduleAdd)}
+							onSubmit={(e) => {
+								e.preventDefault();
+								return false;
+							}}
 							className={`p-4 flex-col gap-4 ${
 								!pathname.startsWith("/program-head") ? "hidden" : "flex"
 							}`}
@@ -1404,14 +1420,47 @@ const FacultyScheduleInterface = ({
 								</div>
 
 								{/* Add schedule Button */}
-								{classroomId && (
+								{classroomId && !canAddSchedule && (
 									<Button
-										type="submit"
+										type="button"
 										className="facilium-bg-indigo text-white w-full"
-										disabled={isPendingScheduleExist}
+										disabled
 									>
-										{form.formState.isSubmitting ? "Adding" : "Add Schedule"}
+										Add Schedule
 									</Button>
+								)}
+								{classroomId && canAddSchedule && (
+									<ConfirmationHandleDialog
+										trigger={
+											<Button
+												type="button"
+												className="facilium-bg-indigo text-white w-full"
+												disabled={isPendingScheduleExist}
+											>
+												{form.formState.isSubmitting
+													? "Adding"
+													: "Add Schedule"}
+											</Button>
+										}
+										title="Confirm adding this schedule"
+										description={
+											'Before adding, please type "confirm" to proceed.'
+										}
+										label="add"
+										onConfirm={async () => {
+											const valid = await form.trigger(undefined, {
+												shouldFocus: true,
+											});
+											if (!valid) return false;
+											await handleScheduleAdd(form.getValues());
+										}}
+										requireText
+										expectedText="confirm"
+										textPlaceholder={'Type "confirm"'}
+										textLabel={'Type "confirm" to add this schedule'}
+										caseSensitive={false}
+										confirmButtonText="Yes, add"
+									/>
 								)}
 
 								{/* Submit schedule to dean */}

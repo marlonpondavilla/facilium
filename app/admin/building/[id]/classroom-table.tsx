@@ -9,17 +9,15 @@ import EnableDisableAction from "@/components/enable-disable-action";
 
 type ClassroomTableProps = {
 	classrooms: ClassroomType[];
-	counts?: Record<string, number>;
 };
 
-const ClassroomTable = ({ classrooms, counts = {} }: ClassroomTableProps) => {
+const ClassroomTable = ({ classrooms }: ClassroomTableProps) => {
 	const { id } = useParams();
 	return (
 		<>
 			{classrooms.map((classroom) => (
 				<TableRow key={classroom.id}>
 					<TableCell>{classroom.classroomName}</TableCell>
-					<TableCell>{counts[classroom.id] ?? 0}</TableCell>
 					<TableCell
 						className={`${
 							classroom.status === "Enabled" ? "text-green-500" : "text-red-500"
@@ -75,7 +73,7 @@ const ClassroomTable = ({ classrooms, counts = {} }: ClassroomTableProps) => {
 
 			{classrooms.length === 0 && (
 				<TableRow>
-					<TableCell colSpan={4} className="text-center text-gray-500 py-4">
+					<TableCell colSpan={3} className="text-center text-gray-500 py-4">
 						No classrooms found for this building
 					</TableCell>
 				</TableRow>

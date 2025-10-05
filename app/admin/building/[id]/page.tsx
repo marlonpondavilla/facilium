@@ -8,10 +8,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	getApprovedScheduleCounts,
-	getDocumentsFromFirestore,
-} from "@/data/actions";
+import { getDocumentsFromFirestore } from "@/data/actions";
 import { ClassroomType } from "@/types/classroomType";
 import ClassroomTable from "./classroom-table";
 
@@ -25,9 +22,6 @@ export default async function Page({
 		"classrooms"
 	);
 	const buildingRooms = classrooms.filter((c) => c.buildingId === id);
-	const counts = await getApprovedScheduleCounts(
-		buildingRooms.map((c) => c.id)
-	);
 	return (
 		<div>
 			<ClassroomComponent>
@@ -35,7 +29,6 @@ export default async function Page({
 					<TableHeader>
 						<TableRow className="facilium-bg-indigo ">
 							<TableHead className="text-white">Classroom Name</TableHead>
-							<TableHead className="text-white">Scheduled Subjects</TableHead>
 							<TableHead className="text-white">Status</TableHead>
 							<TableHead className="text-white">Action</TableHead>
 						</TableRow>
@@ -43,12 +36,12 @@ export default async function Page({
 					<TableBody className="facilium-bg-whiter">
 						{buildingRooms.length < 1 ? (
 							<TableRow>
-								<TableCell colSpan={4} className="text-center py-6">
+								<TableCell colSpan={3} className="text-center py-6">
 									No data found
 								</TableCell>
 							</TableRow>
 						) : (
-							<ClassroomTable classrooms={buildingRooms} counts={counts} />
+							<ClassroomTable classrooms={buildingRooms} />
 						)}
 					</TableBody>
 				</Table>

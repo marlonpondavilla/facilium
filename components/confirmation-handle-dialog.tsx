@@ -30,6 +30,12 @@ interface ConfirmationHandleDialogProps {
 	requirePassword?: boolean;
 	passwordPlaceholder?: string;
 	contentClassName?: string;
+	// New: require typing a specific text (e.g., "confirm") before allowing action
+	requireText?: boolean;
+	expectedText?: string; // default: "confirm"
+	textPlaceholder?: string; // default: 'Type "confirm"'
+	textLabel?: string; // default: 'Type "confirm" to proceed'
+	caseSensitive?: boolean; // default: false
 }
 
 const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
@@ -45,10 +51,16 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 	requirePassword = false,
 	passwordPlaceholder = "Enter your password",
 	contentClassName,
+	requireText = false,
+	expectedText = "confirm",
+	textPlaceholder = 'Type "confirm"',
+	textLabel,
+	caseSensitive = false,
 }) => {
 	const [open, setOpen] = useState(false);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [text, setText] = useState("");
 	const [error, setError] = useState<string>("");
 	const [isVerifying, setIsVerifying] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,8 +78,19 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 		return true; // no expected email provided, any non-empty email accepted
 	}, [requireEmail, email, normalizedExpected]);
 
+	const textMatches = useMemo(() => {
+		if (!requireText) return true;
+		const entered = caseSensitive ? text : text.trim().toLowerCase();
+		const expected = caseSensitive
+			? expectedText
+			: expectedText.trim().toLowerCase();
+		if (!entered) return false;
+		return entered === expected;
+	}, [requireText, text, expectedText, caseSensitive]);
+
 	const canConfirm =
 		(!requireEmail || emailMatches) &&
+		(!requireText || textMatches) &&
 		(!requirePassword || password.trim().length > 0) &&
 		!isVerifying &&
 		!isSubmitting;
@@ -75,6 +98,7 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 	const resetState = () => {
 		setEmail("");
 		setPassword("");
+		setText("");
 		setError("");
 		setIsVerifying(false);
 	};
@@ -163,6 +187,20 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 				return;
 			}
 		}
+		if (requireText) {
+			if (!text.trim()) {
+				setError(`Please type "${expectedText}" to confirm.`);
+				return;
+			}
+			const entered = caseSensitive ? text : text.trim().toLowerCase();
+			const expected = caseSensitive
+				? expectedText
+				: expectedText.trim().toLowerCase();
+			if (entered !== expected) {
+				setError(`Confirmation text does not match "${expectedText}".`);
+				return;
+			}
+		}
 		const passwordOk = await runPasswordCheck();
 		if (!passwordOk) return; // keep dialog open, show error
 
@@ -235,7 +273,7 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 						{description}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
-				{(requireEmail || requirePassword) && (
+				{(requireEmail || requirePassword || requireText) && (
 					<div className="space-y-4 py-2">
 						{requireEmail && (
 							<div className="space-y-2">
@@ -274,6 +312,52 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 										) : (
 											<p className="text-[11px] text-gray-500">
 												Must match your account email.
+											</p>
+										)}
+									</div>
+								)}
+							</div>
+						)}
+						{requireText && (
+							<div className="space-y-2">
+								<label className="text-xs font-medium text-gray-700">
+									{textLabel ?? 'Type "confirm" to proceed'}
+								</label>
+								<Input
+									type="text"
+									placeholder={textPlaceholder}
+									value={text}
+									onChange={(e) => {
+										setText(e.target.value);
+										if (error) setError("");
+									}}
+									className={[
+										requireText && text && textMatches
+											? "border-green-500 focus-visible:ring-green-500"
+											: "",
+										error && !textMatches
+											? "border-red-500 focus-visible:ring-red-500"
+											: "",
+									]
+										.filter(Boolean)
+										.join(" ")}
+								/>
+								{requireText && text && (
+									<div className="flex items-center gap-2 min-h-5">
+										{textMatches ? (
+											<>
+												<Check className="w-4 h-4 text-green-600" />
+												<p className="text-[11px] text-green-700">
+													Looks good.
+												</p>
+											</>
+										) : (
+											<p className="text-[11px] text-gray-500">
+												Type{" "}
+												{caseSensitive
+													? "exactly"
+													: '"confirm" (not case-sensitive)'}{" "}
+												to enable.
 											</p>
 										)}
 									</div>
