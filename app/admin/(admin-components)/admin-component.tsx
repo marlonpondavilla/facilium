@@ -29,6 +29,7 @@ import { Minus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import DashboardAnalyticsChart from "@/components/dashboard-analytics-chart";
 
 type AcademicYearData = {
 	startAcademicYear: number;
@@ -36,7 +37,7 @@ type AcademicYearData = {
 	term: string;
 };
 
-const AdminComponent = ({ academicYears }: AdminComponentProps) => {
+const AdminComponent = ({ academicYears, analytics }: AdminComponentProps) => {
 	const activeYear = academicYears.find((year) => year.isActive);
 	const activeYearValue = activeYear
 		? `${activeYear.startAcademicYear}-${activeYear.endAcademicYear}`
@@ -167,7 +168,87 @@ const AdminComponent = ({ academicYears }: AdminComponentProps) => {
 		<div className="flex flex-col gap-8">
 			<AdminHeaderTitle title="Dashboard" />
 
+			{/* Analytics Overview */}
+			{analytics && (
+				<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+					<Card>
+						<CardHeader>
+							<CardTitle className="text-base">Users</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-3xl font-semibold">{analytics.users}</p>
+							<p className="text-sm text-muted-foreground">Total registered</p>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="text-base">Schedules</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="space-y-1">
+								<p className="text-3xl font-semibold">
+									{analytics.schedules.approved}
+								</p>
+								<p className="text-sm text-muted-foreground">Approved</p>
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="text-base">Facilities</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-3xl font-semibold">{analytics.facilities}</p>
+							<p className="text-sm text-muted-foreground">Buildings</p>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="text-base">Classrooms</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-3xl font-semibold">{analytics.classrooms}</p>
+							<p className="text-sm text-muted-foreground">Total rooms</p>
+						</CardContent>
+					</Card>
+
+					<Card className="md:col-span-2 xl:col-span-2">
+						<CardHeader>
+							<CardTitle className="text-base">Courses & Sections</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="grid grid-cols-2 gap-4">
+								<div>
+									<p className="text-3xl font-semibold">{analytics.courses}</p>
+									<p className="text-sm text-muted-foreground">Courses</p>
+								</div>
+								<div>
+									<p className="text-3xl font-semibold">{analytics.sections}</p>
+									<p className="text-sm text-muted-foreground">Sections</p>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+
 			<div className="space-y-6">
+				{/* Visual Analytics */}
+				{analytics && (
+					<Card>
+						<CardHeader>
+							<CardTitle className="text-lg font-semibold text-gray-800">
+								Overview
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<DashboardAnalyticsChart analytics={analytics} />
+						</CardContent>
+					</Card>
+				)}
 				{/* Add Academic Year Section */}
 				<Card>
 					<CardHeader>
