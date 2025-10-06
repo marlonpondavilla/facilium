@@ -16,6 +16,7 @@ import { useAuth } from "@/context/auth";
 import { loginSchema } from "@/validation/loginSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import ForgotPasswordDialog from "@/components/forgot-password-dialog";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { useForm } from "react-hook-form";
@@ -136,12 +137,9 @@ const LoginForm = () => {
 						{form.formState.isSubmitting ? "Logging in" : "Login"}
 					</Button>
 					<div className="links flex flex-col justify-center items-center mt-2">
-						<Link
-							href={"/forgot-password"}
-							className="text-sm hover:text-amber-600 mb-4"
-						>
-							Forgot password?
-						</Link>
+						<div className="mb-4">
+							<ForgotPasswordDialog />
+						</div>
 						<Separator className="w-full" />
 						<span className="mt-2">or</span>
 						<Link href={"/signup"} className="underline mt-2 font-medium">
