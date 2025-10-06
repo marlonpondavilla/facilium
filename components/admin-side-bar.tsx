@@ -16,11 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alegreya_SC } from "next/font/google";
 import Link from "next/link";
-
-const alegreyaSC = Alegreya_SC({
-	subsets: ["latin"],
-	weight: ["400", "700"],
-});
+import { alegreyaSC } from "@/data/fonts";
 
 const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 	const auth = useAuth();

@@ -1,6 +1,7 @@
 import React from "react";
 import LoginForm from "./login-form";
 import Image from "next/image";
+import { alegreyaSC } from "@/data/fonts";
 
 const Login = () => {
 	return (
@@ -17,7 +18,9 @@ const Login = () => {
 							className="w-16 h-16"
 							priority
 						/>
-						<h1 className="font-bold leading-tight text-base sm:text-lg md:text-xl">
+						<h1
+							className={`font-bold leading-tight text-base sm:text-lg md:text-xl ${alegreyaSC.className}`}
+						>
 							Bulacan State University <br className="hidden sm:block" />
 							Meneses Campus
 						</h1>

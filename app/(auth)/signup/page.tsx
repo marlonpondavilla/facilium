@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { RegisterForm } from "./register-form";
+import { alegreyaSC } from "@/data/fonts";
 
 export default function Signup() {
 	return (
@@ -15,7 +16,9 @@ export default function Signup() {
 							className="w-16 h-16 sm:w-20 sm:h-20"
 							priority
 						/>
-						<h1 className="font-bold leading-tight text-base sm:text-lg md:text-xl text-center">
+						<h1
+							className={`font-bold leading-tight text-base sm:text-lg md:text-xl text-center ${alegreyaSC.className}`}
+						>
 							Bulacan State University
 							<span className="block">Meneses Campus</span>
 						</h1>
