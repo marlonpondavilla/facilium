@@ -21,10 +21,26 @@ import { useRouter } from "next/navigation";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const LoginForm = () => {
 	const auth = useAuth();
 	const router = useRouter();
+	const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
+	const [verifyingCaptcha, setVerifyingCaptcha] = React.useState(false);
+	const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY as
+		| string
+		| undefined;
+	const recaptchaRef = React.useRef<ReCAPTCHA | null>(null);
+
+	const resetCaptcha = () => {
+		try {
+			recaptchaRef.current?.reset();
+		} catch {
+			console.error("There is a problem in resetting the captcha.");
+		}
+		setCaptchaToken(null);
+	};
 
 	const form = useForm<z.infer<typeof loginSchema>>({
 		resolver: zodResolver(loginSchema),
@@ -36,6 +52,29 @@ const LoginForm = () => {
 
 	const handleSubmit = async (data: z.infer<typeof loginSchema>) => {
 		try {
+			// Ensure captcha is solved and verified server-side
+			if (!captchaToken) {
+				form.setError("root", {
+					type: "custom",
+					message: "Please complete the captcha.",
+				});
+				return;
+			}
+			setVerifyingCaptcha(true);
+			const res = await fetch("/api/auth/verify-captcha", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ token: captchaToken }),
+			});
+			const verify = (await res.json()) as { success: boolean };
+			if (!verify.success) {
+				form.setError("root", {
+					type: "custom",
+					message: "Captcha verification failed. Please try again.",
+				});
+				resetCaptcha();
+				return;
+			}
 			await auth?.login(data.email, data.password);
 			router.push("/dashboard");
 		} catch (e: unknown) {
@@ -50,6 +89,7 @@ const LoginForm = () => {
 					form.setError("email", { type: "custom", message: "" });
 					form.setError("password", { type: "custom", message: "" });
 					await auth?.logout();
+					resetCaptcha();
 				} else if (
 					error.message === "Please verify your email before logging in."
 				) {
@@ -60,6 +100,7 @@ const LoginForm = () => {
 					form.setError("email", { type: "custom", message: "" });
 					form.setError("password", { type: "custom", message: "" });
 					await auth?.logout();
+					resetCaptcha();
 				} else if (error.message?.toLowerCase().includes("disabled")) {
 					form.setError("root", {
 						type: "custom",
@@ -69,6 +110,7 @@ const LoginForm = () => {
 					form.setError("email", { type: "custom", message: "" });
 					form.setError("password", { type: "custom", message: "" });
 					await auth?.logout();
+					resetCaptcha();
 				} else {
 					form.setError("root", {
 						type: "custom",
@@ -76,10 +118,14 @@ const LoginForm = () => {
 					});
 					form.setError("email", { type: "custom", message: "" });
 					form.setError("password", { type: "custom", message: "" });
+					resetCaptcha();
 				}
 			} else {
 				form.setError("root", { type: "custom", message: "An error occurred" });
+				resetCaptcha();
 			}
+		} finally {
+			setVerifyingCaptcha(false);
 		}
 	};
 
@@ -94,7 +140,7 @@ const LoginForm = () => {
 					</div>
 				)}
 				<fieldset
-					disabled={form.formState.isSubmitting}
+					disabled={form.formState.isSubmitting || verifyingCaptcha}
 					className="flex flex-col gap-4 w-full max-w-sm mx-auto"
 				>
 					<FormField
@@ -133,8 +179,30 @@ const LoginForm = () => {
 							</FormItem>
 						)}
 					/>
-					<Button type="submit" className="mt-2 w-full">
-						{form.formState.isSubmitting ? "Logging in" : "Login"}
+					<div className="mt-1">
+						{recaptchaSiteKey ? (
+							<ReCAPTCHA
+								ref={recaptchaRef}
+								sitekey={recaptchaSiteKey}
+								onChange={(token: string | null) => setCaptchaToken(token)}
+								onExpired={resetCaptcha}
+								onErrored={resetCaptcha}
+							/>
+						) : (
+							<p className="text-sm text-red-600" role="alert">
+								reCAPTCHA is not configured. Please set
+								NEXT_PUBLIC_RECAPTCHA_SITE_KEY.
+							</p>
+						)}
+					</div>
+					<Button
+						type="submit"
+						className="mt-2 w-full"
+						disabled={!captchaToken || !recaptchaSiteKey}
+					>
+						{form.formState.isSubmitting || verifyingCaptcha
+							? "Validating..."
+							: "Login"}
 					</Button>
 					<div className="links flex flex-col justify-center items-center mt-2">
 						<div className="mb-4">
