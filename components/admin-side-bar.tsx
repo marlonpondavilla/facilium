@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alegreya_SC } from "next/font/google";
 import Link from "next/link";
 import { alegreyaSC } from "@/data/fonts";
 
@@ -25,7 +24,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 
 	// block non auth user (avoid redirect flicker while an intentional logout is in progress)
 	useEffect(() => {
-		if (auth?.loggingOut) return; // skip while logout flow handles navigation
+		if (auth?.loggingOut) return;
 		if (!auth?.user) {
 			router.replace("/login");
 		}
@@ -225,7 +224,6 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 				{/* Mobile Header Space */}
 				<div className="h-16 md:hidden" />{" "}
 				{/* Space for mobile hamburger button */}
-				{/* Content with responsive padding */}
 				<main className="p-4 md:p-6 lg:p-8">{children}</main>
 			</div>
 		</div>
