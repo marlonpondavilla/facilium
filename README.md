@@ -46,7 +46,7 @@ null
 
 ## Environment Variables
 
-Create a `.env.local` file (never commit it). Required variables:
+Create a `.env.local` file (never commit it). Required variables
 
 ```
 # Firebase Client (public – safe to expose in browser)
