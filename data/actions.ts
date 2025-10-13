@@ -695,3 +695,76 @@ export const updateCurrentUserDegree = async (params: {
 		} as const;
 	}
 };
+
+// ---------------- Faculty Load APIs ----------------
+// Collection name
+const FACULTY_LOAD_COLLECTION = "facultyLoadData";
+
+// Add a faculty load entry (program head assigns a course+section to a professor)
+export const addFacultyLoad = async (data: {
+	professorId: string;
+	programId: string;
+	yearLevelId: string;
+	sectionId: string;
+	courseCode: string;
+}): Promise<{ success: true } | { success: false; error: unknown }> => {
+	try {
+		const payload = { ...data, created: new Date().toISOString() };
+		await firestore.collection(FACULTY_LOAD_COLLECTION).add(payload);
+		return { success: true };
+	} catch (e) {
+		console.error("Error adding faculty load", e);
+		return { success: false, error: e };
+	}
+};
+
+// Get loads by professor, program, or section
+export const getFacultyLoads = async (filters?: {
+	professorId?: string;
+	programId?: string;
+	sectionId?: string;
+	yearLevelId?: string;
+}): Promise<Array<{ id: string } & Record<string, any>>> => {
+	try {
+		let ref: CollectionReference<DocumentData> | Query<DocumentData> =
+			firestore.collection(FACULTY_LOAD_COLLECTION);
+		if (filters?.professorId) ref = ref.where("professorId", "==", filters.professorId);
+		if (filters?.programId) ref = ref.where("programId", "==", filters.programId);
+		if (filters?.yearLevelId) ref = ref.where("yearLevelId", "==", filters.yearLevelId);
+		if (filters?.sectionId) ref = ref.where("sectionId", "==", filters.sectionId);
+		const snap = await ref.get();
+		return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+	} catch (e) {
+		console.error("Error fetching faculty loads", e);
+		return [];
+	}
+};
+
+// Delete a faculty load by id
+export const deleteFacultyLoad = async (id: string): Promise<void> => {
+	await firestore.collection(FACULTY_LOAD_COLLECTION).doc(id).delete();
+};
+
+// For scheduling: get professors eligible for a given program/year/section/course
+export const getEligibleProfessorsForLoad = async (params: {
+	programId: string;
+	yearLevelId: string;
+	sectionId: string;
+	courseCode: string;
+}): Promise<string[]> => {
+	try {
+		const { programId, yearLevelId, sectionId, courseCode } = params;
+		const snap = await firestore
+			.collection(FACULTY_LOAD_COLLECTION)
+			.where("programId", "==", programId)
+			.where("yearLevelId", "==", yearLevelId)
+			.where("sectionId", "==", sectionId)
+			.where("courseCode", "==", courseCode)
+			.get();
+		return snap.docs.map((d) => d.get("professorId") as string);
+	} catch (e) {
+		console.error("Error fetching eligible professors for load", e);
+		return [];
+	}
+};
+

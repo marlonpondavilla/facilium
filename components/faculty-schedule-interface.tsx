@@ -51,6 +51,7 @@ import {
 	getDocumentsWithNestedObject,
 	getSingleDocumentFromFirestore,
 	updateScheduleDocument,
+	getEligibleProfessorsForLoad,
 } from "@/data/actions";
 import Loading from "./loading";
 import Link from "next/link";
@@ -216,6 +217,9 @@ const FacultyScheduleInterface = ({
 			  )
 			: [];
 
+	// Eligible professors according to Program Head assigned load
+	const [eligibleProfessorIds, setEligibleProfessorIds] = useState<string[] | null>(null);
+
 	const form = useForm<z.infer<typeof scheduleSchema>>({
 		resolver: zodResolver(scheduleSchema),
 		defaultValues: {
@@ -230,6 +234,33 @@ const FacultyScheduleInterface = ({
 			halfHour: 0,
 		},
 	});
+
+	// Watch courseCode for eligibility updates
+	const watchedCourseCode = form.watch("courseCode");
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			setEligibleProfessorIds(null);
+			if (!programId || !yearLevelId || !sectionId) return;
+			if (!watchedCourseCode) return;
+			try {
+				const ids = await getEligibleProfessorsForLoad({
+					programId,
+					yearLevelId,
+					sectionId,
+					courseCode: watchedCourseCode,
+				});
+				if (!cancelled) setEligibleProfessorIds(ids);
+			} catch (e) {
+				console.error("eligible professor fetch failed", e);
+				if (!cancelled) setEligibleProfessorIds([]);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [programId, yearLevelId, sectionId, watchedCourseCode]);
 
 	const updateQueryParamAndForm = <T extends FieldPath<ScheduleFormValues>>(
 		key: string,
@@ -903,6 +934,82 @@ const FacultyScheduleInterface = ({
 								disabled={form.formState.isSubmitting}
 								className="flex flex-col gap-3"
 							>
+								{/* Professor Select Field (moved to top; still disabled until a course is selected) */}
+								<div>
+									<FormField
+										control={form.control}
+										name="professor"
+										render={({ field }) => (
+											<FormItem>
+												<div className="flex items-center gap-4">
+													<FormLabel>Professor</FormLabel>
+													<Select
+														onValueChange={(value) => {
+															// reflects select item change
+															const selectedProf = professors?.find(
+																(p) => p.id === value
+															);
+
+															if (!selectedProf) {
+																return;
+															}
+
+															updateQueryParamAndForm(
+																"professorId",
+																selectedProf.id
+															);
+
+															form.setValue("professor", value);
+														}}
+														defaultValue={field.value}
+														{...field}
+														disabled={!courseCodeSelected}
+													>
+														<FormControl>
+															<SelectTrigger>
+																<SelectValue placeholder="Select Professor" />
+															</SelectTrigger>
+														</FormControl>
+														<SelectContent>
+															<SelectGroup>
+																{professors
+																	?.filter((professor) => {
+																		// Exclude Admins
+																		if (professor.designation === "Admin") {
+																			return false;
+																		}
+																		// If not on program-head route OR no known dept, show all non-admin professors
+																		if (!isProgramHeadRoute || !normalizedDept)
+																			return true;
+																		// Only include professors with the same department as current program head
+																		const profDept = (
+																			professor.department || ""
+																		)
+																			.trim()
+																			.toLowerCase();
+																		// If eligible list is available, restrict further
+																		if (eligibleProfessorIds && eligibleProfessorIds.length > 0) {
+																			return profDept === normalizedDept && eligibleProfessorIds.includes(professor.id);
+																		}
+																		return profDept === normalizedDept;
+																	})
+																	.map((professor) => (
+																		<SelectItem
+																			key={professor.id}
+																			value={`${professor.id}`}
+																		>
+																			{`${professor.firstName} ${professor.lastName}`}
+																		</SelectItem>
+																	))}
+															</SelectGroup>
+														</SelectContent>
+													</Select>
+												</div>
+												<FormMessage className="text-xs" />
+											</FormItem>
+										)}
+									/>
+								</div>
 								{/* Program Select Field */}
 								<div>
 									<FormField
@@ -1221,7 +1328,12 @@ const FacultyScheduleInterface = ({
 																		)
 																			.trim()
 																			.toLowerCase();
-																		return profDept === normalizedDept;
+																		// Additionally, if loads are defined, restrict to assigned professors
+																		const passesDept = profDept === normalizedDept;
+																		if (!eligibleProfessorIds || eligibleProfessorIds.length === 0) {
+																			return passesDept;
+																		}
+																		return passesDept && eligibleProfessorIds.includes(professor.id);
 																	})
 																	.map((professor) => (
 																		<SelectItem

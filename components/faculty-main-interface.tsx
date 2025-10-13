@@ -1,7 +1,7 @@
 "use client";
 
 import { currentDate } from "@/lib/date";
-import { Building, Calendar, Eye } from "lucide-react";
+import { Building, Calendar, Eye, FilePlus2 } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
@@ -58,6 +58,16 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 
 	const handleViewScheduleClick = () => {
 		router.push(`${pathname}/view-schedule`);
+	};
+
+	const handleManageLoadClick = () => {
+		// If current route is already /program-head, push to manage-load
+		if (pathname.startsWith("/program-head")) {
+			router.push(`/program-head/manage-load`);
+			return;
+		}
+		// Otherwise default to program-head path
+		router.push(`/program-head/manage-load`);
 	};
 
 	// Document type for classroom collection
@@ -414,10 +424,25 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 						<p className="font-semibold text-xl text-gray-800 group-hover:text-indigo-800">
 							{pathname.startsWith("/dean")
 								? "View Schedules"
-								: "View my Schedule"}
+								: "View Department Faculty Schedules"}
 						</p>
 					</div>
 				</div>
+
+				{/* Program Head: Manage Faculty Load */}
+				{pathname.startsWith("/program-head") && (
+					<div className="manage-load group border border-gray-300 rounded-xl p-6 w-full sm:w-auto bg-white hover:bg-gray-100 hover:shadow-md transition duration-300 cursor-pointer">
+						<div
+							onClick={handleManageLoadClick}
+							className="flex flex-col justify-center items-center gap-3"
+						>
+							<FilePlus2 className="w-10 h-10" />
+							<p className="font-semibold text-xl text-gray-800 group-hover:text-indigo-800">
+								Manage Faculty Load
+							</p>
+						</div>
+					</div>
+				)}
 
 				{/* Download Classroom Schedule Section */}
 				<div className="download-schedule flex flex-col gap-3 w-full sm:w-auto">
