@@ -402,11 +402,13 @@ export const checkIfScheduleConflictExists = async (
 			// If editing an existing schedule, ignore the same record
 			if (existing.id === newSchedule.id) return false;
 
-			// Check for time overlap
+			// Check for time overlap (include +30 mins halfHour when present)
 			const existingStart = existing.start;
-			const existingEnd = existing.start + existing.duration;
+			const existingEnd =
+				existing.start + existing.duration + (existing.halfHour === 30 ? 0.5 : 0);
 			const newStart = newSchedule.start;
-			const newEnd = newSchedule.start + newSchedule.duration;
+			const newEnd =
+				newSchedule.start + newSchedule.duration + (newSchedule.halfHour === 30 ? 0.5 : 0);
 
 			// Allow adjacent schedules (if one ends exactly when another starts)
 			const timeOverlap = !(newEnd <= existingStart || newStart >= existingEnd);
@@ -709,6 +711,18 @@ export const addFacultyLoad = async (data: {
 	courseCode: string;
 }): Promise<{ success: true } | { success: false; error: unknown }> => {
 	try {
+		// Prevent duplicates for the same professor and exact same assignment
+		const dupSnap = await firestore
+			.collection(FACULTY_LOAD_COLLECTION)
+			.where("professorId", "==", data.professorId)
+			.where("programId", "==", data.programId)
+			.where("yearLevelId", "==", data.yearLevelId)
+			.where("sectionId", "==", data.sectionId)
+			.where("courseCode", "==", data.courseCode)
+			.get();
+		if (!dupSnap.empty) {
+			return { success: false, error: "Duplicate load for this professor." } as const;
+		}
 		const payload = { ...data, created: new Date().toISOString() };
 		await firestore.collection(FACULTY_LOAD_COLLECTION).add(payload);
 		return { success: true };
@@ -757,6 +771,19 @@ export const updateFacultyLoad = async (
 	}
 ): Promise<{ success: true } | { success: false; error: unknown }> => {
 	try {
+		// Prevent duplicates for the same professor and exact same assignment (excluding this id)
+		const dupSnap = await firestore
+			.collection(FACULTY_LOAD_COLLECTION)
+			.where("professorId", "==", data.professorId)
+			.where("programId", "==", data.programId)
+			.where("yearLevelId", "==", data.yearLevelId)
+			.where("sectionId", "==", data.sectionId)
+			.where("courseCode", "==", data.courseCode)
+			.get();
+		const hasOther = dupSnap.docs.some((d) => d.id !== id);
+		if (hasOther) {
+			return { success: false, error: "Duplicate load for this professor." } as const;
+		}
 		await firestore.collection(FACULTY_LOAD_COLLECTION).doc(id).update({
 			professorId: data.professorId,
 			programId: data.programId,

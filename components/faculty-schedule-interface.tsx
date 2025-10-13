@@ -1,17 +1,12 @@
 "use client";
 
-import {
-	ArrowLeft,
-	Building,
-	Check,
-	Info,
-	NotebookPen,
-	RotateCcw,
-	TriangleAlert,
-	X,
-} from "lucide-react";
+import { ArrowLeft, Building, Check, Info, NotebookPen, RotateCcw, TriangleAlert, X } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, FieldPath, FieldPathValue } from "react-hook-form";
+import { scheduleSchema } from "@/validation/scheduleSchema";
 import {
 	Select,
 	SelectContent,
@@ -21,16 +16,12 @@ import {
 	SelectValue,
 } from "./ui/select";
 import { Button } from "./ui/button";
-import { FieldPath, FieldPathValue, useForm } from "react-hook-form";
-import { z } from "zod";
-import { scheduleSchema } from "@/validation/scheduleSchema";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
-	Form,
-	FormLabel,
 	FormControl,
+	Form,
 	FormField,
 	FormItem,
+	FormLabel,
 	FormMessage,
 } from "./ui/form";
 import toast from "react-hot-toast";
@@ -210,14 +201,30 @@ const FacultyScheduleInterface = ({
 			term.yearLevelId === yearLevelId
 	);
 
-	const filteredCourses =
-		matchingTerm && Array.isArray(courses)
-			? courses.filter(
-					(course) =>
-						course.yearLevelId === yearLevelId &&
-						course.termId === matchingTerm.id
-			  )
-			: [];
+	const filteredCourses = useMemo(() => {
+		if (!(matchingTerm && Array.isArray(courses))) return [] as NonNullable<typeof courses>;
+		return courses.filter(
+			(course) =>
+				course.yearLevelId === yearLevelId && course.termId === matchingTerm.id
+		);
+	}, [courses, matchingTerm?.id, yearLevelId]);
+
+	// Ensure the currently editing item's course appears as an option even if filtered out
+	const displayedCourses = useMemo(() => {
+		const out = [...filteredCourses];
+		if (editingItem?.courseCode) {
+			const has = out.some((c) => c.courseCode === editingItem.courseCode);
+			if (!has) {
+				out.unshift({
+					id: `editing-${editingItem.courseCode}`,
+					termId: matchingTerm?.id || "",
+					yearLevelId: yearLevelId || "",
+					courseCode: editingItem.courseCode,
+				});
+			}
+		}
+		return out;
+	}, [filteredCourses, editingItem?.courseCode, matchingTerm?.id, yearLevelId]);
 
 	// Eligible professors according to Program Head assigned load
 	const [eligibleProfessorIds, setEligibleProfessorIds] = useState<string[] | null>(null);
@@ -306,6 +313,14 @@ const FacultyScheduleInterface = ({
 		router.push(`${pathname}?${params.toString()}`, { scroll: false });
 	};
 
+	// Helper: keep only classroomId in the URL
+	const navigateToClassroomOnly = React.useCallback(() => {
+		if (!classroomId) return;
+		const params = new URLSearchParams();
+		params.set("classroomId", classroomId);
+		router.push(`${pathname}?${params.toString()}`, { scroll: false });
+	}, [classroomId, pathname, router]);
+
 	// Utility: manage loading tied only to real async operations
 	const withLoading = async <T,>(fn: () => Promise<T>): Promise<T> => {
 		setIsLoading(true);
@@ -363,10 +378,12 @@ const FacultyScheduleInterface = ({
 
 	const allowedSectionIds = React.useMemo(() => {
 		if (!professorSelected) return undefined;
+		// If loads are not yet available or empty, don't restrict; show all for now
+		if (!professorLoads || professorLoads.length === 0) return undefined;
 		const set = new Set<string>();
-		(professorLoads || []).forEach((l) => {
-				if (l.sectionId) set.add(l.sectionId);
-			});
+		professorLoads.forEach((l) => {
+			if (l.sectionId) set.add(l.sectionId);
+		});
 		return set;
 	}, [professorSelected, professorLoads]);
 
@@ -403,6 +420,8 @@ const FacultyScheduleInterface = ({
 
 	// When a professor is selected/changed, ensure section and course adhere to assigned loads
 	useEffect(() => {
+		// Avoid auto-clearing values while actively editing a selected item
+		if (editingItem) return;
 		if (!professorSelected) return;
 		// Validate section
 		const currentSectionName = form.getValues("section");
@@ -431,7 +450,7 @@ const FacultyScheduleInterface = ({
 		}
 		// keep URL params in sync if we cleared items
 		// note: we don't store section/course in URL currently, so nothing to delete
-	}, [professorSelected, allowedSectionIds, allowedCourseCodesForSelectedSection, form, sections]);
+	}, [editingItem, professorSelected, allowedSectionIds, allowedCourseCodesForSelectedSection, form, sections]);
 
 	// NOTE: Program filtering by department now handled at the feeder (wrapper/page) level.
 
@@ -572,6 +591,50 @@ const FacultyScheduleInterface = ({
 		setError("");
 	};
 
+	// When clicking Edit on a plotted cell, prefill the form and enter edit mode
+	const handleEditFromTable = (item: ScheduleItem) => {
+		// Do not allow editing when pending or approved – UI should already gate, but double-check
+		if (isPendingScheduleExist || isApprovedScheduleExist) return;
+
+		setEditingItem(item);
+
+		// Resolve IDs for URL from current catalogs
+		const selectedProgram = programs?.find((p) => p.programCode === item.program);
+		// yearLevel in existing schedule could be either the id or the label (e.g., "1st"). Try both.
+		const resolvedYearObj = (yearLevels || []).find((y) => y.id === item.yearLevel) ||
+			(yearLevels || []).find((y) => {
+				if (!item.yearLevel) return false;
+				const matchesLabel = y.yearLevel === item.yearLevel;
+				const matchesProgram = selectedProgram ? y.programId === selectedProgram.id : true;
+				return matchesLabel && matchesProgram;
+			});
+		const resolvedYearLevelId = resolvedYearObj?.id || item.yearLevel;
+		const selectedSection = sections?.find(
+			(s) => s.sectionName === item.section && s.yearLevelId === resolvedYearLevelId
+		) || sections?.find((s) => s.sectionName === item.section);
+
+		// Prefill form values to match the selected item first (so selects have value labels immediately)
+		form.setValue("professor", item.professor);
+		form.setValue("program", item.program);
+		form.setValue("yearLevel", resolvedYearLevelId);
+		form.setValue("section", item.section);
+		form.setValue("courseCode", item.courseCode);
+		form.setValue("day", item.day);
+		form.setValue("start", item.start);
+		form.setValue("duration", item.duration);
+		form.setValue("halfHour", item.halfHour ?? 0);
+		setError("");
+
+		// Then update URL params for consistency
+		const params = new URLSearchParams();
+		if (classroomId) params.set("classroomId", classroomId);
+		if (item.professor) params.set("professorId", item.professor);
+		if (selectedProgram?.id) params.set("programId", selectedProgram.id);
+		if (resolvedYearLevelId) params.set("yearLevelId", resolvedYearLevelId);
+		if (selectedSection?.id) params.set("sectionId", selectedSection.id);
+		router.push(`${pathname}?${params.toString()}`, { scroll: false });
+	};
+
 	// add function for schedule
 	const handleScheduleAdd = async (values: z.infer<typeof scheduleSchema>) => {
 		if (isPendingScheduleExist) {
@@ -638,13 +701,6 @@ const FacultyScheduleInterface = ({
 			setOpenSubjectCapDialog(true);
 			return;
 		}
-
-		const navigateToClassroomOnly = () => {
-			if (!classroomId) return;
-			const params = new URLSearchParams();
-			params.set("classroomId", classroomId);
-			router.push(`${pathname}?${params.toString()}`, { scroll: false });
-		};
 
 		const scheduleConflictId = await checkIfScheduleConflictExists(
 			scheduleData
@@ -1011,6 +1067,28 @@ const FacultyScheduleInterface = ({
 								: "Schedule Classroom"}
 						</h2>
 					</div>
+					{/* Editing banner */}
+					{editingItem && (
+						<div className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-md p-2 mt-2">
+							<div className="text-xs sm:text-sm">
+								Editing: <span className="font-semibold">{editingItem.courseCode}</span> • {editingItem.section} • {editingItem.day} • {editingItem.duration}h{editingItem.halfHour ? "+30m" : ""}
+							</div>
+							<div className="ml-auto flex gap-2">
+								<Button
+									onClick={() => {
+										setEditingItem(null);
+										form.reset();
+										setError("");
+										navigateToClassroomOnly();
+									}}
+									variant={"secondary"}
+									className="h-7 px-2 text-xs"
+								>
+									Clear Selection
+								</Button>
+							</div>
+						</div>
+					)}
 					<Form {...form}>
 						<form
 							onSubmit={(e) => {
@@ -1291,6 +1369,12 @@ const FacultyScheduleInterface = ({
 																	.filter((section) => {
 																		// If professor is selected and allowedSectionIds set, restrict
 																		if (professorSelected && allowedSectionIds) {
+																			// Always allow the currently editing section
+																			if (
+																				editingItem?.section === section.sectionName
+																			) {
+																				return true;
+																			}
 																			return allowedSectionIds.has(section.id);
 																		}
 																		return true;
@@ -1323,8 +1407,7 @@ const FacultyScheduleInterface = ({
 													<FormLabel>Course Code</FormLabel>
 													<Select
 														onValueChange={field.onChange}
-														defaultValue={field.value}
-														{...field}
+														value={field.value || editingItem?.courseCode || ""}
 														disabled={!(sectionSelected && sectionId)}
 													>
 														<FormControl>
@@ -1334,13 +1417,15 @@ const FacultyScheduleInterface = ({
 														</FormControl>
 														<SelectContent>
 															<SelectGroup>
-																{filteredCourses.length > 0 ? (
-																	filteredCourses
+																{displayedCourses.length > 0 ? (
+																	displayedCourses
 																		.filter((course) => {
 																			// If professor is selected with allowed courses for the chosen section, restrict
-																			if (professorSelected && allowedCourseCodesForSelectedSection) {
-																				return allowedCourseCodesForSelectedSection.has(course.courseCode);
-																			}
+																				if (professorSelected && allowedCourseCodesForSelectedSection) {
+																					// Always allow the currently editing course or the current selection to keep it visible
+																					if (editingItem?.courseCode === course.courseCode || form.watch("courseCode") === course.courseCode) return true;
+																					return allowedCourseCodesForSelectedSection.has(course.courseCode);
+																				}
 																			return true;
 																		})
 																		.map((course) => (
@@ -1544,14 +1629,14 @@ const FacultyScheduleInterface = ({
 									)}
 								</div>
 
-								{/* Add schedule Button */}
+								{/* Add/Update schedule Button */}
 								{classroomId && !canAddSchedule && (
 									<Button
 										type="button"
 										className="facilium-bg-indigo text-white w-full"
 										disabled
 									>
-										Add Schedule
+										{editingItem ? "Update Schedule" : "Add Schedule"}
 									</Button>
 								)}
 								{classroomId && canAddSchedule && (
@@ -1563,15 +1648,17 @@ const FacultyScheduleInterface = ({
 												disabled={isPendingScheduleExist}
 											>
 												{form.formState.isSubmitting
-													? "Adding"
-													: "Add Schedule"}
+													? editingItem ? "Updating" : "Adding"
+													: editingItem ? "Update Schedule" : "Add Schedule"}
 											</Button>
 										}
-										title="Confirm adding this schedule"
+										title={editingItem ? "Confirm updating this schedule" : "Confirm adding this schedule"}
 										description={
-											'Before adding, please type "confirm" to proceed.'
+											editingItem
+												? 'Before updating, please type "confirm" to proceed.'
+												: 'Before adding, please type "confirm" to proceed.'
 										}
-										label="add"
+										label={editingItem ? "update" : "add"}
 										onConfirm={async () => {
 											const valid = await form.trigger(undefined, {
 												shouldFocus: true,
@@ -1582,9 +1669,9 @@ const FacultyScheduleInterface = ({
 										requireText
 										expectedText="confirm"
 										textPlaceholder={'Type "confirm"'}
-										textLabel={'Type "confirm" to add this schedule'}
+										textLabel={editingItem ? 'Type "confirm" to update this schedule' : 'Type "confirm" to add this schedule'}
 										caseSensitive={false}
-										confirmButtonText="Yes, add"
+										confirmButtonText={editingItem ? "Yes, update" : "Yes, add"}
 									/>
 								)}
 
@@ -1717,6 +1804,7 @@ const FacultyScheduleInterface = ({
 										? approvedSubmittedBy
 										: pendingScheduleDetails.professorName
 								}
+								onEditItem={handleEditFromTable}
 							/>
 						</div>
 					</div>
@@ -1788,6 +1876,7 @@ const FacultyScheduleInterface = ({
 									? approvedSubmittedBy
 									: pendingScheduleDetails.professorName
 							}
+							onEditItem={handleEditFromTable}
 						/>
 					</div>
 				)}

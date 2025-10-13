@@ -28,6 +28,7 @@ import toast from "react-hot-toast";
 import ConfirmationHandleDialog from "@/components/confirmation-handle-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Undo } from "lucide-react";
+import WarningPopUp from "./warning-pop-up";
 
 type Program = { id: string; programCode: string; department?: string };
 type YearLevel = { id: string; programId: string; yearLevel: string };
@@ -51,8 +52,15 @@ export default function ProgramHeadManageLoad(props: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const pathname = usePathname();
-  const [loading, setLoading] = useState(false);
+  // Separate saving vs list loading to avoid UI appearing stuck
+  const [saving, setSaving] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
   const [loads, setLoads] = useState<FacultyLoad[]>([]);
+  const [warnOpen, setWarnOpen] = useState(false);
+  const [warnTitle, setWarnTitle] = useState("");
+  const [warnDesc, setWarnDesc] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 5;
 
   const programId = params.get("programId") || "";
   const yearLevelId = params.get("yearLevelId") || "";
@@ -133,16 +141,57 @@ export default function ProgramHeadManageLoad(props: Props) {
 
   // Static right-side table: always show all loads; do not filter by left-side selections
   const refreshLoads = useCallback(async () => {
-    setLoading(true);
+    setListLoading(true);
     try {
       const res = (await getFacultyLoads()) as unknown as Array<FacultyLoad & { id?: string }>;
       setLoads(res as FacultyLoad[]);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      setListLoading(false);
     }
   }, []);
+
+  // If selected loadId no longer exists (deleted), clear selection from URL
+  useEffect(() => {
+    if (loadId && !loads.some((l) => l.id === loadId)) {
+      setQuery({ loadId: null });
+    }
+  }, [loads, loadId]);
+
+  // Sort loads by professor name (First Last), case-insensitive, fallback to professorId
+  const sortedLoads = useMemo(() => {
+    const withKeys = loads.map((l) => {
+      const prof = professors.find((p) => p.id === l.professorId);
+      const name = prof ? `${prof.firstName} ${prof.lastName}` : l.professorId;
+      return { item: l, key: (name || '').toLowerCase() };
+    });
+    withKeys.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+    return withKeys.map((w) => w.item);
+  }, [loads, professors]);
+
+  // Clamp page when loads change
+  const totalPages = Math.max(1, Math.ceil(sortedLoads.length / pageSize));
+  useEffect(() => {
+    if (page > 0 && page > totalPages - 1) {
+      setPage(Math.max(0, totalPages - 1));
+    }
+  }, [sortedLoads, totalPages, page]);
+
+  // Jump to the page containing the selected loadId for better UX
+  useEffect(() => {
+    if (!loadId) return;
+    const idx = sortedLoads.findIndex((l) => l.id === loadId);
+    if (idx >= 0) {
+      const p = Math.floor(idx / pageSize);
+      if (p !== page) setPage(p);
+    }
+  }, [loadId, sortedLoads, page]);
+
+  const pagedLoads = useMemo(() => {
+    const start = page * pageSize;
+    return sortedLoads.slice(start, start + pageSize);
+  }, [sortedLoads, page]);
 
   useEffect(() => {
     let mounted = true;
@@ -156,9 +205,31 @@ export default function ProgramHeadManageLoad(props: Props) {
   }, [refreshLoads]);
 
   const onSubmit = async (values: FacultyLoadForm) => {
-    setLoading(true);
+    setSaving(true);
+    // Safety timeout to avoid indefinite spinner in case of network hang
+    const timeout = setTimeout(() => setSaving(false), 15000);
     try {
+      // Client-side duplicate guard: disallow same professor + program + yearLevel + section + courseCode
+      const existsSame = loads.some(
+        (l) =>
+          l.professorId === values.professorId &&
+          l.programId === values.programId &&
+          l.yearLevelId === values.yearLevelId &&
+          l.sectionId === values.sectionId &&
+          l.courseCode === values.courseCode &&
+          (!loadId || l.id !== loadId)
+      );
+      if (existsSame) {
+        setWarnTitle("Duplicate load for this professor");
+        setWarnDesc("This professor already has this exact assignment. Assign a different professor or change the course/section.");
+        setWarnOpen(true);
+        return;
+      }
       if (loadId) {
+        // Optimistic update for update
+        setLoads((prev) =>
+          prev.map((l) => (l.id === loadId ? { ...l, ...values } as FacultyLoad : l))
+        );
         const result = await updateFacultyLoad(loadId, {
           professorId: values.professorId,
           programId: values.programId,
@@ -173,9 +244,28 @@ export default function ProgramHeadManageLoad(props: Props) {
           setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
           form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
         } else {
-          toast.error("Failed to update load");
+          // Revert optimistic change on failure
+          await refreshLoads();
+          const msg = typeof result.error === 'string' ? result.error : 'Failed to update load';
+          if (typeof result.error === 'string' && result.error.toLowerCase().includes('duplicate')) {
+            setWarnTitle("Duplicate load for this professor");
+            setWarnDesc("This professor already has this exact assignment. Assign a different professor or change the course/section.");
+            setWarnOpen(true);
+          } else {
+            toast.error(msg);
+          }
         }
       } else {
+        // Optimistic add
+        const optimistic = {
+          id: `optimistic-${Date.now()}`,
+          professorId: values.professorId,
+          programId: values.programId,
+          yearLevelId: values.yearLevelId,
+          sectionId: values.sectionId,
+          courseCode: values.courseCode,
+        } as unknown as FacultyLoad;
+        setLoads((prev) => [optimistic, ...prev]);
         const result = await addFacultyLoad({
           professorId: values.professorId,
           programId: values.programId,
@@ -191,28 +281,44 @@ export default function ProgramHeadManageLoad(props: Props) {
           // Refresh list to include the newly added load
           await refreshLoads();
         } else {
-          toast.error("Failed to add load");
+          // Revert optimistic add on failure
+          setLoads((prev) => prev.filter((l) => !(l.id && l.id.toString().startsWith("optimistic-"))));
+          const msg = typeof result.error === 'string' ? result.error : 'Failed to add load';
+          if (typeof result.error === 'string' && result.error.toLowerCase().includes('duplicate')) {
+            setWarnTitle("Duplicate load for this professor");
+            setWarnDesc("This professor already has this exact assignment. Assign a different professor or change the course/section.");
+            setWarnOpen(true);
+          } else {
+            toast.error(msg);
+          }
         }
       }
     } catch (e) {
       console.error(e);
+      // Re-sync from server on error
+      await refreshLoads();
       toast.error("Failed to add load");
     } finally {
-      setLoading(false);
+      clearTimeout(timeout);
+      setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    setLoading(true);
+    setSaving(true);
     try {
+      // Optimistic remove
+      setLoads((prev) => prev.filter((l) => l.id !== id));
       await deleteFacultyLoad(id);
       toast.success("Load removed");
-  await refreshLoads();
+      await refreshLoads();
     } catch (e) {
       console.error(e);
       toast.error("Failed to delete load");
+      // Re-sync from server on error
+      await refreshLoads();
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -295,6 +401,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                             form.setValue("courseCode", "");
                             form.setValue("professorId", "");
                           }}
+                          disabled={saving}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full h-9">
@@ -324,7 +431,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                     <FormItem className="min-w-0">
                       <FormLabel className="mb-1 text-sm">Professor</FormLabel>
                       <div className="min-w-0">
-                        <Select value={field.value} onValueChange={field.onChange} disabled={!programId}>
+                        <Select value={field.value} onValueChange={field.onChange} disabled={!programId || saving}>
                           <FormControl>
                             <SelectTrigger className="w-full h-9 truncate">
                               <SelectValue placeholder="Select Professor" />
@@ -369,7 +476,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                           form.setValue("courseCode", "");
                           // Professor selection is independent; no need to clear it
                         }}
-                        disabled={!programId}
+                        disabled={!programId || saving}
                       >
                         <FormControl>
                           <SelectTrigger className="w-full h-9">
@@ -407,7 +514,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                           form.setValue("courseCode", "");
                           // Professor selection is independent; no need to clear it
                         }}
-                        disabled={!yearLevelId}
+                        disabled={!yearLevelId || saving}
                       >
                         <FormControl>
                           <SelectTrigger className="w-full h-9">
@@ -440,7 +547,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={!sectionId}
+                        disabled={!sectionId || saving}
                       >
                         <FormControl>
                           <SelectTrigger className="w-full h-9">
@@ -472,8 +579,8 @@ export default function ProgramHeadManageLoad(props: Props) {
               <div className="pt-1.5 flex items-center gap-2 flex-wrap">
                 <ConfirmationHandleDialog
                   trigger={
-                    <Button type="button" className="facilium-bg-indigo h-9 text-sm rounded-full" disabled={loading}>
-                      {loading ? "Saving..." : loadId ? "Update Faculty Load" : "Add Faculty Load"}
+                    <Button type="button" className="facilium-bg-indigo h-9 text-sm rounded-full" disabled={saving}>
+                      {saving ? "Saving..." : loadId ? "Update Faculty Load" : "Add Faculty Load"}
                     </Button>
                   }
                   title={loadId ? "Confirm updating faculty load" : "Confirm adding faculty load"}
@@ -482,10 +589,12 @@ export default function ProgramHeadManageLoad(props: Props) {
                   requirePassword
                   passwordPlaceholder="Enter your password"
                   onConfirm={async () => {
+                    // Validate first; if invalid, keep dialog open
                     const valid = await form.trigger();
                     if (!valid) return false;
+                    // Close dialog immediately (by returning true), then perform action async via microtask
                     const vals = form.getValues();
-                    await onSubmit(vals);
+                    Promise.resolve().then(() => onSubmit(vals));
                     return true;
                   }}
                 />
@@ -502,7 +611,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                     Clear Selection
                   </Button>
                 )}
-                <Button
+                  <Button
                   type="button"
                   variant="outline"
                   className="h-9 text-sm"
@@ -511,6 +620,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                     setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
                     form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
                   }}
+                    disabled={saving}
                 >
                   <Undo />
                   Reset
@@ -523,8 +633,10 @@ export default function ProgramHeadManageLoad(props: Props) {
         <div className="facilium-bg-whiter p-3 rounded-xl border">
           <h2 className="text-base font-semibold mb-4">Current Assignment Loads</h2>
             <div className="space-y-2 text-sm">
-              {loading && <p className="text-xs text-gray-500">Loading...</p>}
-              {loads.length === 0 ? (
+              {listLoading && loads.length === 0 && (
+                <p className="text-xs text-gray-500">Loading...</p>
+              )}
+              {sortedLoads.length === 0 ? (
                 <p className="text-sm text-gray-600">No assignments yet.</p>
               ) : (
                 <Table>
@@ -537,7 +649,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loads.map((l) => {
+                    {pagedLoads.map((l) => {
                       const prof = professors.find((p) => p.id === l.professorId);
                       const course = l.courseCode;
                       const section = sections.find((s) => s.id === l.sectionId)?.sectionName || l.sectionId;
@@ -545,8 +657,12 @@ export default function ProgramHeadManageLoad(props: Props) {
                         <TableRow
                           key={l.id}
                           className={`${loadId === l.id ? "bg-pink-100" : "cursor-pointer hover:bg-pink-200"}`}
-                          onClick={() => {
+                          onClick={(e) => {
                             if (!l.id) return;
+                            if (saving) return; // avoid selecting while saving
+                            const target = e.target as HTMLElement;
+                            // Do not select when clicking buttons/links/icons within the row
+                            if (target.closest('button, a, [role="button"], [data-no-select]')) return;
                             setQuery({ loadId: l.id, programId: l.programId, yearLevelId: l.yearLevelId, sectionId: l.sectionId });
                           }}
                         >
@@ -568,7 +684,12 @@ export default function ProgramHeadManageLoad(props: Props) {
                                     type="button"
                                     variant="destructive"
                                     size="sm"
-                                    disabled={loading}
+                                    disabled={saving}
+                                    data-no-select
+                                    onClick={(e) => {
+                                      // Prevent TableRow onClick from selecting the row
+                                      e.stopPropagation();
+                                    }}
                                   >
                                     Delete
                                   </Button>
@@ -593,9 +714,38 @@ export default function ProgramHeadManageLoad(props: Props) {
                   </TableBody>
                 </Table>
               )}
+              {sortedLoads.length > 0 && (
+                <div className="flex items-center justify-between pt-3">
+                  <div className="text-xs text-gray-600">
+                    Page {page + 1} of {Math.max(1, Math.ceil(sortedLoads.length / pageSize))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
         </div>
       </div>
+      {/* Warning dialog for duplicates and similar soft errors */}
+      <WarningPopUp open={warnOpen} setOpen={setWarnOpen} title={warnTitle} description={warnDesc} />
     </div>
   );
 }

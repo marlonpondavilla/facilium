@@ -234,12 +234,14 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 				}
 			>;
 			const originalOnClick = trigEl.props.onClick;
-			return React.cloneElement(trigEl, {
-				onClick: (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-					if (originalOnClick) originalOnClick(e);
-					if (!e.defaultPrevented) setOpen(true);
-				},
-			});
+					return React.cloneElement(trigEl, {
+						onClick: (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+							if (originalOnClick) originalOnClick(e);
+							if (!e.defaultPrevented) setOpen(true);
+							// Prevent bubbling to parent rows/cards that might have onClick selection
+							e.stopPropagation();
+						},
+					});
 		}
 		// Fallback wrapper if not a valid element (string / fragment)
 		return (
