@@ -745,6 +745,32 @@ export const deleteFacultyLoad = async (id: string): Promise<void> => {
 	await firestore.collection(FACULTY_LOAD_COLLECTION).doc(id).delete();
 };
 
+// Update a faculty load by id
+export const updateFacultyLoad = async (
+	id: string,
+	data: {
+		professorId: string;
+		programId: string;
+		yearLevelId: string;
+		sectionId: string;
+		courseCode: string;
+	}
+): Promise<{ success: true } | { success: false; error: unknown }> => {
+	try {
+		await firestore.collection(FACULTY_LOAD_COLLECTION).doc(id).update({
+			professorId: data.professorId,
+			programId: data.programId,
+			yearLevelId: data.yearLevelId,
+			sectionId: data.sectionId,
+			courseCode: data.courseCode,
+		});
+		return { success: true };
+	} catch (e) {
+		console.error("Error updating faculty load", e);
+		return { success: false, error: e };
+	}
+};
+
 // For scheduling: get professors eligible for a given program/year/section/course
 export const getEligibleProfessorsForLoad = async (params: {
 	programId: string;

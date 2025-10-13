@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { facultyLoadSchema, FacultyLoadForm } from "@/validation/facultyLoadSchema";
-import { addFacultyLoad, deleteFacultyLoad, getFacultyLoads } from "@/data/actions";
+import { addFacultyLoad, deleteFacultyLoad, getFacultyLoads, updateFacultyLoad } from "@/data/actions";
 import type { FacultyLoad } from "@/types/facultyLoadType";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,11 +57,24 @@ export default function ProgramHeadManageLoad(props: Props) {
   const programId = params.get("programId") || "";
   const yearLevelId = params.get("yearLevelId") || "";
   const sectionId = params.get("sectionId") || "";
+  const loadId = params.get("loadId") || "";
 
   const form = useForm<FacultyLoadForm>({
     resolver: zodResolver(facultyLoadSchema),
     defaultValues: { programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" },
   });
+
+  // When loadId changes, prefill the form with selected load values
+  useEffect(() => {
+    if (!loadId) return;
+    const selected = loads.find((l) => l.id === loadId);
+    if (!selected) return;
+    form.setValue("programId", selected.programId);
+    form.setValue("yearLevelId", selected.yearLevelId);
+    form.setValue("sectionId", selected.sectionId);
+    form.setValue("courseCode", selected.courseCode);
+    form.setValue("professorId", selected.professorId);
+  }, [loadId, loads, form]);
 
   const filteredYearLevels = useMemo(
     () => yearLevels.filter((y) => y.programId === programId),
@@ -118,53 +131,68 @@ export default function ProgramHeadManageLoad(props: Props) {
     router.push(`${pathname}?${next.toString()}`);
   };
 
-  // Load existing faculty loads for current filter (program/year/section). If no filters, show all loads.
+  // Static right-side table: always show all loads; do not filter by left-side selections
+  const refreshLoads = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = (await getFacultyLoads()) as unknown as Array<FacultyLoad & { id?: string }>;
+      setLoads(res as FacultyLoad[]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    let cancelled = false;
+    let mounted = true;
     (async () => {
-      setLoading(true);
-      try {
-        let res: Array<FacultyLoad & { id?: string }> = [];
-        if (sectionId) {
-          res = (await getFacultyLoads({ programId, yearLevelId, sectionId })) as unknown as Array<FacultyLoad & { id?: string }>;
-        } else if (yearLevelId) {
-          res = (await getFacultyLoads({ programId, yearLevelId })) as unknown as Array<FacultyLoad & { id?: string }>;
-        } else if (programId) {
-          res = (await getFacultyLoads({ programId })) as unknown as Array<FacultyLoad & { id?: string }>;
-        } else {
-          res = (await getFacultyLoads()) as unknown as Array<FacultyLoad & { id?: string }>;
-        }
-        if (!cancelled) setLoads(res as FacultyLoad[]);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      if (!mounted) return;
+      await refreshLoads();
     })();
     return () => {
-      cancelled = true;
+      mounted = false;
     };
-  }, [programId, yearLevelId, sectionId]);
+  }, [refreshLoads]);
 
   const onSubmit = async (values: FacultyLoadForm) => {
     setLoading(true);
     try {
-      const result = await addFacultyLoad({
-        professorId: values.professorId,
-        programId: values.programId,
-        yearLevelId: values.yearLevelId,
-        sectionId: values.sectionId,
-        courseCode: values.courseCode,
-      });
-      if (result.success) {
-        toast.success("Faculty load added");
-        // Clear URL filters and form labels back to placeholders
-        setQuery({ programId: null, yearLevelId: null, sectionId: null });
-        form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
-        // Immediately clear current list view
-        setLoads([]);
+      if (loadId) {
+        const result = await updateFacultyLoad(loadId, {
+          professorId: values.professorId,
+          programId: values.programId,
+          yearLevelId: values.yearLevelId,
+          sectionId: values.sectionId,
+          courseCode: values.courseCode,
+        });
+        if (result.success) {
+          toast.success("Faculty load updated");
+          await refreshLoads();
+          // Clear URL params and reset form after update (return to add mode)
+          setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
+          form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
+        } else {
+          toast.error("Failed to update load");
+        }
       } else {
-        toast.error("Failed to add load");
+        const result = await addFacultyLoad({
+          professorId: values.professorId,
+          programId: values.programId,
+          yearLevelId: values.yearLevelId,
+          sectionId: values.sectionId,
+          courseCode: values.courseCode,
+        });
+        if (result.success) {
+          toast.success("Faculty load added");
+          // Clear URL filters and form labels back to placeholders
+          setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
+          form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
+          // Refresh list to include the newly added load
+          await refreshLoads();
+        } else {
+          toast.error("Failed to add load");
+        }
       }
     } catch (e) {
       console.error(e);
@@ -179,8 +207,7 @@ export default function ProgramHeadManageLoad(props: Props) {
     try {
       await deleteFacultyLoad(id);
       toast.success("Load removed");
-      const updated = await getFacultyLoads({ programId, yearLevelId, sectionId });
-      setLoads(updated as unknown as FacultyLoad[]);
+  await refreshLoads();
     } catch (e) {
       console.error(e);
       toast.error("Failed to delete load");
@@ -210,6 +237,42 @@ export default function ProgramHeadManageLoad(props: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.2fr] gap-3">
         <div className="facilium-bg-whiter p-3 rounded-xl border">
           <h2 className="text-base font-semibold mb-4">Create Assignment Loads</h2>
+          {loadId && (
+            <div className="mb-3 flex items-start justify-between gap-2 rounded border border-pink-300 bg-pink-50 p-2 text-sm">
+              <div className="space-y-0.5">
+                <div className="font-medium text-pink-700">Editing selected load</div>
+                {(() => {
+                  const selected = loads.find((l) => l.id === loadId);
+                  if (!selected) return null;
+                  const prof = professors.find((p) => p.id === selected.professorId);
+                  const sectionName = sections.find((s) => s.id === selected.sectionId)?.sectionName || selected.sectionId;
+                  return (
+                    <div className="text-gray-700">
+                      Course <span className="font-semibold">{selected.courseCode}</span> — Section <span className="font-semibold">{sectionName}</span>{" "}
+                      {prof && (
+                        <>
+                          — Professor <span className="font-semibold">{prof.firstName} {prof.lastName}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8"
+                onClick={() => {
+                  // Clear selection only (preserve current filters)
+                  const next = new URLSearchParams(params.toString());
+                  next.delete("loadId");
+                  router.push(`${pathname}?${next.toString()}`);
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
               {/* Program and Professor side by side */}
@@ -406,16 +469,16 @@ export default function ProgramHeadManageLoad(props: Props) {
 
               
 
-              <div className="pt-1.5 flex items-center gap-2">
+              <div className="pt-1.5 flex items-center gap-2 flex-wrap">
                 <ConfirmationHandleDialog
                   trigger={
                     <Button type="button" className="facilium-bg-indigo h-9 text-sm rounded-full" disabled={loading}>
-                      {loading ? "Saving..." : "Add Faculty Load"}
+                      {loading ? "Saving..." : loadId ? "Update Faculty Load" : "Add Faculty Load"}
                     </Button>
                   }
-                  title="Confirm adding faculty load"
-                  description="Please confirm with your password to add this faculty load."
-                  label="Add Faculty Load"
+                  title={loadId ? "Confirm updating faculty load" : "Confirm adding faculty load"}
+                  description={loadId ? "Please confirm with your password to update this faculty load." : "Please confirm with your password to add this faculty load."}
+                  label={loadId ? "Update Faculty Load" : "Add Faculty Load"}
                   requirePassword
                   passwordPlaceholder="Enter your password"
                   onConfirm={async () => {
@@ -426,13 +489,26 @@ export default function ProgramHeadManageLoad(props: Props) {
                     return true;
                   }}
                 />
+                {loadId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 text-sm"
+                    onClick={() => {
+                      // Clear current selection
+                      setQuery({ loadId: null });
+                    }}
+                  >
+                    Clear Selection
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
                   className="h-9 text-sm"
                   onClick={() => {
                     // Clear URL filters and form
-                    setQuery({ programId: null, yearLevelId: null, sectionId: null });
+                    setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
                     form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
                   }}
                 >
@@ -466,8 +542,22 @@ export default function ProgramHeadManageLoad(props: Props) {
                       const course = l.courseCode;
                       const section = sections.find((s) => s.id === l.sectionId)?.sectionName || l.sectionId;
                       return (
-                        <TableRow key={l.id}>
-                          <TableCell>{course}</TableCell>
+                        <TableRow
+                          key={l.id}
+                          className={`${loadId === l.id ? "bg-pink-100" : "cursor-pointer hover:bg-pink-200"}`}
+                          onClick={() => {
+                            if (!l.id) return;
+                            setQuery({ loadId: l.id, programId: l.programId, yearLevelId: l.yearLevelId, sectionId: l.sectionId });
+                          }}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span>{course}</span>
+                              {loadId === l.id && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-pink-200 text-pink-800 border border-pink-300">Selected</span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{section}</TableCell>
                           <TableCell>{prof ? `${prof.firstName} ${prof.lastName}` : l.professorId}</TableCell>
                           <TableCell className="text-right">
@@ -490,6 +580,8 @@ export default function ProgramHeadManageLoad(props: Props) {
                                 passwordPlaceholder="Enter your password"
                                 onConfirm={async () => {
                                   await handleDelete(l.id!);
+                                  // If the deleted load is selected, clear selection from URL
+                                  if (loadId === l.id) setQuery({ loadId: null });
                                   return true;
                                 }}
                               />
