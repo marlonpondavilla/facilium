@@ -27,6 +27,7 @@ import {
 import toast from "react-hot-toast";
 import ConfirmationHandleDialog from "@/components/confirmation-handle-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft, Undo } from "lucide-react";
 
 type Program = { id: string; programCode: string; department?: string };
 type YearLevel = { id: string; programId: string; yearLevel: string };
@@ -190,14 +191,25 @@ export default function ProgramHeadManageLoad(props: Props) {
 
   return (
     <div className="w-full max-w-5xl mx-auto p-3 sm:p-5 flex flex-col gap-3">
-      <div className="facilium-bg-whiter p-3 rounded-xl border">
-        <h1 className="text-xl font-semibold facilium-color-indigo mb-1.5">Manage Faculty Load</h1>
-        <p className="text-sm text-gray-600">Assign courses/sections to professors. These assignments will restrict professor choices during schedule plotting.</p>
+      <div className="facilium-bg-whiter p-4 rounded-xl border">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <h1 className="text-xl font-semibold facilium-color-indigo">Manage Faculty Load</h1>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 px-3 text-xs border border-gray-500"
+            onClick={() => router.push('/program-head')}
+          >
+            <ArrowLeft />
+            Back to Home
+          </Button>
+        </div>
+        <p className="text-sm text-gray-600">* Assign courses/sections to professors. These assignments will restrict professor choices during schedule plotting.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.2fr] gap-3">
         <div className="facilium-bg-whiter p-3 rounded-xl border">
-          <h2 className="text-base font-semibold mb-2">Create Assignment</h2>
+          <h2 className="text-base font-semibold mb-4">Create Assignment Loads</h2>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
               {/* Program and Professor side by side */}
@@ -394,10 +406,10 @@ export default function ProgramHeadManageLoad(props: Props) {
 
               
 
-              <div className="pt-1.5">
+              <div className="pt-1.5 flex items-center gap-2">
                 <ConfirmationHandleDialog
                   trigger={
-                    <Button type="button" className="facilium-bg-indigo h-9 text-sm" disabled={loading}>
+                    <Button type="button" className="facilium-bg-indigo h-9 text-sm rounded-full" disabled={loading}>
                       {loading ? "Saving..." : "Add Faculty Load"}
                     </Button>
                   }
@@ -414,13 +426,26 @@ export default function ProgramHeadManageLoad(props: Props) {
                     return true;
                   }}
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 text-sm"
+                  onClick={() => {
+                    // Clear URL filters and form
+                    setQuery({ programId: null, yearLevelId: null, sectionId: null });
+                    form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
+                  }}
+                >
+                  <Undo />
+                  Reset
+                </Button>
               </div>
             </form>
           </Form>
         </div>
 
         <div className="facilium-bg-whiter p-3 rounded-xl border">
-          <h2 className="text-base font-semibold mb-2">Current Assignments</h2>
+          <h2 className="text-base font-semibold mb-4">Current Assignment Loads</h2>
             <div className="space-y-2 text-sm">
               {loading && <p className="text-xs text-gray-500">Loading...</p>}
               {loads.length === 0 ? (
