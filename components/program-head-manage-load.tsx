@@ -189,25 +189,25 @@ export default function ProgramHeadManageLoad(props: Props) {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 flex flex-col gap-4">
-      <div className="facilium-bg-whiter p-4 rounded-xl border">
-        <h1 className="text-2xl font-semibold facilium-color-indigo mb-2">Manage Faculty Load</h1>
+    <div className="w-full max-w-5xl mx-auto p-3 sm:p-5 flex flex-col gap-3">
+      <div className="facilium-bg-whiter p-3 rounded-xl border">
+        <h1 className="text-xl font-semibold facilium-color-indigo mb-1.5">Manage Faculty Load</h1>
         <p className="text-sm text-gray-600">Assign courses/sections to professors. These assignments will restrict professor choices during schedule plotting.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.2fr] gap-4">
-        <div className="facilium-bg-whiter p-4 rounded-xl border">
-          <h2 className="text-lg font-semibold mb-3">Create Assignment</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.2fr] gap-3">
+        <div className="facilium-bg-whiter p-3 rounded-xl border">
+          <h2 className="text-base font-semibold mb-2">Create Assignment</h2>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
               {/* Program and Professor side by side */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-x-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-x-6">
                 <FormField
                   control={form.control}
                   name="programId"
                   render={({ field }) => (
                     <FormItem className="min-w-0">
-                      <FormLabel className="mb-1">Program</FormLabel>
+                      <FormLabel className="mb-1 text-sm">Program</FormLabel>
                       <div className="min-w-0">
                         <Select
                           value={field.value}
@@ -222,7 +222,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                           }}
                         >
                           <FormControl>
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full h-9">
                               <SelectValue placeholder="Select Program" />
                             </SelectTrigger>
                           </FormControl>
@@ -247,11 +247,11 @@ export default function ProgramHeadManageLoad(props: Props) {
                   name="professorId"
                   render={({ field }) => (
                     <FormItem className="min-w-0">
-                      <FormLabel className="mb-1">Professor</FormLabel>
+                      <FormLabel className="mb-1 text-sm">Professor</FormLabel>
                       <div className="min-w-0">
                         <Select value={field.value} onValueChange={field.onChange} disabled={!programId}>
                           <FormControl>
-                            <SelectTrigger className="w-full truncate">
+                            <SelectTrigger className="w-full h-9 truncate">
                               <SelectValue placeholder="Select Professor" />
                             </SelectTrigger>
                           </FormControl>
@@ -284,7 +284,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                 render={({ field }) => (
                   <FormItem className="min-w-0">
                     <div className="flex items-center gap-3">
-                      <FormLabel className="w-28 shrink-0">Year Level</FormLabel>
+                      <FormLabel className="w-24 shrink-0 text-sm">Year Level</FormLabel>
                       <Select
                         value={field.value}
                         onValueChange={(v) => {
@@ -297,7 +297,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                         disabled={!programId}
                       >
                         <FormControl>
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full h-9">
                             <SelectValue placeholder="Select Year Level" />
                           </SelectTrigger>
                         </FormControl>
@@ -323,7 +323,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                 render={({ field }) => (
                   <FormItem className="min-w-0">
                     <div className="flex items-center gap-3">
-                      <FormLabel className="w-28 shrink-0">Section</FormLabel>
+                      <FormLabel className="w-24 shrink-0 text-sm">Section</FormLabel>
                       <Select
                         value={field.value}
                         onValueChange={(v) => {
@@ -335,7 +335,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                         disabled={!yearLevelId}
                       >
                         <FormControl>
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full h-9">
                             <SelectValue placeholder="Select Section" />
                           </SelectTrigger>
                         </FormControl>
@@ -361,14 +361,14 @@ export default function ProgramHeadManageLoad(props: Props) {
                 render={({ field }) => (
                   <FormItem className="min-w-0">
                     <div className="flex items-center gap-3">
-                      <FormLabel className="w-28 shrink-0">Course</FormLabel>
+                      <FormLabel className="w-24 shrink-0 text-sm">Course</FormLabel>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={!sectionId}
                       >
                         <FormControl>
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full h-9">
                             <SelectValue placeholder="Select Course" />
                           </SelectTrigger>
                         </FormControl>
@@ -394,10 +394,10 @@ export default function ProgramHeadManageLoad(props: Props) {
 
               
 
-              <div className="pt-2">
+              <div className="pt-1.5">
                 <ConfirmationHandleDialog
                   trigger={
-                    <Button type="button" className="facilium-bg-indigo" disabled={loading}>
+                    <Button type="button" className="facilium-bg-indigo h-9 text-sm" disabled={loading}>
                       {loading ? "Saving..." : "Add Faculty Load"}
                     </Button>
                   }
@@ -419,9 +419,9 @@ export default function ProgramHeadManageLoad(props: Props) {
           </Form>
         </div>
 
-        <div className="facilium-bg-whiter p-4 rounded-xl border">
-          <h2 className="text-lg font-semibold mb-3">Current Assignments</h2>
-            <div className="space-y-2">
+        <div className="facilium-bg-whiter p-3 rounded-xl border">
+          <h2 className="text-base font-semibold mb-2">Current Assignments</h2>
+            <div className="space-y-2 text-sm">
               {loading && <p className="text-xs text-gray-500">Loading...</p>}
               {loads.length === 0 ? (
                 <p className="text-sm text-gray-600">No assignments yet.</p>

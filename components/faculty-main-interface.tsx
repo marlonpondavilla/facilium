@@ -358,9 +358,9 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 	}, [selectedClassroom, generateClassroomPdf]);
 
 	return (
-		<div className="border flex flex-col justify-center gap-4 w-full sm:w-5xl md:px-4 sm:px-0">
+		<div className="border flex flex-col justify-center gap-4 w-full max-w-4xl mx-auto md:px-4 sm:px-0">
 			{/* Banner Section */}
-			<div className="relative border w-full h-[200px] bg-[url('/bsu-meneses-interface-bg.jpg')] bg-cover bg-center rounded-2xl overflow-hidden">
+			<div className="relative border w-full h-[160px] bg-[url('/bsu-meneses-interface-bg.jpg')] bg-cover bg-center rounded-2xl overflow-hidden">
 				{/* Loading Spinner */}
 				{isLoading && <Loading />}
 				{/* Dark pink gradient from bottom to top */}
@@ -413,40 +413,43 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 			</div>
 
 			{/* Building Actions Section */}
-			<div className="building-actions facilium-bg-whiter flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 rounded-2xl p-4">
-				{/* View Schedule Action */}
-				<div className="view-schedule group border border-gray-300 rounded-xl p-6 w-full sm:w-auto bg-white hover:bg-gray-100 hover:shadow-md transition duration-300 cursor-pointer">
-					<div
-						onClick={handleViewScheduleClick}
-						className="view-schedule-action flex flex-col justify-center items-center gap-3"
-					>
-						<Eye className="w-10 h-10 transition-colors duration-300" />
-						<p className="font-semibold text-xl text-gray-800 group-hover:text-indigo-800">
-							{pathname.startsWith("/dean")
-								? "View Schedules"
-								: "View Department Faculty Schedules"}
-						</p>
-					</div>
-				</div>
-
-				{/* Program Head: Manage Faculty Load */}
-				{pathname.startsWith("/program-head") && (
-					<div className="manage-load group border border-gray-300 rounded-xl p-6 w-full sm:w-auto bg-white hover:bg-gray-100 hover:shadow-md transition duration-300 cursor-pointer">
+			<div className="building-actions facilium-bg-whiter grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 rounded-2xl p-4">
+				{/* Left column: View + Manage stacked */}
+				<div className="flex flex-col gap-2 w-full">
+					{/* View Schedule Action */}
+					<div className="view-schedule group border border-gray-300 rounded-lg px-3 py-2 w-full bg-white hover:bg-gray-100 hover:shadow-md transition duration-200 cursor-pointer h-12">
 						<div
-							onClick={handleManageLoadClick}
-							className="flex flex-col justify-center items-center gap-3"
+							onClick={handleViewScheduleClick}
+							className="view-schedule-action flex flex-row items-center justify-center gap-2 h-full"
 						>
-							<FilePlus2 className="w-10 h-10" />
-							<p className="font-semibold text-xl text-gray-800 group-hover:text-indigo-800">
-								Manage Faculty Load
+							<Eye className="w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200" />
+							<p className="font-medium text-xs sm:text-sm text-gray-800 group-hover:text-indigo-800 truncate" title={pathname.startsWith('/dean') ? 'View Schedules' : 'View Department Faculty Schedules'}>
+								{pathname.startsWith("/dean")
+									? "View Schedules"
+									: "View Department Faculty Schedules"}
 							</p>
 						</div>
 					</div>
-				)}
 
-				{/* Download Classroom Schedule Section */}
-				<div className="download-schedule flex flex-col gap-3 w-full sm:w-auto">
-					<h2 className="font-semibold text-gray-600 text-center tracking-wide">
+					{/* Program Head: Manage Faculty Load */}
+					{pathname.startsWith("/program-head") && (
+						<div className="manage-load group border border-gray-300 rounded-lg px-3 py-2 w-full bg-white hover:bg-gray-100 hover:shadow-md transition duration-200 cursor-pointer h-12">
+							<div
+								onClick={handleManageLoadClick}
+								className="flex flex-row items-center justify-center gap-2 h-full"
+							>
+								<FilePlus2 className="w-4 h-4 sm:w-5 sm:h-5" />
+								<p className="font-medium text-xs sm:text-sm text-gray-800 group-hover:text-indigo-800 truncate" title="Manage Faculty Load">
+									Manage Faculty Load
+								</p>
+							</div>
+						</div>
+					)}
+				</div>
+
+				{/* Right column: Download Classroom Schedule */}
+				<div className="download-schedule border border-gray-300 rounded-xl p-3 sm:p-4 bg-white flex flex-col gap-2 w-full min-h-[96px] lg:self-start">
+					<h2 className="font-semibold text-gray-700 text-center tracking-wide text-sm sm:text-base">
 						Download classroom schedule
 					</h2>
 					<div className="flex flex-col gap-2">
@@ -454,7 +457,7 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 							onValueChange={(v) => setSelectedClassroom(v)}
 							value={selectedClassroom}
 						>
-							<SelectTrigger className="w-full border border-black bg-white">
+							<SelectTrigger className="w-full border border-gray-300 bg-white h-9">
 								<SelectValue placeholder="Select classroom" />
 							</SelectTrigger>
 							<SelectContent className="max-h-72 overflow-y-auto">
@@ -471,7 +474,7 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 						<Button
 							disabled={!selectedClassroom || isExporting}
 							onClick={handleDownload}
-							className="facilium-bg-indigo disabled:opacity-50"
+							className="facilium-bg-indigo disabled:opacity-50 h-9 text-xs sm:text-sm"
 						>
 							{isExporting ? "Generating…" : "Download PDF"}
 						</Button>
