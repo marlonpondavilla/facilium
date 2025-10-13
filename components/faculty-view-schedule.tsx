@@ -168,7 +168,7 @@ export default function FacultyViewSchedule() {
 		return () => {
 			cancelled = true;
 		};
-	}, [canBrowseOthers, isDeptLimited, user?.email, isProgramHead, isDean]);
+		}, [canBrowseOthers, isDeptLimited, user?.email, user, isProgramHead, isDean]);
 
 	// Determine effective professor to view: Dean & Program Head can use query param; others use own uid
 	const effectiveProfessorId = canBrowseOthers ? professorId : user?.uid || "";

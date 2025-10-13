@@ -52,11 +52,13 @@ import {
 	getSingleDocumentFromFirestore,
 	updateScheduleDocument,
 	getEligibleProfessorsForLoad,
+		getFacultyLoads,
 } from "@/data/actions";
 import Loading from "./loading";
 import Link from "next/link";
 import WarningPopUp from "./warning-pop-up";
 import { AcademicYear } from "@/types/academicYearType";
+import type { FacultyLoad } from "@/types/facultyLoadType";
 import ConfirmationHandleDialog from "./confirmation-handle-dialog";
 import { useAuth } from "@/context/auth";
 
@@ -220,6 +222,9 @@ const FacultyScheduleInterface = ({
 	// Eligible professors according to Program Head assigned load
 	const [eligibleProfessorIds, setEligibleProfessorIds] = useState<string[] | null>(null);
 
+	// Faculty loads for the selected professor within the current context (program/year)
+	const [professorLoads, setProfessorLoads] = useState<FacultyLoad[]>([]);
+
 	const form = useForm<z.infer<typeof scheduleSchema>>({
 		resolver: zodResolver(scheduleSchema),
 		defaultValues: {
@@ -237,6 +242,7 @@ const FacultyScheduleInterface = ({
 
 	// Watch courseCode for eligibility updates
 	const watchedCourseCode = form.watch("courseCode");
+	const watchedProfessorId = form.watch("professor");
 
 	useEffect(() => {
 		let cancelled = false;
@@ -261,6 +267,31 @@ const FacultyScheduleInterface = ({
 			cancelled = true;
 		};
 	}, [programId, yearLevelId, sectionId, watchedCourseCode]);
+
+	// Load professor's assigned loads for the current program/year when a professor is selected
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			if (!programId || !yearLevelId || !watchedProfessorId) {
+				if (!cancelled) setProfessorLoads([]);
+				return;
+			}
+			try {
+				const loads = await getFacultyLoads({
+					professorId: watchedProfessorId,
+					programId,
+					yearLevelId,
+				});
+				if (!cancelled) setProfessorLoads((loads as FacultyLoad[]) || []);
+			} catch (e) {
+				console.error("failed to load professor loads", e);
+				if (!cancelled) setProfessorLoads([]);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [programId, yearLevelId, watchedProfessorId]);
 
 	const updateQueryParamAndForm = <T extends FieldPath<ScheduleFormValues>>(
 		key: string,
@@ -322,6 +353,34 @@ const FacultyScheduleInterface = ({
 	const durationHours = Number(form.watch("duration") ?? 0);
 	const disableHalfHour = !durationHours || durationHours >= 5;
 
+	// Resolve selected section object and allowed sets based on professor loads
+	const selectedSectionObj = React.useMemo(() => {
+		if (!sections || !yearLevelId) return undefined;
+		const name = form.watch("section");
+		return sections.find((s) => s.sectionName === name && s.yearLevelId === yearLevelId);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [sections, yearLevelId, form.watch("section")]);
+
+	const allowedSectionIds = React.useMemo(() => {
+		if (!professorSelected) return undefined;
+		const set = new Set<string>();
+		(professorLoads || []).forEach((l) => {
+				if (l.sectionId) set.add(l.sectionId);
+			});
+		return set;
+	}, [professorSelected, professorLoads]);
+
+	const allowedCourseCodesForSelectedSection = React.useMemo(() => {
+		if (!professorSelected || !selectedSectionObj) return undefined;
+		const set = new Set<string>();
+		(professorLoads || [])
+				.filter((l) => l.sectionId === selectedSectionObj.id)
+				.forEach((l) => {
+					if (l.courseCode) set.add(l.courseCode);
+				});
+		return set;
+	}, [professorSelected, professorLoads, selectedSectionObj]);
+
 	// Enable Add only when form is fully filled (halfHour is optional).
 	const canAddSchedule = Boolean(
 		classroomId &&
@@ -341,6 +400,38 @@ const FacultyScheduleInterface = ({
 			form.setValue("halfHour", 0, { shouldValidate: true });
 		}
 	}, [durationHours, form]);
+
+	// When a professor is selected/changed, ensure section and course adhere to assigned loads
+	useEffect(() => {
+		if (!professorSelected) return;
+		// Validate section
+		const currentSectionName = form.getValues("section");
+		if (currentSectionName && allowedSectionIds) {
+			const sec = sections?.find((s) => s.sectionName === currentSectionName);
+			if (sec && !allowedSectionIds.has(sec.id)) {
+				// clear invalid section and dependent fields
+				form.setValue("section", "");
+				form.setValue("courseCode", "");
+				form.setValue("day", "");
+				form.setValue("start", 0);
+				form.setValue("duration", 0);
+				form.setValue("halfHour", 0);
+			}
+		}
+		// Validate course for current section
+		const currentCourse = form.getValues("courseCode");
+		if (currentCourse && allowedCourseCodesForSelectedSection) {
+			if (!allowedCourseCodesForSelectedSection.has(currentCourse)) {
+				form.setValue("courseCode", "");
+				form.setValue("day", "");
+				form.setValue("start", 0);
+				form.setValue("duration", 0);
+				form.setValue("halfHour", 0);
+			}
+		}
+		// keep URL params in sync if we cleared items
+		// note: we don't store section/course in URL currently, so nothing to delete
+	}, [professorSelected, allowedSectionIds, allowedCourseCodesForSelectedSection, form, sections]);
 
 	// NOTE: Program filtering by department now handled at the feeder (wrapper/page) level.
 
@@ -934,7 +1025,7 @@ const FacultyScheduleInterface = ({
 								disabled={form.formState.isSubmitting}
 								className="flex flex-col gap-3"
 							>
-								{/* Professor Select Field (moved to top; still disabled until a course is selected) */}
+								{/* Professor Select Field (now first; enables Section/Course filtering by loads) */}
 								<div>
 									<FormField
 										control={form.control}
@@ -945,25 +1036,25 @@ const FacultyScheduleInterface = ({
 													<FormLabel>Professor</FormLabel>
 													<Select
 														onValueChange={(value) => {
-															// reflects select item change
-															const selectedProf = professors?.find(
-																(p) => p.id === value
-															);
-
-															if (!selectedProf) {
-																return;
-															}
-
-															updateQueryParamAndForm(
-																"professorId",
-																selectedProf.id
-															);
-
+															const selectedProf = professors?.find((p) => p.id === value);
+															if (!selectedProf) return;
+															updateQueryParamAndForm("professorId", selectedProf.id, {
+																clearParams: ["programId", "yearLevelId", "sectionId"],
+															});
 															form.setValue("professor", value);
+															// Reset dependent selections for consistency with new professor loads
+															form.setValue("program", "");
+															form.setValue("yearLevel", "");
+															form.setValue("section", "");
+															form.setValue("courseCode", "");
+															form.setValue("day", "");
+															form.setValue("start", 0);
+															form.setValue("duration", 0);
+															form.setValue("halfHour", 0);
 														}}
 														defaultValue={field.value}
 														{...field}
-														disabled={!courseCodeSelected}
+														disabled={!classroomId}
 													>
 														<FormControl>
 															<SelectTrigger>
@@ -975,29 +1066,18 @@ const FacultyScheduleInterface = ({
 																{professors
 																	?.filter((professor) => {
 																		// Exclude Admins
-																		if (professor.designation === "Admin") {
-																			return false;
-																		}
+																		if (professor.designation === "Admin") return false;
 																		// If not on program-head route OR no known dept, show all non-admin professors
-																		if (!isProgramHeadRoute || !normalizedDept)
-																			return true;
-																		// Only include professors with the same department as current program head
-																		const profDept = (
-																			professor.department || ""
-																		)
-																			.trim()
-																			.toLowerCase();
-																		// If eligible list is available, restrict further
+																		if (!isProgramHeadRoute || !normalizedDept) return true;
+																		const profDept = (professor.department || "").trim().toLowerCase();
+																		// If eligible list exists (after choosing a course), restrict further
 																		if (eligibleProfessorIds && eligibleProfessorIds.length > 0) {
 																			return profDept === normalizedDept && eligibleProfessorIds.includes(professor.id);
 																		}
 																		return profDept === normalizedDept;
 																	})
 																	.map((professor) => (
-																		<SelectItem
-																			key={professor.id}
-																			value={`${professor.id}`}
-																		>
+																		<SelectItem key={professor.id} value={`${professor.id}`}>
 																			{`${professor.firstName} ${professor.lastName}`}
 																		</SelectItem>
 																	))}
@@ -1032,7 +1112,6 @@ const FacultyScheduleInterface = ({
 																	clearParams: [
 																		"yearLevelId",
 																		"sectionId",
-																		"professorId",
 																	],
 																}
 															);
@@ -1041,7 +1120,7 @@ const FacultyScheduleInterface = ({
 															form.setValue("yearLevel", "");
 															form.setValue("section", "");
 															form.setValue("courseCode", "");
-															form.setValue("professor", "");
+															// keep professor selection to preserve load filtering
 															form.setValue("day", "");
 															form.setValue("start", 0);
 															form.setValue("duration", 0);
@@ -1115,14 +1194,14 @@ const FacultyScheduleInterface = ({
 															updateQueryParamAndForm(
 																"yearLevelId",
 																selectedYear.id,
-																{ clearParams: ["sectionId", "professorId"] }
+																{ clearParams: ["sectionId"] }
 															);
 
 															form.setValue("yearLevel", value);
 															// reset dependent fields in form
 															form.setValue("section", "");
 															form.setValue("courseCode", "");
-															form.setValue("professor", "");
+															// keep professor selection to preserve load filtering
 															form.setValue("day", "");
 															form.setValue("start", 0);
 															form.setValue("duration", 0);
@@ -1184,14 +1263,13 @@ const FacultyScheduleInterface = ({
 
 															updateQueryParamAndForm(
 																"sectionId",
-																selectedSection.id,
-																{ clearParams: ["professorId"] }
+																selectedSection.id
 															);
 
 															form.setValue("section", value);
 															// reset dependent fields in form
 															form.setValue("courseCode", "");
-															form.setValue("professor", "");
+															// keep professor selection to preserve load filtering
 															form.setValue("day", "");
 															form.setValue("start", 0);
 															form.setValue("duration", 0);
@@ -1209,10 +1287,14 @@ const FacultyScheduleInterface = ({
 														<SelectContent>
 															<SelectGroup>
 																{sections
-																	?.filter(
-																		(section) =>
-																			section.yearLevelId === yearLevelId
-																	)
+																	?.filter((section) => section.yearLevelId === yearLevelId)
+																	.filter((section) => {
+																		// If professor is selected and allowedSectionIds set, restrict
+																		if (professorSelected && allowedSectionIds) {
+																			return allowedSectionIds.has(section.id);
+																		}
+																		return true;
+																	})
 																	.map((section) => (
 																		<SelectItem
 																			key={section.id}
@@ -1253,96 +1335,27 @@ const FacultyScheduleInterface = ({
 														<SelectContent>
 															<SelectGroup>
 																{filteredCourses.length > 0 ? (
-																	filteredCourses.map((course) => (
-																		<SelectItem
-																			key={course.id}
-																			value={course.courseCode}
-																		>
-																			{course.courseCode}
-																		</SelectItem>
-																	))
+																	filteredCourses
+																		.filter((course) => {
+																			// If professor is selected with allowed courses for the chosen section, restrict
+																			if (professorSelected && allowedCourseCodesForSelectedSection) {
+																				return allowedCourseCodesForSelectedSection.has(course.courseCode);
+																			}
+																			return true;
+																		})
+																		.map((course) => (
+																			<SelectItem
+																				key={course.id}
+																				value={course.courseCode}
+																			>
+																				{course.courseCode}
+																			</SelectItem>
+																		))
 																) : (
 																	<SelectItem disabled value="no-course">
 																		No courses found
 																	</SelectItem>
 																)}
-															</SelectGroup>
-														</SelectContent>
-													</Select>
-												</div>
-												<FormMessage className="text-xs" />
-											</FormItem>
-										)}
-									/>
-								</div>
-								{/* Professor Select Field */}
-								<div>
-									<FormField
-										control={form.control}
-										name="professor"
-										render={({ field }) => (
-											<FormItem>
-												<div className="flex items-center gap-4">
-													<FormLabel>Professor</FormLabel>
-													<Select
-														onValueChange={(value) => {
-															// reflects select item change
-															const selectedProf = professors?.find(
-																(p) => p.id === value
-															);
-
-															if (!selectedProf) {
-																return;
-															}
-
-															updateQueryParamAndForm(
-																"professorId",
-																selectedProf.id
-															);
-
-															form.setValue("professor", value);
-														}}
-														defaultValue={field.value}
-														{...field}
-														disabled={!courseCodeSelected}
-													>
-														<FormControl>
-															<SelectTrigger>
-																<SelectValue placeholder="Select Professor" />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															<SelectGroup>
-																{professors
-																	?.filter((professor) => {
-																		// Exclude Admins
-																		if (professor.designation === "Admin") {
-																			return false;
-																		}
-																		// If not on program-head route OR no known dept, show all non-admin professors
-																		if (!isProgramHeadRoute || !normalizedDept)
-																			return true;
-																		// Only include professors with the same department as current program head
-																		const profDept = (
-																			professor.department || ""
-																		)
-																			.trim()
-																			.toLowerCase();
-																		// Additionally, if loads are defined, restrict to assigned professors
-																		const passesDept = profDept === normalizedDept;
-																		if (!eligibleProfessorIds || eligibleProfessorIds.length === 0) {
-																			return passesDept;
-																		}
-																		return passesDept && eligibleProfessorIds.includes(professor.id);
-																	})
-																	.map((professor) => (
-																		<SelectItem
-																			key={professor.id}
-																			value={`${professor.id}`}
-																		>
-																			{`${professor.firstName} ${professor.lastName}`}
-																		</SelectItem>
-																	))}
 															</SelectGroup>
 														</SelectContent>
 													</Select>
