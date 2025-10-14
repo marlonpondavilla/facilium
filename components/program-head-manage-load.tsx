@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -29,6 +29,7 @@ import ConfirmationHandleDialog from "@/components/confirmation-handle-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Undo } from "lucide-react";
 import WarningPopUp from "./warning-pop-up";
+import PleaseWait from "./please-wait";
 
 type Program = { id: string; programCode: string; department?: string };
 type YearLevel = { id: string; programId: string; yearLevel: string };
@@ -60,7 +61,12 @@ export default function ProgramHeadManageLoad(props: Props) {
   const [warnTitle, setWarnTitle] = useState("");
   const [warnDesc, setWarnDesc] = useState("");
   const [page, setPage] = useState(0);
+  // UI-blocking spinner during filter transitions
+  const [uiBlocking, setUiBlocking] = useState(false);
   const pageSize = 5;
+  // Track the intended target for URL params while blocking
+  const blockingTargetRef = useRef<string | null>(null);
+  const blockingTargetKvRef = useRef<Record<string, string | null> | null>(null);
 
   const programId = params.get("programId") || "";
   const yearLevelId = params.get("yearLevelId") || "";
@@ -77,11 +83,18 @@ export default function ProgramHeadManageLoad(props: Props) {
     if (!loadId) return;
     const selected = loads.find((l) => l.id === loadId);
     if (!selected) return;
+    // Block UI while reflecting selection into the form
+    setUiBlocking(true);
     form.setValue("programId", selected.programId);
     form.setValue("yearLevelId", selected.yearLevelId);
     form.setValue("sectionId", selected.sectionId);
     form.setValue("courseCode", selected.courseCode);
     form.setValue("professorId", selected.professorId);
+    // next frame to ensure UI updates complete
+    if (typeof window !== 'undefined') {
+      const id = window.requestAnimationFrame(() => setUiBlocking(false));
+      return () => window.cancelAnimationFrame(id);
+    }
   }, [loadId, loads, form]);
 
   const filteredYearLevels = useMemo(
@@ -130,14 +143,62 @@ export default function ProgramHeadManageLoad(props: Props) {
     }
   }, [programId, filteredProfessors, form]);
 
-  const setQuery = (kv: Record<string, string | null>) => {
+  const buildNextSearchString = (kv: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
     Object.entries(kv).forEach(([k, v]) => {
       if (v) next.set(k, v);
       else next.delete(k);
     });
-    router.push(`${pathname}?${next.toString()}`);
+    return next.toString();
   };
+
+  const setQuery = (kv: Record<string, string | null>) => {
+    router.push(`${pathname}?${buildNextSearchString(kv)}`);
+  };
+
+  // Push URL, set blocking, and only clear when params reach the exact target
+  const setQueryBlocking = (kv: Record<string, string | null>) => {
+    const target = buildNextSearchString(kv);
+    blockingTargetRef.current = target;
+    blockingTargetKvRef.current = kv;
+    setUiBlocking(true);
+    router.push(`${pathname}?${target}`);
+  };
+
+  // Clear UI blocking when URL params match the intended target KV; then next paint
+  useEffect(() => {
+    if (!uiBlocking) return;
+    const targetKv = blockingTargetKvRef.current;
+    let match = false;
+    if (targetKv) {
+      match = Object.entries(targetKv).every(([k, v]) => {
+        const curr = params.get(k);
+        return v == null ? curr === null : curr === v;
+      });
+    } else if (blockingTargetRef.current) {
+      // Fallback to string compare if KV not set (legacy path)
+      match = params.toString() === blockingTargetRef.current;
+    }
+    if (match) {
+      const id = typeof window !== 'undefined' ? window.requestAnimationFrame(() => {
+        setUiBlocking(false);
+        blockingTargetRef.current = null;
+        blockingTargetKvRef.current = null;
+      }) : 0 as unknown as number;
+      return () => { if (typeof window !== 'undefined' && id) window.cancelAnimationFrame(id); };
+    }
+  }, [uiBlocking, params]);
+
+  // Safety: never let the blocking spinner persist indefinitely
+  useEffect(() => {
+    if (!uiBlocking) return;
+    const t = setTimeout(() => {
+      setUiBlocking(false);
+      blockingTargetRef.current = null;
+      blockingTargetKvRef.current = null;
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [uiBlocking]);
 
   // Static right-side table: always show all loads; do not filter by left-side selections
   const refreshLoads = useCallback(async () => {
@@ -241,7 +302,7 @@ export default function ProgramHeadManageLoad(props: Props) {
           toast.success("Faculty load updated");
           await refreshLoads();
           // Clear URL params and reset form after update (return to add mode)
-          setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
+          setQueryBlocking({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
           form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
         } else {
           // Revert optimistic change on failure
@@ -254,6 +315,7 @@ export default function ProgramHeadManageLoad(props: Props) {
           } else {
             toast.error(msg);
           }
+          setUiBlocking(false);
         }
       } else {
         // Optimistic add
@@ -276,7 +338,7 @@ export default function ProgramHeadManageLoad(props: Props) {
         if (result.success) {
           toast.success("Faculty load added");
           // Clear URL filters and form labels back to placeholders
-          setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
+          setQueryBlocking({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
           form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
           // Refresh list to include the newly added load
           await refreshLoads();
@@ -291,6 +353,7 @@ export default function ProgramHeadManageLoad(props: Props) {
           } else {
             toast.error(msg);
           }
+          setUiBlocking(false);
         }
       }
     } catch (e) {
@@ -301,6 +364,10 @@ export default function ProgramHeadManageLoad(props: Props) {
     } finally {
       clearTimeout(timeout);
       setSaving(false);
+      // If no URL navigation is pending, ensure we don't leave the UI blocked
+      if (!blockingTargetKvRef.current && !blockingTargetRef.current) {
+        setUiBlocking(false);
+      }
     }
   };
 
@@ -324,6 +391,7 @@ export default function ProgramHeadManageLoad(props: Props) {
 
   return (
     <div className="w-full max-w-5xl mx-auto p-3 sm:p-5 flex flex-col gap-3">
+  {(uiBlocking || saving) && <PleaseWait />}
       <div className="facilium-bg-whiter p-4 rounded-xl border">
         <div className="flex items-center justify-between gap-2 mb-1">
           <h1 className="text-xl font-semibold facilium-color-indigo">Manage Faculty Load</h1>
@@ -370,9 +438,8 @@ export default function ProgramHeadManageLoad(props: Props) {
                 className="h-8"
                 onClick={() => {
                   // Clear selection only (preserve current filters)
-                  const next = new URLSearchParams(params.toString());
-                  next.delete("loadId");
-                  router.push(`${pathname}?${next.toString()}`);
+                  setUiBlocking(true);
+                  setQueryBlocking({ loadId: null });
                 }}
               >
                 Clear
@@ -394,7 +461,8 @@ export default function ProgramHeadManageLoad(props: Props) {
                           value={field.value}
                           onValueChange={(v) => {
                             field.onChange(v);
-                            setQuery({ programId: v, yearLevelId: null, sectionId: null });
+                            setUiBlocking(true);
+                            setQueryBlocking({ programId: v, yearLevelId: null, sectionId: null });
                             // Reset dependent selects and clear professor for new department
                             form.setValue("yearLevelId", "");
                             form.setValue("sectionId", "");
@@ -471,7 +539,8 @@ export default function ProgramHeadManageLoad(props: Props) {
                         value={field.value}
                         onValueChange={(v) => {
                           field.onChange(v);
-                          setQuery({ yearLevelId: v, sectionId: null });
+                          setUiBlocking(true);
+                          setQueryBlocking({ yearLevelId: v, sectionId: null });
                           form.setValue("sectionId", "");
                           form.setValue("courseCode", "");
                           // Professor selection is independent; no need to clear it
@@ -510,7 +579,8 @@ export default function ProgramHeadManageLoad(props: Props) {
                         value={field.value}
                         onValueChange={(v) => {
                           field.onChange(v);
-                          setQuery({ sectionId: v });
+                          setUiBlocking(true);
+                          setQueryBlocking({ sectionId: v });
                           form.setValue("courseCode", "");
                           // Professor selection is independent; no need to clear it
                         }}
@@ -605,7 +675,8 @@ export default function ProgramHeadManageLoad(props: Props) {
                     className="h-9 text-sm"
                     onClick={() => {
                       // Clear current selection
-                      setQuery({ loadId: null });
+                      setUiBlocking(true);
+                      setQueryBlocking({ loadId: null });
                     }}
                   >
                     Clear Selection
@@ -617,7 +688,8 @@ export default function ProgramHeadManageLoad(props: Props) {
                   className="h-9 text-sm"
                   onClick={() => {
                     // Clear URL filters and form
-                    setQuery({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
+                    setUiBlocking(true);
+                    setQueryBlocking({ programId: null, yearLevelId: null, sectionId: null, loadId: null });
                     form.reset({ programId: "", yearLevelId: "", sectionId: "", courseCode: "", professorId: "" });
                   }}
                     disabled={saving}
@@ -656,17 +728,16 @@ export default function ProgramHeadManageLoad(props: Props) {
                       return (
                         <TableRow
                           key={l.id}
-                          className={`${loadId === l.id ? "bg-pink-100" : "cursor-pointer hover:bg-pink-200"}`}
-                          onClick={(e) => {
-                            if (!l.id) return;
-                            if (saving) return; // avoid selecting while saving
-                            const target = e.target as HTMLElement;
-                            // Do not select when clicking buttons/links/icons within the row
-                            if (target.closest('button, a, [role="button"], [data-no-select]')) return;
-                            setQuery({ loadId: l.id, programId: l.programId, yearLevelId: l.yearLevelId, sectionId: l.sectionId });
-                          }}
+                          className={`${loadId === l.id ? "bg-pink-100" : ""}`}
                         >
-                          <TableCell>
+                          <TableCell
+                            className="cursor-pointer hover:bg-pink-200"
+                            onClick={() => {
+                              if (!l.id || saving) return;
+                              setUiBlocking(true);
+                              setQueryBlocking({ loadId: l.id, programId: l.programId, yearLevelId: l.yearLevelId, sectionId: l.sectionId });
+                            }}
+                          >
                             <div className="flex items-center gap-2">
                               <span>{course}</span>
                               {loadId === l.id && (
@@ -674,8 +745,26 @@ export default function ProgramHeadManageLoad(props: Props) {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>{section}</TableCell>
-                          <TableCell>{prof ? `${prof.firstName} ${prof.lastName}` : l.professorId}</TableCell>
+                          <TableCell
+                            className="cursor-pointer hover:bg-pink-200"
+                            onClick={() => {
+                              if (!l.id || saving) return;
+                              setUiBlocking(true);
+                              setQueryBlocking({ loadId: l.id, programId: l.programId, yearLevelId: l.yearLevelId, sectionId: l.sectionId });
+                            }}
+                          >
+                            {section}
+                          </TableCell>
+                          <TableCell
+                            className="cursor-pointer hover:bg-pink-200"
+                            onClick={() => {
+                              if (!l.id || saving) return;
+                              setUiBlocking(true);
+                              setQueryBlocking({ loadId: l.id, programId: l.programId, yearLevelId: l.yearLevelId, sectionId: l.sectionId });
+                            }}
+                          >
+                            {prof ? `${prof.firstName} ${prof.lastName}` : l.professorId}
+                          </TableCell>
                           <TableCell className="text-right">
                             {l.id && (
                               <ConfirmationHandleDialog
@@ -685,11 +774,6 @@ export default function ProgramHeadManageLoad(props: Props) {
                                     variant="destructive"
                                     size="sm"
                                     disabled={saving}
-                                    data-no-select
-                                    onClick={(e) => {
-                                      // Prevent TableRow onClick from selecting the row
-                                      e.stopPropagation();
-                                    }}
                                   >
                                     Delete
                                   </Button>
