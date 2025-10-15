@@ -128,6 +128,63 @@ export const updateDocumentById = async (
 		.update({ [fieldName]: newData });
 };
 
+// Update a user's designation while enforcing: at most one Program Head per department.
+// If setting to "Program Head", this checks whether another active Program Head exists in the same department.
+// Returns a success flag and human-readable error on violation.
+export const updateUserDesignationWithGuard = async (
+	params: { docId: string; newDesignation: string }
+): Promise<{ success: true } | { success: false; error: string }> => {
+	const { docId, newDesignation } = params || ({} as any);
+	if (!docId || !newDesignation) {
+		return { success: false, error: "docId and newDesignation are required" };
+	}
+
+	try {
+		const userRef = firestore.collection("userData").doc(docId);
+		const snap = await userRef.get();
+		if (!snap.exists) {
+			return { success: false, error: "User not found" };
+		}
+
+		const data = snap.data() as { department?: string; designation?: string; status?: string } | undefined;
+		const department = (data?.department || "").trim();
+
+		// Only enforce when elevating to Program Head
+		if (newDesignation === "Program Head") {
+			if (!department) {
+				return { success: false, error: "User has no department set" };
+			}
+
+			// Find any other Program Head in the same department
+			const existingSnap = await firestore
+				.collection("userData")
+				.where("designation", "==", "Program Head")
+				.where("department", "==", department)
+				.get();
+
+			const conflict = existingSnap.docs.some((d) => {
+				if (d.id === docId) return false; // same user is fine
+				const s = (d.get("status") as string | undefined)?.trim();
+				// Treat only non-disabled as conflicting; disabled Program Head won't block
+				return s !== "Disabled";
+			});
+
+			if (conflict) {
+				return {
+					success: false,
+					error: `This department ("${department}") already has an active Program Head.`,
+				};
+			}
+		}
+
+		await userRef.update({ designation: newDesignation });
+		return { success: true };
+	} catch (e) {
+		console.error("updateUserDesignationWithGuard failed", e);
+		return { success: false, error: "Failed to update designation" };
+	}
+};
+
 export const updateDocumentsByBatch = async (
 	updates: {
 		docId: string;

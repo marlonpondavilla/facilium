@@ -1,48 +1,42 @@
 "use client";
 
+import React from "react";
 import { Button } from "./ui/button";
-import {
-	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "./ui/dialog";
-import toast from "react-hot-toast";
 import { updateDocumentById } from "@/data/actions";
 import { EnableDisableActionProps } from "@/types/userActionType";
 import { useRouter } from "next/navigation";
+import ConfirmationHandleDialog from "./confirmation-handle-dialog";
+import WarningPopUp from "./warning-pop-up";
 
 const EnableDisableAction = ({ data }: EnableDisableActionProps) => {
 	const statusLabel = data.status !== "Enabled" ? "Enable" : "Disable";
 	const router = useRouter();
+	const [warningOpen, setWarningOpen] = React.useState(false);
+	const [warningMessage, setWarningMessage] = React.useState("");
 
 	const handleStatusUpdate = async () => {
 		const newStatus = data.status === "Enabled" ? "Disabled" : "Enabled";
-
 		try {
-			// dynamically update all the status fields based on collection name passed
 			await updateDocumentById(
 				data.id,
 				data.collectionName,
 				"status",
 				newStatus
 			);
-			toast.success("Updated successfully!");
 			router.refresh();
 		} catch (e: unknown) {
 			const error = e as { message?: string };
-			toast.error(error.message ?? "error in updating user");
+			setWarningMessage(error.message ?? "Error updating user status");
+			setWarningOpen(true);
+			return false;
 		}
+		return true;
 	};
 
 	return (
-		<div>
-			<Dialog>
-				<DialogTrigger asChild>
+		<>
+			<ConfirmationHandleDialog
+				trigger={
 					<Button
 						variant={"outline"}
 						className={`${
@@ -53,38 +47,22 @@ const EnableDisableAction = ({ data }: EnableDisableActionProps) => {
 					>
 						{statusLabel}
 					</Button>
-				</DialogTrigger>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							Are you sure you want to {statusLabel.toLowerCase()} this{" "}
-							{data.label.toLowerCase()}?
-						</DialogTitle>
-						<DialogDescription>
-							This will allow or restrict {data.label.toLowerCase()} based on
-							their status
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<DialogClose asChild>
-							<Button size={"sm"} variant={"outline"}>
-								No
-							</Button>
-						</DialogClose>
-						<DialogClose asChild>
-							<Button
-								onClick={handleStatusUpdate}
-								size={"sm"}
-								variant={"default"}
-								className="cursor-pointer facilium-bg-indigo"
-							>
-								{`Yes, ${statusLabel}`}
-							</Button>
-						</DialogClose>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</div>
+				}
+				title={`Confirm ${statusLabel.toLowerCase()} user`}
+				description={`This will ${statusLabel.toLowerCase()} the ${data.label.toLowerCase()} account.`}
+				label={statusLabel.toLowerCase()}
+				onConfirm={handleStatusUpdate}
+				requirePassword
+				passwordPlaceholder="Enter your password to confirm"
+				confirmButtonText={`Yes, ${statusLabel}`}
+			/>
+			<WarningPopUp
+				open={warningOpen}
+				setOpen={setWarningOpen}
+				title="Action failed"
+				description={warningMessage}
+			/>
+		</>
 	);
 };
 

@@ -2,10 +2,10 @@
 
 import React from "react";
 import { SquarePen } from "lucide-react";
-import toast from "react-hot-toast";
-import { updateDocumentById } from "@/data/actions";
+import { updateUserDesignationWithGuard } from "@/data/actions";
 import { useRouter } from "next/navigation";
 import ConfirmationHandleDialog from "./confirmation-handle-dialog";
+import WarningPopUp from "./warning-pop-up";
 
 type UserClaimProps = {
 	data: {
@@ -17,28 +17,34 @@ type UserClaimProps = {
 
 const UserClaimModal = ({ data }: UserClaimProps) => {
 	const router = useRouter();
+	const [warningOpen, setWarningOpen] = React.useState(false);
+	const [warningMessage, setWarningMessage] = React.useState<string>("");
 	const handleCustomClaimChange = async () => {
 		try {
-			const reversedDesignation =
-				data.designation === "Faculty" ? "Program Head" : "Faculty";
-			await updateDocumentById(
-				data.id,
-				"userData",
-				"designation",
-				reversedDesignation
-			);
-			toast.success("Updated successfully!");
-			router.refresh();
+				const reversedDesignation =
+					data.designation === "Faculty" ? "Program Head" : "Faculty";
+				const res = await updateUserDesignationWithGuard({
+					docId: data.id,
+					newDesignation: reversedDesignation,
+				});
+				if (!res.success) {
+					setWarningMessage(res.error || "Failed to update");
+					setWarningOpen(true);
+					return;
+				}
+				router.refresh();
 		} catch (e: unknown) {
 			const error = e as { message?: string };
-			toast.error(`Failed to update: ${error.message}`);
-			throw error; // propagate to keep dialog open if desired
+				setWarningMessage(`Failed to update: ${error.message ?? "Unknown error"}`);
+				setWarningOpen(true);
+				throw error; // propagate to keep dialog open if desired
 		}
 	};
 
 	const nextRole = data.designation === "Faculty" ? "Program Head" : "Faculty";
 
 	return (
+		<>
 		<ConfirmationHandleDialog
 			trigger={
 				<button
@@ -61,6 +67,13 @@ const UserClaimModal = ({ data }: UserClaimProps) => {
 			confirmButtonText={`Yes, change to ${nextRole}`}
 			contentClassName="sm:max-w-md"
 		/>
+		<WarningPopUp
+			open={warningOpen}
+			setOpen={setWarningOpen}
+			title="Action blocked"
+			description={warningMessage}
+		/>
+		</>
 	);
 };
 
