@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
 	BookOpenText,
 	Building,
+	Calendar,
 	ChevronFirst,
 	ChevronRight,
 	House,
@@ -82,6 +83,12 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 			icon: <UsersRound size={20} />,
 			id: "users",
 		},
+        {
+            title: "Room Schedules",
+            links: "/admin/room-schedules",
+            icon: <Calendar size={20} />,
+            id: "room-schedules",
+        },
 	];
 
 	return (
