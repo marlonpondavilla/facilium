@@ -8,5 +8,6 @@ export interface User {
 	designation: string;
 	department: string;
 	status: string;
+	photoURL?: string;
 	created?: string;
 }

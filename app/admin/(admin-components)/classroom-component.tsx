@@ -29,6 +29,7 @@ import {
 } from "@/data/actions";
 import { departments } from "@/data/department";
 import { useParams, useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -166,6 +167,17 @@ const ClassroomComponent = ({ children }: ClassroomComponentProps) => {
 
 	return (
 		<div className="flex flex-col gap-8">
+			<div>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => router.back()}
+					className="inline-flex items-center gap-1 px-2"
+				>
+					<ChevronLeft className="w-4 h-4" />
+					Back
+				</Button>
+			</div>
 			<AdminHeaderTitle title="Building Details" />
 			{/* Header Section - Responsive */}
 			<div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">

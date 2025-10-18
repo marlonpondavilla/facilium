@@ -53,10 +53,9 @@ const Page = async ({ searchParams }: PageInterface) => {
 							<CardHeader className="flex justify-start items-center gap-4">
 								<div>
 									<Avatar className="h-16 w-16">
-										<AvatarImage
-											src={"https://github.com/shadcn.pngg"}
-											alt="faculty user avatar"
-										/>
+										{user.photoURL && (
+											<AvatarImage src={user.photoURL} alt="faculty user avatar" />
+										)}
 										<AvatarFallback className="border facilium-bg-profile text-white">
 											{(user.firstName?.[0] ?? "") + (user.lastName?.[0] ?? "")}
 										</AvatarFallback>

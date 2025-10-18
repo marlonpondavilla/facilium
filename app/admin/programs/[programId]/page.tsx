@@ -1,4 +1,5 @@
 import AdminHeaderTitle from "@/components/admin-header-title";
+import BackButton from "@/components/back-button";
 import React from "react";
 import AddYearLevel from "./add-year-level";
 import {
@@ -33,6 +34,9 @@ const Page = async ({ params }: PageProps) => {
 
 	return (
 		<div className="flex flex-col gap-8">
+			<div>
+				<BackButton />
+			</div>
 			<AdminHeaderTitle title="Year-Level" />
 
 			{/* Program Header - Responsive */}

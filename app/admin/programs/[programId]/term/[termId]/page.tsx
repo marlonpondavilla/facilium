@@ -1,4 +1,5 @@
 import AdminHeaderTitle from "@/components/admin-header-title";
+import BackButton from "@/components/back-button";
 import React from "react";
 import AddTerm from "./add-term";
 import { getDocumentsFromFirestore } from "@/data/actions";
@@ -21,6 +22,9 @@ const Page = async ({ params }: PageProps) => {
 
 	return (
 		<div className="flex flex-col gap-8">
+			<div>
+				<BackButton />
+			</div>
 			<AdminHeaderTitle title="Term" />
 
 			<div className="flex flex-col justify-center facilium-bg-whiter gap-4">

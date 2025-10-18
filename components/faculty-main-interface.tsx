@@ -46,6 +46,8 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 
 	const router = useRouter();
 	const pathname = usePathname();
+	const isProgramHead = pathname.startsWith("/program-head");
+	const isDean = pathname.startsWith("/dean");
 
 	const handleClickBuilding = (id: string) => {
 		setIsLoading(true);
@@ -413,7 +415,7 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 			</div>
 
 			{/* Building Actions Section */}
-			<div className="building-actions facilium-bg-whiter grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 rounded-2xl p-4">
+			<div className={`building-actions facilium-bg-whiter grid grid-cols-1 ${isProgramHead ? "lg:grid-cols-2" : ""} gap-3 sm:gap-4 rounded-2xl p-4`}>
 				{/* Left column: View + Manage stacked */}
 				<div className="flex flex-col gap-2 w-full">
 					{/* View Schedule Action */}
@@ -423,16 +425,18 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 							className="view-schedule-action flex flex-row items-center justify-center gap-2 h-full"
 						>
 							<Eye className="w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200" />
-							<p className="font-medium text-xs sm:text-sm text-gray-800 group-hover:text-indigo-800 truncate" title={pathname.startsWith('/dean') ? 'View Schedules' : 'View Department Faculty Schedules'}>
-								{pathname.startsWith("/dean")
-									? "View Schedules"
-									: "View Department Faculty Schedules"}
+							<p className="font-medium text-xs sm:text-sm text-gray-800 group-hover:text-indigo-800 truncate" title={isDean ? 'View Schedules' : (isProgramHead ? 'View Department Faculty Schedules' : 'My Academic Schedule')}>
+								{isDean
+									? "View Faculty Schedules"
+									: isProgramHead
+									? "View Department Faculty Schedules"
+									: "My Academic Schedule"}
 							</p>
 						</div>
 					</div>
 
 					{/* Program Head: Manage Faculty Load */}
-					{pathname.startsWith("/program-head") && (
+					{isProgramHead && (
 						<div className="manage-load group border border-gray-300 rounded-lg px-3 py-2 w-full bg-white hover:bg-gray-100 hover:shadow-md transition duration-200 cursor-pointer h-12">
 							<div
 								onClick={handleManageLoadClick}

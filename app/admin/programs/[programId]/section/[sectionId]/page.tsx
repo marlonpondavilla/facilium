@@ -1,4 +1,5 @@
 import AdminHeaderTitle from "@/components/admin-header-title";
+import BackButton from "@/components/back-button";
 import {
 	getDocumentsFromFirestore,
 	getSingleDocumentFromFirestore,
@@ -31,6 +32,9 @@ const Page = async ({ params }: PageProps) => {
 
 	return (
 		<div className="flex flex-col gap-8">
+			<div>
+				<BackButton />
+			</div>
 			<AdminHeaderTitle title="Section" />
 
 			{/* Header Section - Responsive */}

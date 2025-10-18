@@ -27,9 +27,10 @@ import {
 import toast from "react-hot-toast";
 import ConfirmationHandleDialog from "@/components/confirmation-handle-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Undo } from "lucide-react";
+import { ArrowLeft, Trash2, Undo } from "lucide-react";
 import WarningPopUp from "./warning-pop-up";
 import PleaseWait from "./please-wait";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Program = { id: string; programCode: string; department?: string };
 type YearLevel = { id: string; programId: string; yearLevel: string };
@@ -61,6 +62,7 @@ export default function ProgramHeadManageLoad(props: Props) {
   const [warnTitle, setWarnTitle] = useState("");
   const [warnDesc, setWarnDesc] = useState("");
   const [page, setPage] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // UI-blocking spinner during filter transitions
   const [uiBlocking, setUiBlocking] = useState(false);
   const pageSize = 5;
@@ -143,18 +145,18 @@ export default function ProgramHeadManageLoad(props: Props) {
     }
   }, [programId, filteredProfessors, form]);
 
-  const buildNextSearchString = (kv: Record<string, string | null>) => {
+  const buildNextSearchString = useCallback((kv: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
     Object.entries(kv).forEach(([k, v]) => {
       if (v) next.set(k, v);
       else next.delete(k);
     });
     return next.toString();
-  };
+  }, [params]);
 
-  const setQuery = (kv: Record<string, string | null>) => {
+  const setQuery = useCallback((kv: Record<string, string | null>) => {
     router.push(`${pathname}?${buildNextSearchString(kv)}`);
-  };
+  }, [router, pathname, buildNextSearchString]);
 
   // Push URL, set blocking, and only clear when params reach the exact target
   const setQueryBlocking = (kv: Record<string, string | null>) => {
@@ -218,7 +220,7 @@ export default function ProgramHeadManageLoad(props: Props) {
     if (loadId && !loads.some((l) => l.id === loadId)) {
       setQuery({ loadId: null });
     }
-  }, [loads, loadId]);
+  }, [loads, loadId, setQuery]);
 
   // Sort loads by professor name (First Last), case-insensitive, fallback to professorId
   const sortedLoads = useMemo(() => {
@@ -253,6 +255,44 @@ export default function ProgramHeadManageLoad(props: Props) {
     const start = page * pageSize;
     return sortedLoads.slice(start, start + pageSize);
   }, [sortedLoads, page]);
+
+  // Keep selection in sync with current loads (drop ids that no longer exist)
+  const selectedSize = selectedIds.size; // stable primitive for deps
+  useEffect(() => {
+    if (selectedSize === 0) return;
+    const present = new Set((loads || []).map((l) => l.id).filter(Boolean) as string[]);
+    setSelectedIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => { if (present.has(id)) next.add(id); });
+      return next;
+    });
+  }, [loads, selectedSize]);
+
+  // Selection helpers for current page
+  const pageIds = useMemo(
+    () => (pagedLoads || []).map((l) => l.id).filter(Boolean) as string[],
+    [pagedLoads]
+  );
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const somePageSelected = pageIds.some((id) => selectedIds.has(id)) && !allPageSelected;
+
+  const toggleSelectOne = useCallback((id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllPage = useCallback((checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) pageIds.forEach((id) => next.add(id));
+      else pageIds.forEach((id) => next.delete(id));
+      return next;
+    });
+  }, [pageIds]);
 
   useEffect(() => {
     let mounted = true;
@@ -384,6 +424,31 @@ export default function ProgramHeadManageLoad(props: Props) {
       toast.error("Failed to delete load");
       // Re-sync from server on error
       await refreshLoads();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return true;
+    setSaving(true);
+    try {
+      const ids = Array.from(selectedIds);
+      // Optimistic removal
+      setLoads((prev) => prev.filter((l) => !ids.includes(l.id!)));
+      const results = await Promise.allSettled(ids.map((id) => deleteFacultyLoad(id)));
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failCount = results.length - successCount;
+      if (successCount) toast.success(`Deleted ${successCount} load${successCount > 1 ? "s" : ""}`);
+      if (failCount) toast.error(`${failCount} deletion${failCount > 1 ? "s" : ""} failed`);
+      setSelectedIds(new Set());
+      await refreshLoads();
+      return true;
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete selected loads");
+      await refreshLoads();
+      return false;
     } finally {
       setSaving(false);
     }
@@ -703,7 +768,29 @@ export default function ProgramHeadManageLoad(props: Props) {
         </div>
 
         <div className="facilium-bg-whiter p-3 rounded-xl border">
-          <h2 className="text-base font-semibold mb-4">Current Assignment Loads</h2>
+          <div className="flex items-center justify-between mb-4 gap-2">
+            <h2 className="text-base font-semibold">Current Assignment Loads</h2>
+            {sortedLoads.length > 0 && (
+              <ConfirmationHandleDialog
+                trigger={
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={saving || selectedIds.size === 0}
+                  >
+                    Delete Selected {selectedIds.size ? `(${selectedIds.size})` : ""}
+                  </Button>
+                }
+                title="Confirm bulk delete"
+                description="Please confirm with your password to delete the selected faculty loads."
+                label="Delete Selected"
+                requirePassword
+                passwordPlaceholder="Enter your password"
+                onConfirm={handleBulkDelete}
+              />
+            )}
+          </div>
             <div className="space-y-2 text-sm">
               {listLoading && loads.length === 0 && (
                 <p className="text-xs text-gray-500">Loading...</p>
@@ -714,6 +801,15 @@ export default function ProgramHeadManageLoad(props: Props) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={allPageSelected}
+                          onCheckedChange={(c) => toggleSelectAllPage(Boolean(c))}
+                          aria-label="Select all on page"
+                          // Use indeterminate visual via data-state when partially selected
+                          data-state={somePageSelected ? "indeterminate" : allPageSelected ? "checked" : "unchecked"}
+                        />
+                      </TableHead>
                       <TableHead>Course</TableHead>
                       <TableHead>Section</TableHead>
                       <TableHead>Professor</TableHead>
@@ -725,11 +821,21 @@ export default function ProgramHeadManageLoad(props: Props) {
                       const prof = professors.find((p) => p.id === l.professorId);
                       const course = l.courseCode;
                       const section = sections.find((s) => s.id === l.sectionId)?.sectionName || l.sectionId;
+                      const id = l.id as string;
                       return (
                         <TableRow
                           key={l.id}
                           className={`${loadId === l.id ? "bg-pink-100" : ""}`}
                         >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            {id && (
+                              <Checkbox
+                                checked={selectedIds.has(id)}
+                                onCheckedChange={(c) => toggleSelectOne(id, Boolean(c))}
+                                aria-label={`Select ${course} ${section}`}
+                              />
+                            )}
+                          </TableCell>
                           <TableCell
                             className="cursor-pointer hover:bg-pink-200"
                             onClick={() => {
@@ -775,7 +881,7 @@ export default function ProgramHeadManageLoad(props: Props) {
                                     size="sm"
                                     disabled={saving}
                                   >
-                                    Delete
+                                    <Trash2 />
                                   </Button>
                                 }
                                 title="Confirm delete"
@@ -787,6 +893,12 @@ export default function ProgramHeadManageLoad(props: Props) {
                                   await handleDelete(l.id!);
                                   // If the deleted load is selected, clear selection from URL
                                   if (loadId === l.id) setQuery({ loadId: null });
+                                  // Remove from selection if present
+                                  setSelectedIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(l.id!);
+                                    return next;
+                                  });
                                   return true;
                                 }}
                               />

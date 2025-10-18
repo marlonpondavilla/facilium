@@ -14,6 +14,7 @@ import type { ScheduleItem } from "@/types/SceduleInterface";
 import type { AcademicYear } from "@/types/academicYearType";
 import type { ApprovedScheduleDoc } from "@/types/SceduleInterface";
 import { Button } from "./ui/button";
+import BackButton from "@/components/back-button";
 
 type EnrichedSchedule = ScheduleItem & {
 	classroomName?: string | null;
@@ -560,6 +561,9 @@ export default function FacultyViewSchedule() {
 
 	return (
 		<div className="w-full max-w-6xl mx-auto p-4 sm:p-6 space-y-4">
+			<div>
+				<BackButton />
+			</div>
 			<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
 				<div>
 					<h1 className="text-xl sm:text-2xl font-semibold facilium-color-indigo">

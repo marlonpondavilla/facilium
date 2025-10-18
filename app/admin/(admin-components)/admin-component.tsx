@@ -25,7 +25,7 @@ import {
 } from "@/data/actions";
 import { isValidYear } from "@/lib/utils";
 import { AdminComponentProps } from "@/types/academicYearType";
-import { Minus } from "lucide-react";
+import { Minus, UsersRound, CalendarCheck, Building, LayoutGrid, BookOpenText, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
@@ -172,8 +172,9 @@ const AdminComponent = ({ academicYears, analytics }: AdminComponentProps) => {
 			{analytics && (
 				<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 					<Card>
-						<CardHeader>
+						<CardHeader className="flex items-center justify-between">
 							<CardTitle className="text-base">Users</CardTitle>
+							<UsersRound className="text-indigo-300" size={24} />
 						</CardHeader>
 						<CardContent>
 							<p className="text-3xl font-semibold">{analytics.users}</p>
@@ -182,8 +183,9 @@ const AdminComponent = ({ academicYears, analytics }: AdminComponentProps) => {
 					</Card>
 
 					<Card>
-						<CardHeader>
+						<CardHeader className="flex items-center justify-between">
 							<CardTitle className="text-base">Schedules</CardTitle>
+							<CalendarCheck className="text-indigo-300" size={24} />
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-1">
@@ -196,8 +198,9 @@ const AdminComponent = ({ academicYears, analytics }: AdminComponentProps) => {
 					</Card>
 
 					<Card>
-						<CardHeader>
+						<CardHeader className="flex items-center justify-between">
 							<CardTitle className="text-base">Facilities</CardTitle>
+							<Building className="text-indigo-300" size={24} />
 						</CardHeader>
 						<CardContent>
 							<p className="text-3xl font-semibold">{analytics.facilities}</p>
@@ -206,8 +209,9 @@ const AdminComponent = ({ academicYears, analytics }: AdminComponentProps) => {
 					</Card>
 
 					<Card>
-						<CardHeader>
+						<CardHeader className="flex items-center justify-between">
 							<CardTitle className="text-base">Classrooms</CardTitle>
+							<LayoutGrid className="text-indigo-300" size={24} />
 						</CardHeader>
 						<CardContent>
 							<p className="text-3xl font-semibold">{analytics.classrooms}</p>
@@ -216,8 +220,12 @@ const AdminComponent = ({ academicYears, analytics }: AdminComponentProps) => {
 					</Card>
 
 					<Card className="md:col-span-2 xl:col-span-2">
-						<CardHeader>
+						<CardHeader className="flex items-center justify-between">
 							<CardTitle className="text-base">Courses & Sections</CardTitle>
+							<div className="flex items-center gap-2 text-indigo-300">
+								<BookOpenText size={22} />
+								<Layers size={22} />
+							</div>
 						</CardHeader>
 						<CardContent>
 							<div className="grid grid-cols-2 gap-4">

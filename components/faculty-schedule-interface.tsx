@@ -207,7 +207,7 @@ const FacultyScheduleInterface = ({
 			(course) =>
 				course.yearLevelId === yearLevelId && course.termId === matchingTerm.id
 		);
-	}, [courses, matchingTerm?.id, yearLevelId]);
+	}, [courses, matchingTerm, yearLevelId]);
 
 	// Ensure the currently editing item's course appears as an option even if filtered out
 	const displayedCourses = useMemo(() => {
