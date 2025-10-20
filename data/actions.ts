@@ -766,6 +766,7 @@ export const addFacultyLoad = async (data: {
 	yearLevelId: string;
 	sectionId: string;
 	courseCode: string;
+	programHeadId: string;
 }): Promise<{ success: true } | { success: false; error: unknown }> => {
 	try {
 		// Prevent duplicates for the same professor and exact same assignment
@@ -776,6 +777,7 @@ export const addFacultyLoad = async (data: {
 			.where("yearLevelId", "==", data.yearLevelId)
 			.where("sectionId", "==", data.sectionId)
 			.where("courseCode", "==", data.courseCode)
+			.where("programHeadId", "==", data.programHeadId)
 			.get();
 		if (!dupSnap.empty) {
 			return { success: false, error: "Duplicate load for this professor." } as const;
@@ -795,6 +797,7 @@ export const getFacultyLoads = async (filters?: {
 	programId?: string;
 	sectionId?: string;
 	yearLevelId?: string;
+	programHeadId?: string;
 }): Promise<Array<{ id: string } & Record<string, any>>> => {
 	try {
 		let ref: CollectionReference<DocumentData> | Query<DocumentData> =
@@ -803,6 +806,7 @@ export const getFacultyLoads = async (filters?: {
 		if (filters?.programId) ref = ref.where("programId", "==", filters.programId);
 		if (filters?.yearLevelId) ref = ref.where("yearLevelId", "==", filters.yearLevelId);
 		if (filters?.sectionId) ref = ref.where("sectionId", "==", filters.sectionId);
+		if (filters?.programHeadId) ref = ref.where("programHeadId", "==", filters.programHeadId);
 		const snap = await ref.get();
 		return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 	} catch (e) {
@@ -825,6 +829,7 @@ export const updateFacultyLoad = async (
 		yearLevelId: string;
 		sectionId: string;
 		courseCode: string;
+		programHeadId: string;
 	}
 ): Promise<{ success: true } | { success: false; error: unknown }> => {
 	try {
@@ -836,6 +841,7 @@ export const updateFacultyLoad = async (
 			.where("yearLevelId", "==", data.yearLevelId)
 			.where("sectionId", "==", data.sectionId)
 			.where("courseCode", "==", data.courseCode)
+			.where("programHeadId", "==", data.programHeadId)
 			.get();
 		const hasOther = dupSnap.docs.some((d) => d.id !== id);
 		if (hasOther) {
@@ -847,6 +853,7 @@ export const updateFacultyLoad = async (
 			yearLevelId: data.yearLevelId,
 			sectionId: data.sectionId,
 			courseCode: data.courseCode,
+			programHeadId: data.programHeadId,
 		});
 		return { success: true };
 	} catch (e) {

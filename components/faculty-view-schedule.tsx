@@ -399,9 +399,9 @@ export default function FacultyViewSchedule() {
 		URL.revokeObjectURL(url);
 	}, [schedule, selectedProfName, isDean]);
 
-	// PDF print/export for dean only - styled like classroom schedule but professor-focused
+	// PDF print/export for all roles - styled like classroom schedule but professor-focused
 	const exportPdf = React.useCallback(() => {
-		if (!isDean || !schedule.length) return; // still dean-only
+		if (!schedule.length) return;
 		const starts = schedule.map((s) => s.start);
 		const ends = schedule.map((s) =>
 			computeEnd(s.start, s.duration, s.halfHour)
@@ -681,16 +681,14 @@ export default function FacultyViewSchedule() {
 							>
 								CSV
 							</Button>
-							{isDean && (
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={exportPdf}
-									className="whitespace-nowrap"
-								>
-									PDF
-								</Button>
-							)}
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={exportPdf}
+								className="whitespace-nowrap"
+							>
+								PDF
+							</Button>
 						</div>
 					)}
 				</div>

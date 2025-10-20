@@ -47,10 +47,11 @@ type Props = {
   academicTerms: Term[];
   professors: Professor[];
   academicYears: { id: string; startAcademicYear: string; endAcademicYear: string; term: string; isActive: boolean }[];
+  programHeadId: string;
 };
 
 export default function ProgramHeadManageLoad(props: Props) {
-  const { programs, yearLevels, sections, courses, academicTerms, professors, academicYears } = props;
+  const { programs, yearLevels, sections, courses, academicTerms, professors, academicYears, programHeadId } = props;
   const router = useRouter();
   const params = useSearchParams();
   const pathname = usePathname();
@@ -206,14 +207,14 @@ export default function ProgramHeadManageLoad(props: Props) {
   const refreshLoads = useCallback(async () => {
     setListLoading(true);
     try {
-      const res = (await getFacultyLoads()) as unknown as Array<FacultyLoad & { id?: string }>;
+      const res = (await getFacultyLoads({ programHeadId })) as unknown as Array<FacultyLoad & { id?: string }>;
       setLoads(res as FacultyLoad[]);
     } catch (e) {
       console.error(e);
     } finally {
       setListLoading(false);
     }
-  }, []);
+  }, [programHeadId]);
 
   // If selected loadId no longer exists (deleted), clear selection from URL
   useEffect(() => {
@@ -337,6 +338,7 @@ export default function ProgramHeadManageLoad(props: Props) {
           yearLevelId: values.yearLevelId,
           sectionId: values.sectionId,
           courseCode: values.courseCode,
+          programHeadId,
         });
         if (result.success) {
           toast.success("Faculty load updated");
@@ -374,6 +376,7 @@ export default function ProgramHeadManageLoad(props: Props) {
           yearLevelId: values.yearLevelId,
           sectionId: values.sectionId,
           courseCode: values.courseCode,
+          programHeadId,
         });
         if (result.success) {
           toast.success("Faculty load added");

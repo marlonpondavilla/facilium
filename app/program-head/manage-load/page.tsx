@@ -8,7 +8,7 @@ export default async function Page() {
     "programs"
   );
   // Filter programs to the current Program Head's department if available
-  const currentUser = (await getCurrentUserData()) as { department?: string } | null;
+  const currentUser = (await getCurrentUserData()) as { id?: string; department?: string } | null;
   const userDept = currentUser?.department;
   const normalizedDept = userDept?.trim().toLowerCase();
   const filteredPrograms = normalizedDept
@@ -45,6 +45,7 @@ export default async function Page() {
         academicTerms={academicTerms}
         academicYears={academicYears}
         professors={professors}
+        programHeadId={currentUser?.id || ""}
       />
     </FacultyHeader>
   );
