@@ -61,18 +61,23 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 	return (
 		<div className="min-h-screen flex flex-col">
 			{/* Header */}
-			<div className="flex flex-nowrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 bg-[linear-gradient(to_right,_#AC1754_55%,_#F5F5F5_97%)]">
+			<div className="flex flex-nowrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 bg-[linear-gradient(to_right,_#8B0E3F_55%,_#F5F5F5_97%)]">
 				<Link href={"/dashboard"}>
 					<div className="left-section flex items-center gap-4 min-w-0 flex-1">
-						<Image
-							src={"/bsu-meneses-logo.png"}
-							width={100}
-							height={100}
-							alt="Meneses Logo"
-							className="w-14 sm:w-20"
-						/>
+						<div className="relative">
+							<Image
+								src={"/bsu-meneses-logo.png"}
+								width={100}
+								height={100}
+								alt="Meneses Logo"
+								className="w-14 sm:w-20 drop-shadow-[0_4px_8px_rgba(0,0,0,0.4)]"
+								style={{
+									filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3)) drop-shadow(0 0 8px rgba(255,255,255,0.3))"
+								}}
+							/>
+						</div>
 						<div
-							className={`logo-name ${alegreyaSC.className} font-bold facilium-color-white`}
+							className={`logo-name ${alegreyaSC.className} font-bold facilium-color-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]`}
 						>
 							<h1 className="text-md sm:text-xl">Bulacan State University</h1>
 							<h2 className="text-sm sm:text-base">Meneses Campus</h2>
