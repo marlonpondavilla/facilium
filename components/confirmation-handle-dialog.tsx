@@ -30,12 +30,13 @@ interface ConfirmationHandleDialogProps {
 	requirePassword?: boolean;
 	passwordPlaceholder?: string;
 	contentClassName?: string;
-	// New: require typing a specific text (e.g., "confirm") before allowing action
 	requireText?: boolean;
-	expectedText?: string; // default: "confirm"
-	textPlaceholder?: string; // default: 'Type "confirm"'
-	textLabel?: string; // default: 'Type "confirm" to proceed'
-	caseSensitive?: boolean; // default: false
+	expectedText?: string; 
+	textPlaceholder?: string;
+	textLabel?: string; 
+	caseSensitive?: boolean;
+	// Optional custom content area rendered above the footer
+	children?: React.ReactNode;
 }
 
 const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
@@ -55,7 +56,8 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 	expectedText = "confirm",
 	textPlaceholder = 'Type "confirm"',
 	textLabel,
-	caseSensitive = false,
+		caseSensitive = false,
+		children,
 }) => {
 	const [open, setOpen] = useState(false);
 	const [email, setEmail] = useState("");
@@ -386,6 +388,8 @@ const ConfirmationHandleDialog: React.FC<ConfirmationHandleDialogProps> = ({
 								/>
 							</div>
 						)}
+						{/* Custom extra content slot */}
+						{children}
 						{error && <p className="text-[11px] text-red-600">{error}</p>}
 					</div>
 				)}

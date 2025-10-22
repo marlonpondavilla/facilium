@@ -1685,7 +1685,7 @@ const FacultyScheduleInterface = ({
 												disabled={scheduleLength < 3 || isPendingScheduleExist}
 												className="w-full"
 											>
-												Submit schedule to Dean
+												Submit schedule for approval
 											</Button>
 										}
 										title="Are you sure you want to submit this schedule to Dean?"

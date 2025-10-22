@@ -149,39 +149,74 @@ export const updateUserDesignationWithGuard = async (
 		const data = snap.data() as { department?: string; designation?: string; status?: string } | undefined;
 		const department = (data?.department || "").trim();
 
-		// Only enforce when elevating to Program Head
-		if (newDesignation === "Program Head") {
-			if (!department) {
-				return { success: false, error: "User has no department set" };
-			}
+	// Enforce at most one active Dean across the campus
+	if (newDesignation === "Dean") {
+		const existingDeanSnap = await firestore
+			.collection("userData")
+			.where("designation", "==", "Dean")
+			.get();
 
-			// Find any other Program Head in the same department
-			const existingSnap = await firestore
-				.collection("userData")
-				.where("designation", "==", "Program Head")
-				.where("department", "==", department)
-				.get();
+		const deanConflict = existingDeanSnap.docs.some((d) => {
+			if (d.id === docId) return false; 
+			const s = (d.get("status") as string | undefined)?.trim();
+			return s !== "Disabled";
+		});
 
-			const conflict = existingSnap.docs.some((d) => {
-				if (d.id === docId) return false; // same user is fine
-				const s = (d.get("status") as string | undefined)?.trim();
-				// Treat only non-disabled as conflicting; disabled Program Head won't block
-				return s !== "Disabled";
-			});
-
-			if (conflict) {
-				return {
-					success: false,
-					error: `This department ("${department}") already has an active Program Head.`,
-				};
-			}
+		if (deanConflict) {
+			return {
+				success: false,
+				error:
+					"There is already an active Dean. Demote the current Dean before assigning a new one.",
+			};
 		}
+	}
+
+	// Enforce at most one active Program Head per department
+	if (newDesignation === "Program Head") {
+		if (!department) {
+			return { success: false, error: "User has no department set" };
+		}
+
+		// Find any other Program Head in the same department
+		const existingSnap = await firestore
+			.collection("userData")
+			.where("designation", "==", "Program Head")
+			.where("department", "==", department)
+			.get();
+
+		const conflict = existingSnap.docs.some((d) => {
+			if (d.id === docId) return false;
+			const s = (d.get("status") as string | undefined)?.trim();
+			return s !== "Disabled";
+		});
+
+		if (conflict) {
+			return {
+				success: false,
+				error: `This department ("${department}") already has an active Program Head.`,
+			};
+		}
+	}
 
 		await userRef.update({ designation: newDesignation });
 		return { success: true };
 	} catch (e) {
 		console.error("updateUserDesignationWithGuard failed", e);
 		return { success: false, error: "Failed to update designation" };
+	}
+};
+
+// Helper: determine if there is currently an active Dean (status != "Disabled")
+export const hasActiveDean = async (): Promise<boolean> => {
+	try {
+		const snap = await firestore
+			.collection("userData")
+			.where("designation", "==", "Dean")
+			.get();
+		return snap.docs.some((d) => ((d.get("status") as string | undefined)?.trim() ?? "") !== "Disabled");
+	} catch (e) {
+		console.error("hasActiveDean check failed", e);
+		return false;
 	}
 };
 

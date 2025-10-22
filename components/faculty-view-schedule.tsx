@@ -15,6 +15,7 @@ import type { AcademicYear } from "@/types/academicYearType";
 import type { ApprovedScheduleDoc } from "@/types/SceduleInterface";
 import { Button } from "./ui/button";
 import BackButton from "@/components/back-button";
+import { scheduleColors } from "@/data/colors";
 
 type EnrichedSchedule = ScheduleItem & {
 	classroomName?: string | null;
@@ -32,6 +33,133 @@ const dayOrder: Record<string, number> = {
 	Sat: 6,
 	Sun: 7,
 };
+
+const days: string[] = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
+
+function formatHourNoSuffix(hour24: number) {
+	const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+	return hour12.toString();
+}
+
+const slotsCount = (20 - 7) * 2 + 1;
+
+const hours = Array.from({ length: slotsCount }, (_, i) => {
+	const totalMinutesFrom7 = i * 30;
+	const startHour24 = 7 + Math.floor(totalMinutesFrom7 / 60);
+	const startMin = totalMinutesFrom7 % 60 === 0 ? "00" : "30";
+
+	const totalMinutesEnd = totalMinutesFrom7 + 30;
+	const endHour24 = 7 + Math.floor(totalMinutesEnd / 60);
+	const endMin = totalMinutesEnd % 60 === 0 ? "00" : "30";
+
+	return `${formatHourNoSuffix(startHour24)}:${startMin} - ${formatHourNoSuffix(
+		endHour24
+	)}:${endMin}`;
+});
+
+function getStartIndexFromDecimal(startDecimal: number): number {
+	return Math.round((startDecimal - 7) * 2);
+}
+
+function getRowSpanFromDuration(
+	durationHours: number,
+	halfHour: number = 0
+): number {
+	return durationHours * 2 + (halfHour === 30 ? 1 : 0);
+}
+
+// Schedule Grid Component
+function ProfessorScheduleGrid({ scheduleItems }: { scheduleItems: EnrichedSchedule[] }) {
+	const skipMap: Record<string, boolean> = {};
+
+	return (
+		<div className="border rounded-lg overflow-hidden">
+			<div className="overflow-x-auto">
+				<table className="w-full min-w-[800px] border-collapse text-center text-xs">
+					<thead>
+						<tr className="bg-pink-100 text-gray-800">
+							<th className="border px-2 py-1 w-16">Time</th>
+							{days.map((day) => (
+								<th key={day} className="border px-2 py-1">
+									{day}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>
+						{hours.map((hourLabel, rowIndex) => (
+							<tr key={rowIndex} className="h-9">
+								<td className="border font-semibold bg-gray-50 px-2 py-1 text-[10px]">
+									{hourLabel}
+								</td>
+								{days.map((day) => {
+									const cellKey = `${day}-${rowIndex}`;
+									if (skipMap[cellKey]) return null;
+
+									const item = scheduleItems.find((item) => {
+										const startIndex = getStartIndexFromDecimal(item.start);
+										return item.day === day && startIndex === rowIndex;
+									});
+
+									if (item) {
+										const rowSpan = getRowSpanFromDuration(
+											item.duration,
+											item.halfHour ?? 0
+										);
+
+										for (let i = 1; i < rowSpan; i++) {
+											skipMap[`${day}-${rowIndex + i}`] = true;
+										}
+
+										const itemIndex = scheduleItems.indexOf(item);
+										const colorClass =
+											scheduleColors[itemIndex % scheduleColors.length];
+
+										return (
+											<td
+												key={cellKey}
+												rowSpan={rowSpan}
+												className={`border px-2 py-1 font-medium ${colorClass}`}
+											>
+												<div className="text-[11px] leading-tight">
+													{item.courseCode}
+													<br />
+													{item.section}
+													<br />
+													{item.classroomName ? `(${item.classroomName})` : ""}
+												</div>
+											</td>
+										);
+									}
+
+									return <td key={cellKey} className="border px-2 py-1" />;
+								})}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+			{/* Legend */}
+			{scheduleItems.length > 0 && (
+				<div className="p-3 border-t bg-gray-50 text-[10px] flex flex-wrap gap-3">
+					{scheduleItems.map((item, idx) => {
+						const colorClass = scheduleColors[idx % scheduleColors.length];
+						return (
+							<div key={item.id || idx} className="flex items-center gap-1">
+								<span
+									className={`inline-block w-3 h-3 rounded-sm ${colorClass}`}
+								></span>
+								<span className="whitespace-nowrap">
+									{item.courseCode} – {item.section}
+								</span>
+							</div>
+						);
+					})}
+				</div>
+			)}
+		</div>
+	);
+}
 
 function toTimeLabel(start: number): string {
 	// start is decimal hours from 7.. e.g., 7, 7.5, etc.
@@ -659,7 +787,7 @@ export default function FacultyViewSchedule() {
 				</div>
 			)}
 
-			{/* Schedule table for selected professor */}
+			{/* Schedule grid for selected professor */}
 			<div className="facilium-bg-whiter rounded p-3 sm:p-4">
 				<div className="flex items-center justify-between mb-3 gap-3">
 					<div className="font-medium">
@@ -698,39 +826,7 @@ export default function FacultyViewSchedule() {
 					) : schedule.length === 0 ? (
 						<p className="text-sm text-gray-500">No schedules found.</p>
 					) : (
-						<div className="overflow-x-auto">
-							<table className="min-w-full text-sm border border-gray-200 rounded">
-								<thead>
-									<tr className="bg-pink-200 text-black">
-										<th className="px-3 py-2 text-left border">Day</th>
-										<th className="px-3 py-2 text-left border">Start</th>
-										<th className="px-3 py-2 text-left border">End</th>
-										<th className="px-3 py-2 text-left border">Course</th>
-										<th className="px-3 py-2 text-left border">Section</th>
-										<th className="px-3 py-2 text-left border">Classroom</th>
-									</tr>
-								</thead>
-								<tbody>
-									{schedule.map((s) => {
-										const end = computeEnd(s.start, s.duration, s.halfHour);
-										return (
-											<tr key={s.id} className="odd:bg-gray-50">
-												<td className="px-3 py-2 border">{s.day}</td>
-												<td className="px-3 py-2 border">
-													{toTimeLabel(s.start)}
-												</td>
-												<td className="px-3 py-2 border">{toTimeLabel(end)}</td>
-												<td className="px-3 py-2 border">{s.courseCode}</td>
-												<td className="px-3 py-2 border">{s.section}</td>
-												<td className="px-3 py-2 border">
-													{s.classroomName ?? "-"}
-												</td>
-											</tr>
-										);
-									})}
-								</tbody>
-							</table>
-						</div>
+						<ProfessorScheduleGrid scheduleItems={schedule} />
 					)
 				) : null}
 			</div>

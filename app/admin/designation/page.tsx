@@ -12,6 +12,7 @@ import {
 import { Building2, Mail } from "lucide-react";
 import DesignationComponent from "../(admin-components)/designation-component";
 import UserClaimModal from "@/components/user-claim-modal";
+import { hasActiveDean } from "@/data/actions";
 import { PageInterface } from "@/types/pageInterface";
 import NextButton from "@/components/next-button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,8 @@ const Page = async ({ searchParams }: PageInterface) => {
 		},
 		department,
 	});
+
+	const deanExists = await hasActiveDean();
 
 	return (
 		<AdminSideBar>
@@ -84,13 +87,14 @@ const Page = async ({ searchParams }: PageInterface) => {
 												</Badge>
 											)}
 
-											{!["Dean", "Admin"].includes(user.designation) && (
+											{user.designation !== "Admin" && (
 												<UserClaimModal
 													data={{
 														id: user.id,
 														designation: user.designation,
 														status: user.status,
 													}}
+													hasActiveDean={deanExists}
 												/>
 											)}
 										</div>

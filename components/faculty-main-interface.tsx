@@ -9,6 +9,7 @@ import {
 	getDocumentsFromFirestore,
 	getSingleDocumentFromFirestore,
 	getFirstUserByDesignation,
+	getCurrentUserData,
 } from "@/data/actions";
 import type { ApprovedScheduleDoc } from "@/types/SceduleInterface";
 import type { ScheduleItem } from "@/types/SceduleInterface";
@@ -24,6 +25,7 @@ import {
 } from "./ui/select";
 import { Button } from "./ui/button";
 import Loading from "./loading";
+import ViewAssignedLoadsDialog from "./view-assigned-loads-dialog";
 
 type FacultyMainInterfaceProps = {
 	data: {
@@ -43,6 +45,10 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 	const [isExporting, setIsExporting] = useState(false);
 	const [activeAYLabel, setActiveAYLabel] = useState<string>("");
 	const [deanName, setDeanName] = useState<string>("");
+	const [currentUserId, setCurrentUserId] = useState<string>("");
+	const [programs, setPrograms] = useState<{ id: string; programCode: string }[]>([]);
+	const [yearLevels, setYearLevels] = useState<{ id: string; programId: string; yearLevel: string }[]>([]);
+	const [sections, setSections] = useState<{ id: string; yearLevelId: string; sectionName: string }[]>([]);
 
 	const router = useRouter();
 	const pathname = usePathname();
@@ -148,6 +154,37 @@ const FacultyMainInterface = ({ data }: FacultyMainInterfaceProps) => {
 				console.error("Dean fetch failed", e);
 			}
 		})();
+	}, []);
+
+	// Fetch current user data and catalogs for View Assigned Loads
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const userData = await getCurrentUserData();
+				if (userData && !cancelled) {
+					setCurrentUserId(userData.id || "");
+				}
+				
+				// Fetch catalog data for resolving IDs
+				const [progs, years, sects] = await Promise.all([
+					getDocumentsFromFirestore<{ id: string; programCode: string }>("programs"),
+					getDocumentsFromFirestore<{ id: string; programId: string; yearLevel: string }>("year-levels"),
+					getDocumentsFromFirestore<{ id: string; yearLevelId: string; sectionName: string }>("sections"),
+				]);
+				
+				if (!cancelled) {
+					setPrograms(progs || []);
+					setYearLevels(years || []);
+					setSections(sects || []);
+				}
+			} catch (e) {
+				console.error("Failed to load user data or catalogs", e);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	const generateClassroomPdf = useCallback(
@@ -433,6 +470,16 @@ tbody tr:nth-child(odd) { background:#fafafa; }
 									: "My Academic Schedule"}
 							</p>
 						</div>
+					</div>
+
+					{/* View Assigned Loads - All roles */}
+					<div className="view-assigned-loads group border border-gray-300 rounded-lg px-3 py-2 w-full bg-white hover:bg-gray-100 hover:shadow-md transition duration-200 h-12 flex items-center justify-center">
+						<ViewAssignedLoadsDialog
+							professorId={currentUserId}
+							programs={programs}
+							yearLevels={yearLevels}
+							sections={sections}
+						/>
 					</div>
 
 					{/* Program Head: Manage Faculty Load */}
