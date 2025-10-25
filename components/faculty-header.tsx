@@ -61,7 +61,7 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 	return (
 		<div className="min-h-screen flex flex-col">
 			{/* Header */}
-			<div className="flex flex-nowrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 bg-[linear-gradient(to_right,_#8B0E3F_55%,_#F5F5F5_97%)]">
+			<div className="flex flex-nowrap items-center justify-between gap-4 w-full py-5 px-4 sm:px-6 md:px-8 facilium-bg-pink">
 				<Link href={"/dashboard"}>
 					<div className="left-section flex items-center gap-4 min-w-0 flex-1">
 						<div className="relative">
@@ -85,11 +85,11 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 					</div>
 				</Link>
 
-				<div className="right-section flex gap-2 items-center shrink-0">
+				<div className="right-section flex gap-2 items-center shrink-0 text-white">
 					{/* Hide on small screens */}
 					<div className="faculty-info hidden md:flex items-end flex-col">
-						<h3 className="text-base">{auth?.user?.displayName}</h3>
-						<h4 className="text-xs text-gray-500">{auth?.user?.email}</h4>
+						<h3 className="text-base text-white font-medium">{auth?.user?.displayName}</h3>
+						<h4 className="text-xs text-white/80">{auth?.user?.email}</h4>
 					</div>
 					{photoURL ? (
 						<button
@@ -98,7 +98,7 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 							aria-label="Open profile"
 							title="Open profile"
 						>
-							<Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-1 ring-gray-200 cursor-pointer">
+							<Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-2 ring-white shadow-md cursor-pointer">
 								<AvatarImage
 									src={photoURL}
 									alt={userDisplayName}
@@ -112,7 +112,7 @@ const FacultyHeader = ({ children }: { children: React.ReactNode }) => {
 					) : (
 						<Button
 							onClick={handleProfileClick}
-							className="border text-center text-2xl h-full px-3 facilium-bg-indigo facilium-color-white cursor-pointer hover:opacity-70 transition-all rounded"
+							className="border text-center text-2xl h-full px-3 bg-white text-[#7a0e3f] cursor-pointer hover:bg-gray-100 transition-all rounded"
 						>
 							{profileName}
 						</Button>

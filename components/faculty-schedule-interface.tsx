@@ -24,6 +24,13 @@ import {
 	FormLabel,
 	FormMessage,
 } from "./ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
 import toast from "react-hot-toast";
 import { validateScheduleTimeRange } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
@@ -249,6 +256,10 @@ const FacultyScheduleInterface = ({
 
 	// Watch courseCode for eligibility updates
 	const watchedCourseCode = form.watch("courseCode");
+
+	// Course info popup state: show subject title + description when course changes
+	const [courseInfoOpen, setCourseInfoOpen] = useState(false);
+	const [courseInfo, setCourseInfo] = useState<{ subjectTitle?: string; description?: string } | null>(null);
 	const watchedProfessorId = form.watch("professor");
 
 	useEffect(() => {
@@ -274,6 +285,29 @@ const FacultyScheduleInterface = ({
 			cancelled = true;
 		};
 	}, [programId, yearLevelId, sectionId, watchedCourseCode]);
+
+	// Show course info when courseCode changes. Use the provided `courses` prop
+	useEffect(() => {
+		if (!watchedCourseCode) {
+			setCourseInfo(null);
+			setCourseInfoOpen(false);
+			return;
+		}
+		// Try to find the course object (courses prop often contains more fields)
+		const found = (courses || []).find((c) => c.courseCode === watchedCourseCode);
+		if (found) {
+			// subjectTitle and description may or may not exist on the document
+			const meta = found as { subjectTitle?: string; description?: string };
+			setCourseInfo({
+				subjectTitle: meta.subjectTitle || found.courseCode,
+				description: meta.description || "",
+			});
+			setCourseInfoOpen(true);
+		} else {
+			setCourseInfo({ subjectTitle: watchedCourseCode, description: "" });
+			setCourseInfoOpen(true);
+		}
+	}, [watchedCourseCode, courses]);
 
 	// Load professor's assigned loads for the current program/year when a professor is selected
 	useEffect(() => {
@@ -1164,6 +1198,27 @@ const FacultyScheduleInterface = ({
 													</Select>
 												</div>
 												<FormMessage className="text-xs" />
+												{courseInfo && (
+													<Dialog open={courseInfoOpen} onOpenChange={setCourseInfoOpen}>
+														<DialogContent>
+															<DialogHeader>
+																<DialogTitle>{watchedCourseCode || ""}</DialogTitle>
+															</DialogHeader>
+															<DialogDescription>
+																{courseInfo.subjectTitle ? (
+																	<span className="text-sm text-gray-700">{courseInfo.subjectTitle}</span>
+																) : (
+																	<span className="text-sm text-gray-500 italic">No title available.</span>
+																)}
+															</DialogDescription>
+															<div className="mt-4 flex justify-end">
+																<Button onClick={() => setCourseInfoOpen(false)} variant="secondary">
+																	Close
+																</Button>
+															</div>
+														</DialogContent>
+													</Dialog>
+												)}
 											</FormItem>
 										)}
 									/>
