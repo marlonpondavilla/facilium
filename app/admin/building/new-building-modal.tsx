@@ -78,18 +78,18 @@ const NewBuildingModal = () => {
 			<DialogTrigger asChild>
 				<Button variant="default" className="text-base">
 					<HousePlus className="w-5 h-5 mr-1" />
-					Add Building
+					Add New Facility
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
-					<DialogTitle>Add Building</DialogTitle>
+					<DialogTitle>Adding Facility</DialogTitle>
 					<DialogDescription>
-						Enter building information below
+						Enter facility information below.
 					</DialogDescription>
 					<Input
 						type="text"
-						placeholder="Building Name"
+						placeholder="Facility Name"
 						onChange={(e) => {
 							setBuildingData({
 								...buildingData,
@@ -103,12 +103,12 @@ const NewBuildingModal = () => {
 					/>
 					{error && (
 						<p className="text-red-500 text-sm">
-							please provide a Building Name
+							please provide a Facility Name
 						</p>
 					)}
 					{existError && (
 						<p className="text-red-500 text-sm">
-							Building Name {buildingData.buildingName} already exists.
+							Facility Name {buildingData.buildingName} already exists.
 						</p>
 					)}
 				</DialogHeader>

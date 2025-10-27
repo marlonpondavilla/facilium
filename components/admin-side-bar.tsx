@@ -66,7 +66,7 @@ const AdminSideBar = ({ children }: { children: React.ReactNode }) => {
 			id: "designation",
 		},
 		{
-			title: "Building",
+			title: "Facility",
 			links: "/admin/building",
 			icon: <Building size={20} />,
 			id: "building",
