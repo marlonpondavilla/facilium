@@ -197,7 +197,7 @@ const LoginForm = () => {
 					</div>
 					<Button
 						type="submit"
-						className="mt-2 w-full"
+						className="mt-2 w-full facilium-bg-indigo"
 						disabled={!captchaToken || !recaptchaSiteKey}
 					>
 						{form.formState.isSubmitting || verifyingCaptcha
