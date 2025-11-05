@@ -23,89 +23,51 @@ import {
 	FormItem,
 	FormLabel,
 	FormMessage,
-} from "./ui/form";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "./ui/dialog";
-import toast from "react-hot-toast";
-import { validateScheduleTimeRange } from "@/lib/utils";
-import { Checkbox } from "./ui/checkbox";
-import ScheduleTable from "./schedule-table";
-import {
-	ScheduleItem,
-	PendingSchedule,
-	ApprovedScheduleDoc,
-} from "@/types/SceduleInterface";
-import {
-	addDocumentToFirestore,
-	checkIfDocumentExists,
-	checkIfScheduleConflictExists,
-	deleteDocumentById,
-	getDocumentsFromFirestore,
-	getDocumentsWithNestedObject,
-	getSingleDocumentFromFirestore,
-	updateScheduleDocument,
-	getEligibleProfessorsForLoad,
+	} from "./ui/form";
+	import toast from "react-hot-toast";
+	import { validateScheduleTimeRange } from "@/lib/utils";
+	import { Checkbox } from "./ui/checkbox";
+	import ScheduleTable from "./schedule-table";
+	import {
+		ScheduleItem,
+		PendingSchedule,
+		ApprovedScheduleDoc,
+	} from "@/types/SceduleInterface";
+	import {
+		addDocumentToFirestore,
+		checkIfDocumentExists,
+		checkIfScheduleConflictExists,
+		deleteDocumentById,
+		getDocumentsFromFirestore,
+		getDocumentsWithNestedObject,
+		getSingleDocumentFromFirestore,
+		updateScheduleDocument,
+		getEligibleProfessorsForLoad,
 		getFacultyLoads,
-} from "@/data/actions";
-import Loading from "./loading";
-import Link from "next/link";
-import WarningPopUp from "./warning-pop-up";
-import { AcademicYear } from "@/types/academicYearType";
-import type { FacultyLoad } from "@/types/facultyLoadType";
-import ConfirmationHandleDialog from "./confirmation-handle-dialog";
-import { useAuth } from "@/context/auth";
+	} from "@/data/actions";
+	import Loading from "./loading";
+	import Link from "next/link";
+	import WarningPopUp from "./warning-pop-up";
+	import { AcademicYear } from "@/types/academicYearType";
+	import type { FacultyLoad } from "@/types/facultyLoadType";
+	import ConfirmationHandleDialog from "./confirmation-handle-dialog";
+	import { useAuth } from "@/context/auth";
 
-type FacultyScheduleInterfaceProps = {
-	buildingName: string;
-	data: {
-		id: string;
-		status: string;
-		classroomName: string;
-	}[];
-	programs?: {
-		id: string;
-		programCode: string;
-		department?: string;
-	}[];
-	// Explicit department of the currently logged-in Program Head, passed from server page
-	programHeadDept?: string;
-	yearLevels?: {
-		id: string;
-		programId: string;
-		yearLevel: string;
-	}[];
-	sections?: {
-		id: string;
-		yearLevelId: string;
-		sectionName: string;
-	}[];
-	courses?: {
-		id: string;
-		termId: string;
-		yearLevelId: string;
-		courseCode: string;
-	}[];
-	academicTerms?: {
-		id: string;
-		programId: string;
-		yearLevelId: string;
-		term: string;
-	}[];
-	academicYears?: AcademicYear[];
-	professors?: {
-		id: string;
-		designation: string;
-		firstName: string;
-		lastName: string;
-		department?: string;
-	}[];
+/* eslint-disable @typescript-eslint/no-explicit-any */
+interface FacultyScheduleInterfaceProps {
+    buildingName: string;
+    data: any[];
+    programs?: any[];
+    programHeadDept?: string;
+    yearLevels?: any[];
+    sections?: { id: string; yearLevelId: string; sectionName: string }[];
+    courses?: { id: string; termId: string; yearLevelId: string; courseCode: string; subjectTitle?: string; description?: string }[];
+    academicTerms?: any[];
+    academicYears?: AcademicYear[];
+    professors?: { id: string; designation: string; firstName: string; lastName: string; department?: string }[];
 	scheduleItems: ScheduleItem[];
-};
+	};
+	/* eslint-enable @typescript-eslint/no-explicit-any */
 
 type ScheduleFormValues = z.infer<typeof scheduleSchema>;
 
@@ -170,6 +132,15 @@ const FacultyScheduleInterface = ({
 	// Dialog for weekly subject hour cap exceeded
 	const [openSubjectCapDialog, setOpenSubjectCapDialog] = useState(false);
 	const [subjectCapMessage, setSubjectCapMessage] = useState("");
+	// Proactive validation popups
+	const [openNoProfessorLoad, setOpenNoProfessorLoad] = useState(false);
+	const [noProfessorLoadMessage, setNoProfessorLoadMessage] = useState("");
+	const [openSectionNotAllowed, setOpenSectionNotAllowed] = useState(false);
+	const [sectionNotAllowedMessage, setSectionNotAllowedMessage] = useState("");
+	const [openCourseNotAssigned, setOpenCourseNotAssigned] = useState(false);
+	const [courseNotAssignedMessage, setCourseNotAssignedMessage] = useState("");
+	const [openProfessorWorkloadHigh, setOpenProfessorWorkloadHigh] = useState(false);
+	const [professorWorkloadMessage, setProfessorWorkloadMessage] = useState("");
 	const [pendingScheduleDetails, setPendingScheduleDetails] =
 		useState<PendingScheduleDetails>({
 			classroomName: "",
@@ -257,8 +228,7 @@ const FacultyScheduleInterface = ({
 	// Watch courseCode for eligibility updates
 	const watchedCourseCode = form.watch("courseCode");
 
-	// Course info popup state: show subject title + description when course changes
-	const [courseInfoOpen, setCourseInfoOpen] = useState(false);
+	// Course info state: show subject title + description (displayed inline under Course Code select)
 	const [courseInfo, setCourseInfo] = useState<{ subjectTitle?: string; description?: string } | null>(null);
 	const watchedProfessorId = form.watch("professor");
 
@@ -290,7 +260,6 @@ const FacultyScheduleInterface = ({
 	useEffect(() => {
 		if (!watchedCourseCode) {
 			setCourseInfo(null);
-			setCourseInfoOpen(false);
 			return;
 		}
 		// Try to find the course object (courses prop often contains more fields)
@@ -302,10 +271,8 @@ const FacultyScheduleInterface = ({
 				subjectTitle: meta.subjectTitle || found.courseCode,
 				description: meta.description || "",
 			});
-			setCourseInfoOpen(true);
 		} else {
 			setCourseInfo({ subjectTitle: watchedCourseCode, description: "" });
-			setCourseInfoOpen(true);
 		}
 	}, [watchedCourseCode, courses]);
 
@@ -323,7 +290,31 @@ const FacultyScheduleInterface = ({
 					programId,
 					yearLevelId,
 				});
-				if (!cancelled) setProfessorLoads((loads as FacultyLoad[]) || []);
+				if (!cancelled) {
+					const arr = (loads as FacultyLoad[]) || [];
+					setProfessorLoads(arr);
+					// If professor has no loads in this context, show info popup
+					if (arr.length === 0) {
+						setNoProfessorLoadMessage(
+							"The selected professor has no assigned loads for the chosen program/year. They may not be eligible to plot schedules."
+						);
+						setOpenNoProfessorLoad(true);
+					} else {
+						setOpenNoProfessorLoad(false);
+					}
+					// Compute current weekly hours for this professor and warn if high
+					const totalHours = (localScheduleItems || [])
+						.filter((i) => i.professor === watchedProfessorId)
+						.reduce((acc, cur) => acc + (cur.duration || 0) + (cur.halfHour ? 0.5 : 0), 0);
+					if (totalHours >= 20) {
+						setProfessorWorkloadMessage(
+							`This professor already has ~${totalHours.toFixed(1)}h plotted. Consider assigning someone with fewer hours.`
+						);
+						setOpenProfessorWorkloadHigh(true);
+					} else {
+						setOpenProfessorWorkloadHigh(false);
+					}
+				}
 			} catch (e) {
 				console.error("failed to load professor loads", e);
 				if (!cancelled) setProfessorLoads([]);
@@ -332,7 +323,101 @@ const FacultyScheduleInterface = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [programId, yearLevelId, watchedProfessorId]);
+	}, [programId, yearLevelId, watchedProfessorId, localScheduleItems]);
+
+	// Proactive conflict detection when user chooses day/start/duration/professor
+	const watchedDay = form.watch("day");
+	const watchedStart = form.watch("start");
+	const watchedDuration = form.watch("duration");
+	const watchedHalfHour = form.watch("halfHour");
+
+	useEffect(() => {
+		const prof = watchedProfessorId;
+		const day = watchedDay;
+		const start = Number(watchedStart || 0);
+		const duration = Number(watchedDuration || 0);
+		const half = watchedHalfHour ? 0.5 : 0;
+
+		// only run quick checks when the minimal time info exists
+		if (!prof || !day || !start || !duration) {
+			// clear proactive conflict UI
+			setOpenConflict(false);
+			return;
+		}
+
+		const end = start + duration + half;
+
+		const overlap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
+			return !(aEnd <= bStart || bEnd <= aStart);
+		};
+
+		// check local schedule items first (fast, client-side)
+		for (const it of localScheduleItems || []) {
+			if (!it || !it.day) continue;
+			if (editingItem && it.id === editingItem.id) continue; // skip the item we're editing
+			if (it.day !== day) continue;
+			const itStart = Number(it.start || 0);
+			const itEnd = itStart + (it.duration || 0) + (it.halfHour ? 0.5 : 0);
+
+			if (overlap(start, end, itStart, itEnd)) {
+				// Only surface conflicts that are relevant to the current scheduling context:
+				// 1) Same classroom (most important)
+				// 2) Same professor (double booking)
+				// If neither, it's an unrelated department/room conflict and should be ignored here.
+				const isSameRoom = it.classroomId === classroomId;
+				const isSameProfessor = it.professor === prof;
+
+				if (isSameRoom) {
+					const roomName = data?.find((c) => c.id === it.classroomId)?.classroomName;
+					setError(`Selected time overlaps with ${it.courseCode} (${it.section}) plotted in ${roomName || 'this classroom'} at ${it.day} ${itStart}.`);
+					setOpenConflict(true);
+					return;
+				}
+
+				if (isSameProfessor) {
+					setError(`Selected time overlaps with ${it.courseCode} (${it.section}) already assigned to this professor at ${it.day} ${itStart}.`);
+					setOpenConflict(true);
+					return;
+				}
+
+				// Unrelated room/professor — ignore for proactive UI checks (user schedules within their own room/department)
+				continue;
+			}
+		}
+
+		// If no local conflict, optionally call server-side quick check when classroomId exists
+		(async () => {
+			if (!classroomId) return;
+			try {
+				const probe = {
+					classroomId,
+					professor: prof,
+					day,
+					start,
+					duration,
+					halfHour: watchedHalfHour || 0,
+					courseCode: watchedCourseCode || "",
+				} as ScheduleItem;
+
+				const maybeConflictId = await checkIfScheduleConflictExists(probe);
+				if (maybeConflictId) {
+					// Fetch key fields from the conflicting schedule doc so we can show an accurate message
+					const conflictClassroomId = await getSingleDocumentFromFirestore(maybeConflictId, "scheduleData", "classroomId");
+					const conflictCourseCode = await getSingleDocumentFromFirestore(maybeConflictId, "scheduleData", "courseCode");
+					const conflictSection = await getSingleDocumentFromFirestore(maybeConflictId, "scheduleData", "section");
+					const classroomConflictName = await getSingleDocumentFromFirestore(conflictClassroomId, "classrooms", "classroomName");
+					setError(`There is a schedule conflict with ${conflictCourseCode || 'another course'} ${conflictSection ? `(${conflictSection})` : ''}${classroomConflictName ? ` in ${classroomConflictName}` : ''}.`);
+					setOpenConflict(true);
+				} else {
+					setOpenConflict(false);
+				}
+			} catch (e) {
+				// fail silently; server check is best-effort
+				console.error("proactive server conflict check failed", e);
+			}
+		})();
+
+	}, [watchedProfessorId, watchedDay, watchedStart, watchedDuration, watchedHalfHour, watchedCourseCode, classroomId, editingItem, localScheduleItems]);
 
 	const updateQueryParamAndForm = <T extends FieldPath<ScheduleFormValues>>(
 		key: string,
@@ -1168,11 +1253,17 @@ const FacultyScheduleInterface = ({
 														{...field}
 														disabled={!classroomId}
 													>
-														<FormControl>
-															<SelectTrigger>
-																<SelectValue placeholder="Select Professor" />
-															</SelectTrigger>
-														</FormControl>
+														  <FormControl>
+																	<SelectTrigger
+																		className="max-w-[180px] truncate"
+																		title={(() => {
+																			const sel = professors?.find((p) => p.id === field.value);
+																			return sel ? `${sel.firstName} ${sel.lastName}` : undefined;
+																		})()}
+																	>
+																		<SelectValue placeholder="Select Professor" className="truncate max-w-full" />
+																	</SelectTrigger>
+																</FormControl>
 														<SelectContent>
 															<SelectGroup>
 																{professors
@@ -1189,36 +1280,40 @@ const FacultyScheduleInterface = ({
 																		return profDept === normalizedDept;
 																	})
 																	.map((professor) => (
-																		<SelectItem key={professor.id} value={`${professor.id}`}>
-																			{`${professor.firstName} ${professor.lastName}`}
-																		</SelectItem>
+																				<SelectItem key={professor.id} value={`${professor.id}`} title={`${professor.firstName} ${professor.lastName}`}>
+																					{`${professor.firstName} ${professor.lastName}`}
+																				</SelectItem>
 																	))}
 															</SelectGroup>
 														</SelectContent>
 													</Select>
 												</div>
 												<FormMessage className="text-xs" />
-												{courseInfo && (
-													<Dialog open={courseInfoOpen} onOpenChange={setCourseInfoOpen}>
-														<DialogContent>
-															<DialogHeader>
-																<DialogTitle>{watchedCourseCode || ""}</DialogTitle>
-															</DialogHeader>
-															<DialogDescription>
-																{courseInfo.subjectTitle ? (
-																	<span className="text-sm text-gray-700">{courseInfo.subjectTitle}</span>
-																) : (
-																	<span className="text-sm text-gray-500 italic">No title available.</span>
-																)}
-															</DialogDescription>
-															<div className="mt-4 flex justify-end">
-																<Button onClick={() => setCourseInfoOpen(false)} variant="secondary">
-																	Close
-																</Button>
-															</div>
-														</DialogContent>
-													</Dialog>
-												)}
+												{/* Proactive validation popups */}
+												<WarningPopUp
+													open={openNoProfessorLoad}
+													setOpen={setOpenNoProfessorLoad}
+													title={"No loads assigned"}
+													description={noProfessorLoadMessage}
+												/>
+												<WarningPopUp
+													open={openSectionNotAllowed}
+													setOpen={setOpenSectionNotAllowed}
+													title={"Section not assigned"}
+													description={sectionNotAllowedMessage}
+												/>
+												<WarningPopUp
+													open={openCourseNotAssigned}
+													setOpen={setOpenCourseNotAssigned}
+													title={"Course not assigned"}
+													description={courseNotAssignedMessage}
+												/>
+												<WarningPopUp
+													open={openProfessorWorkloadHigh}
+													setOpen={setOpenProfessorWorkloadHigh}
+													title={"Professor workload"}
+													description={professorWorkloadMessage}
+												/>
 											</FormItem>
 										)}
 									/>
@@ -1386,18 +1481,20 @@ const FacultyScheduleInterface = ({
 													<FormLabel>Section</FormLabel>
 													<Select
 														onValueChange={(value) => {
-															const selectedSection = sections?.find(
-																(s) => s.sectionName === value
-															);
+															const selectedSection = sections?.find((s) => s.sectionName === value);
 
-															if (!selectedSection) {
+															if (!selectedSection) return;
+
+															// If professor is chosen and this section isn't allowed, warn and prevent selection
+															if (professorSelected && allowedSectionIds && !allowedSectionIds.has(selectedSection.id)) {
+																setSectionNotAllowedMessage(
+																	"The selected professor is not assigned to this section. Please choose a different section or professor."
+																);
+																setOpenSectionNotAllowed(true);
 																return;
 															}
 
-															updateQueryParamAndForm(
-																"sectionId",
-																selectedSection.id
-															);
+															updateQueryParamAndForm("sectionId", selectedSection.id);
 
 															form.setValue("section", value);
 															// reset dependent fields in form
@@ -1461,7 +1558,17 @@ const FacultyScheduleInterface = ({
 												<div className="flex items-center gap-4">
 													<FormLabel>Course Code</FormLabel>
 													<Select
-														onValueChange={field.onChange}
+														onValueChange={(value) => {
+															// If professor is selected and their allowed courses for this section are known, check
+															if (professorSelected && allowedCourseCodesForSelectedSection && !allowedCourseCodesForSelectedSection.has(value)) {
+																setCourseNotAssignedMessage(
+																	"The selected professor is not assigned to teach this course for the chosen section."
+																);
+																setOpenCourseNotAssigned(true);
+																return;
+															}
+															field.onChange(value);
+														}}
 														value={field.value || editingItem?.courseCode || ""}
 														disabled={!(sectionSelected && sectionId)}
 													>
@@ -1501,6 +1608,16 @@ const FacultyScheduleInterface = ({
 													</Select>
 												</div>
 												<FormMessage className="text-xs" />
+												{courseInfo && (
+													<div className="overflow-hidden border border-red-200 rounded p-2">
+														<div
+															className="text-sm text-pink-600 truncate text-center"
+															title={courseInfo.description || courseInfo.subjectTitle || ""}
+														>
+															{courseInfo.subjectTitle ? courseInfo.subjectTitle : <span className="text-sm text-red-400 italic">No title available.</span>}
+														</div>
+													</div>
+												)}
 											</FormItem>
 										)}
 									/>
@@ -1708,11 +1825,7 @@ const FacultyScheduleInterface = ({
 											</Button>
 										}
 										title={editingItem ? "Confirm updating this schedule" : "Confirm adding this schedule"}
-										description={
-											editingItem
-												? 'Before updating, please type "confirm" to proceed.'
-												: 'Before adding, please type "confirm" to proceed.'
-										}
+										description={editingItem ? 'Before updating, please type "confirm" to proceed.' : 'Are you sure you want to add this schedule?'}
 										label={editingItem ? "update" : "add"}
 										onConfirm={async () => {
 											const valid = await form.trigger(undefined, {
@@ -1721,11 +1834,15 @@ const FacultyScheduleInterface = ({
 											if (!valid) return false;
 											await handleScheduleAdd(form.getValues());
 										}}
-										requireText
-										expectedText="confirm"
-										textPlaceholder={'Type "confirm"'}
-										textLabel={editingItem ? 'Type "confirm" to update this schedule' : 'Type "confirm" to add this schedule'}
-										caseSensitive={false}
+										{...(editingItem
+											? {
+												requireText: true,
+												expectedText: "confirm",
+												textPlaceholder: 'Type "confirm"',
+												textLabel: 'Type "confirm" to update this schedule',
+												caseSensitive: false,
+											}
+											: {})}
 										confirmButtonText={editingItem ? "Yes, update" : "Yes, add"}
 									/>
 								)}

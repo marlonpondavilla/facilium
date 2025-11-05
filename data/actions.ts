@@ -478,46 +478,70 @@ export const checkIfScheduleConflictExists = async (
 	newSchedule: ScheduleItem
 ): Promise<string | null> => {
 	try {
-		// Query all schedule entries on the same day (excluding the current one if editing)
-		const snapshot = await firestore
+		// Helper to test a snapshot for a qualifying overlap and return the first match
+		const findOverlapInSnapshot = (snapshot: FirebaseFirestore.QuerySnapshot): string | null => {
+			for (const doc of snapshot.docs) {
+				const existing: ScheduleItem = { id: doc.id, ...doc.data() } as ScheduleItem;
+				if (existing.id === newSchedule.id) continue; // ignore editing item
+
+				const existingStart = existing.start;
+				const existingEnd = existing.start + existing.duration + (existing.halfHour === 30 ? 0.5 : 0);
+				const newStart = newSchedule.start;
+				const newEnd = newSchedule.start + newSchedule.duration + (newSchedule.halfHour === 30 ? 0.5 : 0);
+				const timeOverlap = !(newEnd <= existingStart || newStart >= existingEnd);
+				if (!timeOverlap) continue;
+
+				// If overlapping and resource matches (classroom/professor/section), return immediately
+				const professorConflict = existing.professor === newSchedule.professor;
+				const classroomConflict = existing.classroomId === newSchedule.classroomId;
+				const sectionConflict = existing.section === newSchedule.section;
+
+				if (professorConflict || classroomConflict || sectionConflict) {
+					return existing.id as string;
+				}
+			}
+			return null;
+		};
+
+		// 1) Prefer checking the same classroom first (most relevant to current UI context)
+		if (newSchedule.classroomId) {
+			const snap = await firestore
+				.collection("scheduleData")
+				.where("day", "==", newSchedule.day)
+				.where("classroomId", "==", newSchedule.classroomId)
+				.get();
+			const found = findOverlapInSnapshot(snap);
+			if (found) return found;
+		}
+
+		// 2) Then check for professor conflicts (double booking)
+		if (newSchedule.professor) {
+			const snap = await firestore
+				.collection("scheduleData")
+				.where("day", "==", newSchedule.day)
+				.where("professor", "==", newSchedule.professor)
+				.get();
+			const found = findOverlapInSnapshot(snap);
+			if (found) return found;
+		}
+
+		// 3) Then check for section conflicts
+		if (newSchedule.section) {
+			const snap = await firestore
+				.collection("scheduleData")
+				.where("day", "==", newSchedule.day)
+				.where("section", "==", newSchedule.section)
+				.get();
+			const found = findOverlapInSnapshot(snap);
+			if (found) return found;
+		}
+
+		// 4) Fallback: check all items on the day (safe but broad)
+		const fallback = await firestore
 			.collection("scheduleData")
 			.where("day", "==", newSchedule.day)
 			.get();
-
-		// Iterate through all items, check for time overlap and resource conflict
-		const conflictingDoc = snapshot.docs.find((doc) => {
-			const existing: ScheduleItem = {
-				id: doc.id,
-				...doc.data(),
-			} as ScheduleItem;
-
-			// If editing an existing schedule, ignore the same record
-			if (existing.id === newSchedule.id) return false;
-
-			// Check for time overlap (include +30 mins halfHour when present)
-			const existingStart = existing.start;
-			const existingEnd =
-				existing.start + existing.duration + (existing.halfHour === 30 ? 0.5 : 0);
-			const newStart = newSchedule.start;
-			const newEnd =
-				newSchedule.start + newSchedule.duration + (newSchedule.halfHour === 30 ? 0.5 : 0);
-
-			// Allow adjacent schedules (if one ends exactly when another starts)
-			const timeOverlap = !(newEnd <= existingStart || newStart >= existingEnd);
-
-			if (!timeOverlap) return false; // No time overlap -> no conflict
-
-			// Check for conflicts on professor, classroom, or section
-			const professorConflict = existing.professor === newSchedule.professor;
-			const classroomConflict =
-				existing.classroomId === newSchedule.classroomId;
-			const sectionConflict = existing.section === newSchedule.section;
-
-			return professorConflict || classroomConflict || sectionConflict;
-		});
-
-		// Return the ID of the conflicting document if a conflict exists, otherwise null
-		return conflictingDoc ? conflictingDoc.id : null;
+		return findOverlapInSnapshot(fallback);
 	} catch (error) {
 		console.error("Error checking for schedule conflicts:", error);
 		return null;

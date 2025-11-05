@@ -66,6 +66,7 @@ export default function ProgramHeadManageLoad(props: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // UI-blocking spinner during filter transitions
   const [uiBlocking, setUiBlocking] = useState(false);
+  
   const pageSize = 5;
   // Track the intended target for URL params while blocking
   const blockingTargetRef = useRef<string | null>(null);
@@ -722,10 +723,10 @@ export default function ProgramHeadManageLoad(props: Props) {
                     </Button>
                   }
                   title={loadId ? "Confirm updating faculty load" : "Confirm adding faculty load"}
-                  description={loadId ? "Please confirm with your password to update this faculty load." : "Please confirm with your password to add this faculty load."}
-                  label={loadId ? "Update Faculty Load" : "Add Faculty Load"}
-                  requirePassword
-                  passwordPlaceholder="Enter your password"
+                    description={loadId ? "Please confirm with your password to update this faculty load." : "Are you sure you want to add this faculty load?"}
+                    label={loadId ? "Update Faculty Load" : "Add Faculty Load"}
+                    requirePassword={Boolean(loadId)}
+                    passwordPlaceholder="Enter your password"
                   onConfirm={async () => {
                     // Validate first; if invalid, keep dialog open
                     const valid = await form.trigger();
@@ -735,7 +736,9 @@ export default function ProgramHeadManageLoad(props: Props) {
                     Promise.resolve().then(() => onSubmit(vals));
                     return true;
                   }}
-                />
+                >
+                    {/* No extra options: simple confirmation with Yes/Cancel for Add (no password required) */}
+                </ConfirmationHandleDialog>
                 {loadId && (
                   <Button
                     type="button"

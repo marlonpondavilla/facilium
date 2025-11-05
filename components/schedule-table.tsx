@@ -74,7 +74,6 @@ export default function ScheduleTable({
 		{}
 	);
 	const [isLoading, setIsLoading] = useState(false);
-	const [density, setDensity] = useState<"compact" | "comfortable">("compact");
 	const tableRef = useRef<HTMLTableElement | null>(null);
 
 	// Simple in-memory caches (reset per component lifecycle)
@@ -464,18 +463,12 @@ export default function ScheduleTable({
 		}
 	};
 
-	const densityClasses =
-		density === "compact"
-			? {
-					cell: "px-2 py-1",
-					row: "h-9",
-					font: "text-xs",
-			  }
-			: {
-					cell: "px-3 py-2",
-					row: "h-12",
-					font: "text-sm",
-			  };
+	// Fixed compact density (removed toggle: always use compact view)
+	const densityClasses = {
+		cell: "px-2 py-1",
+		row: "h-9",
+		font: "text-xs",
+	};
 
 	return (
 		<div className="w-full border rounded-lg">
@@ -494,29 +487,6 @@ export default function ScheduleTable({
 			)}
 
 			<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 border-b bg-gray-50">
-				<div className="flex items-center gap-2 text-xs">
-					<span className="font-semibold">View:</span>
-					<button
-						className={`rounded border px-2 py-0.5 text-xs ${
-							density === "compact" ? "bg-indigo-600 text-white" : "bg-white"
-						}`}
-						onClick={() => setDensity("compact")}
-						aria-pressed={density === "compact"}
-					>
-						Compact
-					</button>
-					<button
-						className={`rounded border px-2 py-0.5 text-xs ${
-							density === "comfortable"
-								? "bg-indigo-600 text-white"
-								: "bg-white"
-						}`}
-						onClick={() => setDensity("comfortable")}
-						aria-pressed={density === "comfortable"}
-					>
-						Comfort
-					</button>
-				</div>
 				<div className="flex items-center gap-2 text-xs">
 					<span className="font-semibold">Export:</span>
 					{enableExport && (
@@ -539,6 +509,9 @@ export default function ScheduleTable({
 							Print
 						</button>
 					)}
+				</div>
+				<div className="flex items-center gap-2 text-xs">
+					{/* kept intentionally empty for alignment - header right area reserved */}
 				</div>
 			</div>
 			<div className="overflow-x-auto">
