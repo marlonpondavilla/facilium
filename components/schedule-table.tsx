@@ -510,9 +510,6 @@ export default function ScheduleTable({
 						</button>
 					)}
 				</div>
-				<div className="flex items-center gap-2 text-xs">
-					{/* kept intentionally empty for alignment - header right area reserved */}
-				</div>
 			</div>
 			<div className="overflow-x-auto">
 				<table
