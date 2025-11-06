@@ -614,15 +614,14 @@ export default function ScheduleTable({
 																	</button>
 																}
 																title={`You are about to delete schedule for ${item.section}`}
-																description="This action cannot be undone. Please confirm with your password to proceed."
+																description="This action cannot be undone. Confirm to delete."
 																label="delete"
 																onConfirm={() =>
 																	handleDeleteSpecificSchedule(
 																		item.id ?? "no id"
 																	)
 																}
-																requirePassword
-																passwordPlaceholder="Enter your password"
+																confirmButtonText="Yes, delete"
 																contentClassName="sm:max-w-lg"
 															/>
 														</div>

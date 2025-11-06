@@ -118,7 +118,7 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 	const authCtx = useAuth();
 	const [isEditing, setIsEditing] = React.useState(false);
 	const [isPending, startTransition] = useTransition();
-	const [isPwPending, startPwTransition] = useTransition();
+	const [isPwPending] = useTransition();
 	const [isPwEditing, setIsPwEditing] = React.useState(false);
 	// Degree editing state
 	const [isDegEditing, setIsDegEditing] = React.useState(false);
@@ -483,82 +483,7 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 		},
 		mode: "onBlur",
 	});
-	const onChangePassword = (values: PwFormValues) => {
-		startPwTransition(async () => {
-			try {
-				const current = auth.currentUser;
-				if (!current || !current.email) {
-					toast.error("Not authenticated.");
-					return;
-				}
-				const cred = EmailAuthProvider.credential(
-					current.email,
-					values.currentPassword
-				);
-				await reauthenticateWithCredential(current, cred);
-				await updatePassword(current, values.newPassword);
-				toast.success("Password changed successfully.");
-				pwForm.reset();
-				if (authCtx?.logout) {
-					await authCtx.logout();
-				} else {
-					await signOut(auth);
-					router.replace("/login");
-				}
-			} catch (e: unknown) {
-				// Normalized error code
-				const err = e as { code?: string; message?: string } | undefined;
-				const raw = err?.code || err?.message || "unknown";
-				const code = typeof raw === "string" ? raw : String(raw ?? "unknown");
-				// Map common auth errors from Identity Toolkit/Firebase
-				if (
-					code.includes("invalid-credential") ||
-					code.includes("invalid-login-credentials") ||
-					code.includes("wrong-password")
-				) {
-					pwForm.setError("currentPassword", {
-						type: "manual",
-						message: "Incorrect current password",
-					});
-					toast.error("Incorrect current password.");
-					return;
-				}
-				if (code.includes("weak-password")) {
-					pwForm.setError("newPassword", {
-						type: "manual",
-						message: "Password is too weak.",
-					});
-					toast.error("New password is too weak.");
-					return;
-				}
-				if (code.includes("requires-recent-login")) {
-					toast.error(
-						"Please sign in again to change your password, then retry."
-					);
-					return;
-				}
-				if (code.includes("too-many-requests")) {
-					toast.error("Too many attempts. Please wait a moment and try again.");
-					return;
-				}
-				if (code.includes("network-request-failed")) {
-					toast.error(
-						"Network error. Check your internet connection and try again."
-					);
-					return;
-				}
-				if (code.includes("user-disabled")) {
-					toast.error("This account is disabled. Contact the administrator.");
-					return;
-				}
-				if (code.includes("invalid-api-key")) {
-					toast.error("Configuration error (API key). Please contact support.");
-					return;
-				}
-				toast.error("Failed to change password.");
-			}
-		});
-	};
+
 
 	if (!user) {
 		return (
@@ -711,10 +636,8 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 											</Button>
 										}
 										title="Confirm name change"
-										description="Please confirm with your password to update your name."
+										description="Please confirm to update your name."
 										label="save"
-										requirePassword
-										passwordPlaceholder="Enter your password"
 										confirmButtonText="Yes, save"
 										onConfirm={async () => {
 											// Validate the form first
@@ -818,10 +741,8 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 											</Button>
 										}
 										title="Confirm degree change"
-										description="Please confirm with your password to update your degree."
+										description="Please confirm to update your degree."
 										label="save"
-										requirePassword
-										passwordPlaceholder="Enter your password"
 										confirmButtonText="Yes, save"
 										onConfirm={async () => {
 											if (!degreeValue) {
@@ -965,10 +886,8 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 								</Button>
 							}
 							title="Confirm upload"
-							description="Please confirm with your password to upload your new profile photo."
+							description="Please confirm to upload your new profile photo."
 							label="upload"
-							requirePassword
-							passwordPlaceholder="Enter your password"
 							confirmButtonText="Yes, upload"
 							onConfirm={performUpload}
 						/>
@@ -1017,7 +936,10 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 					)}
 					<Form {...pwForm}>
 						<form
-							onSubmit={pwForm.handleSubmit(onChangePassword)}
+							onSubmit={(e) => {
+								// Prevent direct submit to ensure confirmation dialog is used
+								e.preventDefault();
+							}}
 							className={`grid grid-cols-1 sm:grid-cols-2 gap-4 border rounded-md p-4 focus-within:ring-2 focus-within:ring-primary/40 ${
 								isPwEditing ? "opacity-100" : "opacity-60 select-none"
 							}`}
@@ -1083,13 +1005,101 @@ export default function FacultyProfile({ user }: { user: UserProfile | null }) {
 								>
 									Clear
 								</Button>
-								<Button
-									type="submit"
-									disabled={!isPwEditing || isPwPending}
-									className="w-full sm:w-auto"
-								>
-									{isPwPending ? "Updating..." : "Update Password"}
-								</Button>
+								<ConfirmationHandleDialog
+									trigger={
+										<Button
+											type="button"
+											disabled={!isPwEditing || isPwPending}
+											className="w-full sm:w-auto"
+										>
+											{isPwPending ? "Updating..." : "Update Password"}
+										</Button>
+									}
+									title="Confirm password change"
+									description="Please confirm to change your password."
+									label="update-password"
+									confirmButtonText="Yes, update"
+									onConfirm={async () => {
+										const isValid = await pwForm.trigger();
+										if (!isValid) {
+											toast.error("Please fix the form errors.");
+											return false;
+										}
+										const values = pwForm.getValues();
+										try {
+											const current = auth.currentUser;
+											if (!current || !current.email) {
+												toast.error("Not authenticated.");
+												return false;
+											}
+											const cred = EmailAuthProvider.credential(
+												current.email,
+												values.currentPassword
+											);
+											await reauthenticateWithCredential(current, cred);
+											await updatePassword(current, values.newPassword);
+											toast.success("Password changed successfully.");
+											pwForm.reset();
+											if (authCtx?.logout) {
+												await authCtx.logout();
+											} else {
+												await signOut(auth);
+												router.replace("/login");
+											}
+											return true;
+										} catch (e: unknown) {
+											const err = e as { code?: string; message?: string } | undefined;
+											const raw = err?.code || err?.message || "unknown";
+											const code = typeof raw === "string" ? raw : String(raw ?? "unknown");
+											if (
+												code.includes("invalid-credential") ||
+												code.includes("invalid-login-credentials") ||
+												code.includes("wrong-password")
+											) {
+												pwForm.setError("currentPassword", {
+													type: "manual",
+													message: "Incorrect current password",
+												});
+												toast.error("Incorrect current password.");
+												return false;
+											}
+											if (code.includes("weak-password")) {
+												pwForm.setError("newPassword", {
+													type: "manual",
+													message: "Password is too weak.",
+												});
+												toast.error("New password is too weak.");
+												return false;
+											}
+											if (code.includes("requires-recent-login")) {
+												toast.error(
+													"Please sign in again to change your password, then retry."
+												);
+												return false;
+											}
+											if (code.includes("too-many-requests")) {
+												toast.error("Too many attempts. Please wait a moment and try again.");
+												return false;
+											}
+											if (code.includes("network-request-failed")) {
+												toast.error(
+													"Network error. Check your internet connection and try again."
+												);
+												return false;
+											}
+											if (code.includes("user-disabled")) {
+												toast.error("This account is disabled. Contact the administrator.");
+												return false;
+											}
+											if (code.includes("invalid-api-key")) {
+												toast.error("Configuration error (API key). Please contact support.");
+												return false;
+											}
+											toast.error("Failed to change password.");
+											return false;
+										}
+									}}
+								/>
 							</div>
 						</form>
 					</Form>

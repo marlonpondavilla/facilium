@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Building, Check, Info, NotebookPen, RotateCcw, TriangleAlert, X } from "lucide-react";
+import { ArrowDownRightFromCircleIcon, ArrowLeft, Building, Check, Info, NotebookPen, RotateCcw, TriangleAlert, X } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
@@ -433,11 +433,26 @@ const FacultyScheduleInterface = ({
 	};
 
 	// Helper: keep only classroomId in the URL
-	const navigateToClassroomOnly = React.useCallback(() => {
+	const navigateToClassroomOnly = React.useCallback(async () => {
 		if (!classroomId) return;
 		const params = new URLSearchParams();
 		params.set("classroomId", classroomId);
-		router.push(`${pathname}?${params.toString()}`, { scroll: false });
+		try {
+			// show loader and give React a moment to render it before navigation
+			setIsLoading(true);
+			// allow a small tick so the Loading component appears (prevents instant navigation hiding it)
+			await new Promise((resolve) => setTimeout(resolve, 80));
+			// await router.push when possible so loading indicator shows until navigation completes
+			// router.push may return a promise in app-router; awaiting is safe even if it doesn't.
+			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+			// @ts-ignore
+			await router.push(`${pathname}?${params.toString()}`, { scroll: false });
+		} catch (e) {
+			// swallow navigation errors but ensure loader is cleared
+			console.error("navigateToClassroomOnly navigation failed", e);
+		} finally {
+			setIsLoading(false);
+		}
 	}, [classroomId, pathname, router]);
 
 	// Utility: manage loading tied only to real async operations
@@ -1845,6 +1860,23 @@ const FacultyScheduleInterface = ({
 											: {})}
 										confirmButtonText={editingItem ? "Yes, update" : "Yes, add"}
 									/>
+								)}
+
+								{/* Reset form: visible when schedule isn't submitted/approved */}
+								{classroomId && !isPendingScheduleExist && !isApprovedScheduleExist && (
+									<button
+										type="button"
+										onClick={() => {
+											// Reset form values and editing state, keep only classroomId in URL
+											setEditingItem(null);
+											form.reset();
+											setError("");
+											navigateToClassroomOnly();
+										}}
+										className="border border-black rounded px-3 py-1 text-sm hover:bg-gray-100"
+									>
+										Reset form
+									</button>
 								)}
 
 								{/* Submit schedule to dean */}

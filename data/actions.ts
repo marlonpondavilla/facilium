@@ -479,24 +479,40 @@ export const checkIfScheduleConflictExists = async (
 ): Promise<string | null> => {
 	try {
 		// Helper to test a snapshot for a qualifying overlap and return the first match
+		const toHalf = (v: any): number => {
+			if (!v && v !== 0) return 0;
+			// numeric 30 means 30 minutes stored; treat as 0.5 hours
+			if (typeof v === "number") {
+				if (v === 30) return 0.5;
+				return v === 0.5 ? 0.5 : 0;
+			}
+			if (typeof v === "string") {
+				if (v === "30") return 0.5;
+				if (v === "0.5") return 0.5;
+			}
+			if (typeof v === "boolean") {
+				return v ? 0.5 : 0;
+			}
+			return 0;
+		};
+
 		const findOverlapInSnapshot = (snapshot: FirebaseFirestore.QuerySnapshot): string | null => {
 			for (const doc of snapshot.docs) {
 				const existing: ScheduleItem = { id: doc.id, ...doc.data() } as ScheduleItem;
 				if (existing.id === newSchedule.id) continue; // ignore editing item
 
-				const existingStart = existing.start;
-				const existingEnd = existing.start + existing.duration + (existing.halfHour === 30 ? 0.5 : 0);
-				const newStart = newSchedule.start;
-				const newEnd = newSchedule.start + newSchedule.duration + (newSchedule.halfHour === 30 ? 0.5 : 0);
+				const existingStart = Number(existing.start || 0);
+				const existingEnd = existingStart + Number(existing.duration || 0) + toHalf(existing.halfHour);
+				const newStart = Number(newSchedule.start || 0);
+				const newEnd = newStart + Number(newSchedule.duration || 0) + toHalf(newSchedule.halfHour);
 				const timeOverlap = !(newEnd <= existingStart || newStart >= existingEnd);
 				if (!timeOverlap) continue;
 
-				// If overlapping and resource matches (classroom/professor/section), return immediately
-				const professorConflict = existing.professor === newSchedule.professor;
-				const classroomConflict = existing.classroomId === newSchedule.classroomId;
-				const sectionConflict = existing.section === newSchedule.section;
+				// Only treat as conflict when overlapping AND either same classroom or same professor.
+				const professorConflict = Boolean(existing.professor) && existing.professor === newSchedule.professor;
+				const classroomConflict = Boolean(existing.classroomId) && existing.classroomId === newSchedule.classroomId;
 
-				if (professorConflict || classroomConflict || sectionConflict) {
+				if (professorConflict || classroomConflict) {
 					return existing.id as string;
 				}
 			}
@@ -525,18 +541,7 @@ export const checkIfScheduleConflictExists = async (
 			if (found) return found;
 		}
 
-		// 3) Then check for section conflicts
-		if (newSchedule.section) {
-			const snap = await firestore
-				.collection("scheduleData")
-				.where("day", "==", newSchedule.day)
-				.where("section", "==", newSchedule.section)
-				.get();
-			const found = findOverlapInSnapshot(snap);
-			if (found) return found;
-		}
-
-		// 4) Fallback: check all items on the day (safe but broad)
+		// 3) Fallback: check all items on the day but still enforce only classroom/professor matches
 		const fallback = await firestore
 			.collection("scheduleData")
 			.where("day", "==", newSchedule.day)
